@@ -1,235 +1,226 @@
- import { View, Text, StyleSheet, ScrollView } from                 'react-native';                                                  
-  import { Stack } from 'expo-router';                               import { MaterialCommunityIcons } from '@expo/vector-icons';     
-  import { Colors } from '@/constants/colors';                     
-  import FadeInView from '@/components/FadeInView';                
-
-  const currentPlan = {
-    name: 'Premium 3 Months',
-    emoji: '👑',
-    price: 3500,
-    startDate: 'Feb 1, 2026',
-    endDate: 'Apr 30, 2026',
+import { View, Text, StyleSheet, ScrollView, Alert } from
+  'react-native';                                
+  import { Colors } from '@/constants/colors';
+  import { Fonts } from '@/constants/fonts';  
+  import FadeInView from '@/components/FadeInView';
+  import AnimatedPressable from '@/components/AnimatedPressable';
+                                                                     const currentPlan = {
+    name: 'Premium 3 Months',                                      
+    price: 3500,                                                   
+    startDate: 'Jan 1, 2025',
+    endDate: 'Mar 31, 2025',
     daysLeft: 59,
     totalDays: 90,
     features: [
       'Unlimited gym access',
-      'All group classes included',
-      'Personal trainer: 2 sessions/month',
-      'Diet consultation: 1 session/month',
-      'Locker & steam room access',
-      'Guest pass: 2 per month',
+      'Personal trainer (2x/week)',
+      'Diet plan included',
+      'Body progress tracking',
+      'Group classes access',
+      'Locker room access',
     ],
   };
 
   const allPlans = [
-    {
-      id: 1,
-      name: 'Basic Monthly',
-      emoji: '🥉',
-      price: 1000,
-      duration: '1 Month',
-      color: Colors.textMuted,
-      popular: false,
-      features: ['Unlimited gym access', 'Locker room access',     
-  'Basic equipment'],
-    },
-    {
-      id: 2,
-      name: 'Standard 3 Months',
-      emoji: '🥈',
-      price: 2500,
-      duration: '3 Months',
-      color: Colors.accent,
-      popular: false,
-      features: ['Unlimited gym access', 'Group classes (3/week)', 
-  'Locker room access', 'Save ₹500 vs monthly'],
-    },
-    {
-      id: 3,
-      name: 'Premium 3 Months',
-      emoji: '👑',
-      price: 3500,
-      duration: '3 Months',
-      color: '#F59E0B',
-      popular: true,
-      isCurrent: true,
-      features: ['Unlimited gym access', 'All group classes', 'PT sessions (2/month)', 'Diet consultation', 'Locker & steam room', 'Guest passes (2/month)'],
-    },
-    {
-      id: 4,
-      name: 'Annual Gold',
-      emoji: '🏆',
-      price: 10000,
-      duration: '12 Months',
-      color: '#EF4444',
-      popular: false,
-      features: ['Everything in Premium', 'PT sessions (4/month)', 
-  'Unlimited guest passes', 'Priority class booking', 'Free protein shake/month', 'Save ₹32,000 vs monthly'],
-    },
+    { id: 1, name: 'Basic Monthly', price: 1000, duration: '1  Month', features: ['Gym access', 'Locker room'], highlight: false
+   },
+    { id: 2, name: 'Standard 3M', price: 2500, duration: '3  Months', features: ['Gym access', 'Group classes', 'Locker  room'], highlight: false },
+    { id: 3, name: 'Premium 3M', price: 3500, duration: '3 Months',
+   features: ['Everything in Standard', 'Personal trainer 2x/week',
+   'Diet plan', 'Progress tracking'], highlight: true },
+    { id: 4, name: 'Annual Gold', price: 10000, duration: '12  Months', features: ['Everything in Premium', 'Unlimited trainer sessions', 'Nutrition coaching', 'Priority booking'], highlight:false },
   ];
 
-  function formatINR(amount: number) {
-    return '₹' + amount.toLocaleString('en-IN');
-  }
+  const formatINR = (n: number) =>
+    '₹' + n.toLocaleString('en-IN');
 
-  export default function MyPlanScreen() {
-    const progressPercent = Math.round(((currentPlan.totalDays -   
+  const usedPercent = Math.round(((currentPlan.totalDays -
   currentPlan.daysLeft) / currentPlan.totalDays) * 100);
 
+  export default function MyPlanScreen() {
     return (
-      <>
-        <Stack.Screen options={{ title: '📋 My Plan' }} />
-        <ScrollView style={styles.container}
-  contentContainerStyle={styles.content}
-  showsVerticalScrollIndicator={false}>
-
-          {/* Current Plan Card */}
-          <FadeInView delay={0}>
-            <View style={styles.currentCard}>
-              <View style={styles.currentTop}>
-                <Text
-  style={styles.currentEmoji}>{currentPlan.emoji}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.currentLabel}>Current        
-  Plan</Text>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Active Plan Card */}
+        <FadeInView delay={0}>
+          <View style={styles.activePlanCard}>
+            <View style={styles.activePlanAccentBar} />
+            <View style={styles.activePlanInner}>
+              {/* Header */}
+              <View style={styles.activePlanHeader}>
+                <View>
+                  <Text style={styles.activePlanLabel}>CURRENT     
+  PLAN</Text>
                   <Text
-  style={styles.currentName}>{currentPlan.name}</Text>
+  style={styles.activePlanName}>{currentPlan.name}</Text>
                 </View>
                 <View style={styles.activeBadge}>
-                  <Text style={styles.activeText}>✓ Active</Text>  
+                  <Text
+  style={styles.activeBadgeText}>ACTIVE</Text>
+                </View>
+              </View>
+
+              {/* Price + Dates */}
+              <View style={styles.activePlanMeta}>
+                <View style={styles.priceBlock}>
+                  <Text
+  style={styles.priceValue}>{formatINR(currentPlan.price)}</Text>  
+                  <Text style={styles.priceLabel}>TOTAL PAID</Text>
+                </View>
+                <View style={styles.metaDivider} />
+                <View style={styles.dateBlock}>
+                  <Text
+  style={styles.dateText}>{currentPlan.startDate}</Text>
+                  <Text style={styles.dateArrow}>→</Text>
+                  <Text
+  style={styles.dateText}>{currentPlan.endDate}</Text>
                 </View>
               </View>
 
               {/* Progress */}
               <View style={styles.progressSection}>
-                <View style={styles.progressLabels}>
-                  <Text
-  style={styles.progressStart}>{currentPlan.startDate}</Text>      
-                  <Text
-  style={styles.progressMid}>{currentPlan.daysLeft} days
-  left</Text>
-                  <Text
-  style={styles.progressEnd}>{currentPlan.endDate}</Text>
+                <View style={styles.progressHeader}>
+                  <Text style={styles.progressLabel}>PLAN
+  USAGE</Text>
+                  <View style={styles.daysLeftChip}>
+                    <Text
+  style={styles.daysLeftNum}>{currentPlan.daysLeft}</Text>
+                    <Text style={styles.daysLeftUnit}> DAYS        
+  LEFT</Text>
+                  </View>
                 </View>
-                <View style={styles.progressBar}>
+                <View style={styles.progressTrack}>
                   <View style={[styles.progressFill, { width:      
-  `${progressPercent}%` as any }]} />
+  `${usedPercent}%` as any }]} />
                 </View>
-                <Text
-  style={styles.progressPercent}>{progressPercent}%
-  completed</Text>
-              </View>
-
-              {/* Price */}
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Plan Cost</Text>   
-                <Text
-  style={styles.priceVal}>{formatINR(currentPlan.price)}</Text>    
+                <Text style={styles.progressSub}>{usedPercent}%    
+  used · {currentPlan.totalDays - currentPlan.daysLeft} of
+  {currentPlan.totalDays} days</Text>
               </View>
 
               {/* Features */}
-              <View style={styles.featuresList}>
+              <View style={styles.featureGrid}>
                 {currentPlan.features.map((f, i) => (
                   <View key={i} style={styles.featureRow}>
-                    <MaterialCommunityIcons name="check-circle"    
-  size={16} color={Colors.green} />
+                    <View style={styles.featureDot} />
                     <Text style={styles.featureText}>{f}</Text>    
                   </View>
                 ))}
               </View>
             </View>
-          </FadeInView>
+          </View>
+        </FadeInView>
 
-          {/* Renewal Prompt */}
-          <FadeInView delay={100}>
-            <View style={styles.renewCard}>
-              <Text style={styles.renewEmoji}>⏳</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.renewTitle}>Plan expires in    
-  {currentPlan.daysLeft} days</Text>
-                <Text style={styles.renewSub}>Contact front desk to
-   renew and continue your streak!</Text>
-              </View>
+        {/* Renewal Prompt */}
+        <FadeInView delay={80}>
+          <View style={styles.renewCard}>
+            <View style={styles.renewLeft}>
+              <Text style={styles.renewTitle}>Renew Before
+  Expiry</Text>
+              <Text style={styles.renewSub}>Lock in your current   
+  rate. Visit front desk to renew.</Text>
             </View>
-          </FadeInView>
+            <AnimatedPressable
+              style={styles.renewBtn}
+              scaleDown={0.95}
+              onPress={() => Alert.alert('Renew Plan', 'Please  visit the front desk or contact your trainer to renew your  membership.')}
+            >
+              <Text style={styles.renewBtnText}>RENEW</Text>       
+            </AnimatedPressable>
+          </View>
+        </FadeInView>
 
-          {/* All Plans */}
-          <Text style={styles.sectionTitle}>📦 All Available       
-  Plans</Text>
+        {/* All Plans */}
+        <FadeInView delay={140}>
+          <Text style={styles.sectionLabel}>ALL PLANS</Text>       
+        </FadeInView>
 
-          {allPlans.map((plan, i) => (
-            <FadeInView key={plan.id} delay={150 + i * 70}>        
-              <View style={[
-                styles.planCard,
-                plan.isCurrent && { borderColor: plan.color + '60',
-   borderWidth: 2 },
-              ]}>
-                {/* Popular / Current Badge */}
-                {(plan.popular || plan.isCurrent) && (
-                  <View style={[styles.topBadge, { backgroundColor:
-   plan.color }]}>
-                    <Text
-  style={styles.topBadgeText}>{plan.isCurrent ? '✓ Your Plan' : '⭐ Most Popular'}</Text>
-                  </View>
-                )}
+        {allPlans.map((plan, i) => {
+          const isCurrent = plan.id === 3;
+          const isUpgrade = plan.price > currentPlan.price;        
+          const isDowngrade = plan.price < currentPlan.price;      
 
-                <View style={styles.planHeader}>
-                  <Text
-  style={styles.planEmoji}>{plan.emoji}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text
-  style={styles.planName}>{plan.name}</Text>
-                    <Text style={styles.planDuration}>⏱
-  {plan.duration}</Text>
-                  </View>
-                  <View style={styles.planPriceBox}>
-                    <Text style={[styles.planPrice, { color:       
-  plan.color }]}>{formatINR(plan.price)}</Text>
-                    <Text
-  style={styles.planPriceSub}>one-time</Text>
-                  </View>
-                </View>
-
-                <View style={styles.planFeatures}>
-                  {plan.features.map((f, fi) => (
-                    <View key={fi} style={styles.planFeatureRow}>  
-                      <MaterialCommunityIcons
-                        name="check-circle-outline"
-                        size={14}
-                        color={plan.isCurrent ? plan.color :       
-  Colors.textMuted}
-                      />
-                      <Text style={[styles.planFeatureText,        
-  plan.isCurrent && { color: Colors.textSub }]}>{f}</Text>
+          return (
+            <FadeInView key={plan.id} delay={180 + i * 60}>        
+              <View style={[styles.planCard, isCurrent &&
+  styles.planCardCurrent]}>
+                {isCurrent && <View style={styles.planAccentBar}   
+  />}
+                <View style={styles.planInner}>
+                  <View style={styles.planTop}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.planName, isCurrent &&  
+  styles.planNameCurrent]}>
+                        {plan.name}
+                      </Text>
+                      <Text
+  style={styles.planDuration}>{plan.duration}</Text>
                     </View>
-                  ))}
-                </View>
-
-                {!plan.isCurrent && (
-                  <View style={styles.upgradeRow}>
-                    <Text style={[styles.upgradeText, { color:     
-  plan.color }]}>
-                      {plan.price > currentPlan.price ? '⬆️  Upgrade' : '⬇️ Downgrade'} → Contact front desk
-                    </Text>
+                    <View style={styles.planPriceCol}>
+                      <Text style={[styles.planPrice, isCurrent && 
+  styles.planPriceCurrent]}>
+                        {formatINR(plan.price)}
+                      </Text>
+                      {isCurrent ? (
+                        <View style={styles.currentChip}>
+                          <Text style={styles.currentChipText}>YOUR
+   PLAN</Text>
+                        </View>
+                      ) : isUpgrade ? (
+                        <AnimatedPressable
+                          style={styles.upgradeBtn}
+                          scaleDown={0.95}
+                          onPress={() => Alert.alert('Upgrade Plan', `Contact the front desk to upgrade to ${plan.name}.`)}    
+                        >
+                          <Text
+  style={styles.upgradeBtnText}>UPGRADE</Text>
+                        </AnimatedPressable>
+                      ) : (
+                        <AnimatedPressable
+                          style={styles.downgradeBtn}
+                          scaleDown={0.95}
+                          onPress={() => Alert.alert('Change Plan',
+   `Contact the front desk to switch to ${plan.name}.`)}
+                        >
+                          <Text
+  style={styles.downgradeBtnText}>SELECT</Text>
+                        </AnimatedPressable>
+                      )}
+                    </View>
                   </View>
-                )}
+
+                  <View style={styles.planFeatures}>
+                    {plan.features.map((f, fi) => (
+                      <View key={fi} style={styles.planFeatureRow}>
+                        <Text style={[styles.planFeatureDot,       
+  isCurrent && { color: Colors.accent }]}>◆</Text>
+                        <Text style={[styles.planFeatureText,      
+  isCurrent && { color: Colors.textSub }]}>{f}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
               </View>
             </FadeInView>
-          ))}
+          );
+        })}
 
-          {/* Info Note */}
-          <FadeInView delay={500}>
-            <View style={styles.infoCard}>
-              <Text style={styles.infoEmoji}>ℹ️</Text>
-              <Text style={styles.infoText}>To change your plan or 
-  renew, visit the front desk or contact your gym admin. All plans 
-  are non-refundable.</Text>
-            </View>
-          </FadeInView>
+        {/* Info Note */}
+        <FadeInView delay={450}>
+          <View style={styles.infoCard}>
+            <Text style={styles.infoIcon}>ℹ</Text>
+            <Text style={styles.infoText}>
+              To upgrade, downgrade, or renew your plan, please    
+  visit the front desk or speak to your trainer directly.
+            </Text>
+          </View>
+        </FadeInView>
 
-          <View style={{ height: 24 }} />
-        </ScrollView>
-      </>
+        <View style={{ height: 32 }} />
+      </ScrollView>
     );
   }
 
@@ -237,102 +228,150 @@
     container: { flex: 1, backgroundColor: Colors.bg },
     content: { padding: 16, gap: 12 },
 
-    currentCard: {
-      backgroundColor: Colors.bgCard, borderRadius: 18, padding:   
-  18,
-      borderWidth: 2, borderColor: '#F59E0B' + '50', gap: 14,      
+    /* Active Plan Card */
+    activePlanCard: {
+      flexDirection: 'row',
+      backgroundColor: Colors.bgCard,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: Colors.accent + '40',
+      overflow: 'hidden',
     },
-    currentTop: { flexDirection: 'row', alignItems: 'center', gap: 
-  12 },
-    currentEmoji: { fontSize: 32 },
-    currentLabel: { fontSize: 11, color: Colors.textMuted },       
-    currentName: { fontSize: 18, fontWeight: '700', color:
-  Colors.text, marginTop: 2 },
+    activePlanAccentBar: { width: 4, backgroundColor: Colors.accent
+   },
+    activePlanInner: { flex: 1, padding: 16, gap: 14 },
+
+    activePlanHeader: { flexDirection: 'row', alignItems:
+  'flex-start', justifyContent: 'space-between' },
+    activePlanLabel: { fontSize: 10, fontFamily: Fonts.bold, color:
+   Colors.accent, letterSpacing: 1.5 },
+    activePlanName: { fontSize: 20, fontFamily:
+  Fonts.condensedBold, color: Colors.text, letterSpacing: 0.5,     
+  marginTop: 2 },
     activeBadge: { backgroundColor: Colors.green + '20',
-  borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },    
-    activeText: { fontSize: 12, fontWeight: '700', color:
-  Colors.green },
+  borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,       
+  borderWidth: 1, borderColor: Colors.green + '40' },
+    activeBadgeText: { fontSize: 10, fontFamily: Fonts.bold, color:
+   Colors.green, letterSpacing: 1.2 },
+
+    activePlanMeta: { flexDirection: 'row', alignItems: 'center',  
+  gap: 16 },
+    priceBlock: { gap: 2 },
+    priceValue: { fontSize: 28, fontFamily: Fonts.condensedBold,   
+  color: Colors.accent, letterSpacing: 0.5 },
+    priceLabel: { fontSize: 9, fontFamily: Fonts.bold, color:      
+  Colors.textMuted, letterSpacing: 1.5 },
+    metaDivider: { width: 1, height: 36, backgroundColor:
+  Colors.border },
+    dateBlock: { gap: 2 },
+    dateText: { fontSize: 12, fontFamily: Fonts.medium, color:     
+  Colors.textSub },
+    dateArrow: { fontSize: 11, color: Colors.textMuted },
 
     progressSection: { gap: 6 },
-    progressLabels: { flexDirection: 'row', justifyContent:        
-  'space-between' },
-    progressStart: { fontSize: 11, color: Colors.textMuted },      
-    progressMid: { fontSize: 11, fontWeight: '700', color:
-  Colors.accent },
-    progressEnd: { fontSize: 11, color: Colors.textMuted },        
-    progressBar: { height: 8, backgroundColor: Colors.border,      
-  borderRadius: 4, overflow: 'hidden' },
-    progressFill: { height: 8, backgroundColor: Colors.accent,     
-  borderRadius: 4 },
-    progressPercent: { fontSize: 11, color: Colors.textMuted,      
-  textAlign: 'center' },
+    progressHeader: { flexDirection: 'row', justifyContent:        
+  'space-between', alignItems: 'center' },
+    progressLabel: { fontSize: 10, fontFamily: Fonts.bold, color:  
+  Colors.textMuted, letterSpacing: 1.2 },
+    daysLeftChip: { flexDirection: 'row', alignItems: 'baseline',  
+  backgroundColor: Colors.accentMuted, paddingHorizontal: 8,       
+  paddingVertical: 3, borderRadius: 6 },
+    daysLeftNum: { fontSize: 15, fontFamily: Fonts.condensedBold,  
+  color: Colors.accent },
+    daysLeftUnit: { fontSize: 9, fontFamily: Fonts.bold, color:    
+  Colors.accent, letterSpacing: 1 },
+    progressTrack: { height: 5, backgroundColor: Colors.border,    
+  borderRadius: 3, overflow: 'hidden' },
+    progressFill: { height: 5, backgroundColor: Colors.accent,     
+  borderRadius: 3 },
+    progressSub: { fontSize: 11, fontFamily: Fonts.regular, color: 
+  Colors.textMuted },
 
-    priceRow: { flexDirection: 'row', justifyContent:
-  'space-between', alignItems: 'center', paddingTop: 4,
-  borderTopWidth: 1, borderTopColor: Colors.border },
-    priceLabel: { fontSize: 13, color: Colors.textMuted },
-    priceVal: { fontSize: 20, fontWeight: '700', color: Colors.text
-   },
-
-    featuresList: { gap: 8 },
+    featureGrid: { gap: 6 },
     featureRow: { flexDirection: 'row', alignItems: 'center', gap: 
   8 },
-    featureText: { fontSize: 13, color: Colors.textSub },
+    featureDot: { width: 5, height: 5, borderRadius: 3,
+  backgroundColor: Colors.accent },
+    featureText: { fontSize: 13, fontFamily: Fonts.regular, color: 
+  Colors.textSub },
 
+    /* Renew Card */
     renewCard: {
       flexDirection: 'row', alignItems: 'center', gap: 12,
-      backgroundColor: Colors.orangeMuted, borderRadius: 14,       
+      backgroundColor: Colors.bgElevated, borderRadius: 14,        
   padding: 14,
-      borderWidth: 1, borderColor: Colors.orange + '30',
-    },
-    renewEmoji: { fontSize: 28 },
-    renewTitle: { fontSize: 14, fontWeight: '700', color:
-  Colors.text },
-    renewSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2
-   },
-
-    sectionTitle: { fontSize: 15, fontWeight: '700', color:        
-  Colors.text, marginTop: 4 },
-
-    planCard: {
-      backgroundColor: Colors.bgCard, borderRadius: 16, padding:   
-  16,
-      borderWidth: 1, borderColor: Colors.border, gap: 12,
-  overflow: 'hidden',
-    },
-    topBadge: { position: 'absolute', top: 0, right: 0,
-  paddingHorizontal: 12, paddingVertical: 5,
-  borderBottomLeftRadius: 12 },
-    topBadgeText: { fontSize: 11, fontWeight: '700', color: '#FFF' 
-  },
-    planHeader: { flexDirection: 'row', alignItems: 'center', gap: 
-  12, paddingRight: 80 },
-    planEmoji: { fontSize: 28 },
-    planName: { fontSize: 15, fontWeight: '700', color: Colors.text
-   },
-    planDuration: { fontSize: 12, color: Colors.textMuted,
-  marginTop: 2 },
-    planPriceBox: { position: 'absolute', right: 0, alignItems:    
-  'flex-end' },
-    planPrice: { fontSize: 20, fontWeight: '700' },
-    planPriceSub: { fontSize: 10, color: Colors.textMuted },       
-
-    planFeatures: { gap: 6 },
-    planFeatureRow: { flexDirection: 'row', alignItems: 'center',  
-  gap: 8 },
-    planFeatureText: { fontSize: 12, color: Colors.textMuted },    
-
-    upgradeRow: { paddingTop: 8, borderTopWidth: 1, borderTopColor:
-   Colors.border },
-    upgradeText: { fontSize: 12, fontWeight: '600' },
-
-    infoCard: {
-      flexDirection: 'row', gap: 10, alignItems: 'flex-start',     
-      backgroundColor: Colors.bgCard, borderRadius: 12, padding:   
-  14,
       borderWidth: 1, borderColor: Colors.border,
     },
-    infoEmoji: { fontSize: 16, marginTop: 1 },
-    infoText: { flex: 1, fontSize: 13, color: Colors.textMuted,    
-  lineHeight: 19 },
+    renewLeft: { flex: 1, gap: 3 },
+    renewTitle: { fontSize: 14, fontFamily: Fonts.bold, color:     
+  Colors.text },
+    renewSub: { fontSize: 12, fontFamily: Fonts.regular, color:    
+  Colors.textMuted },
+    renewBtn: {
+      backgroundColor: Colors.accent, borderRadius: 10,
+      paddingHorizontal: 16, paddingVertical: 9,
+    },
+    renewBtnText: { fontSize: 12, fontFamily: Fonts.bold, color:   
+  '#FFF', letterSpacing: 1.2 },
+
+    sectionLabel: { fontSize: 11, fontFamily: Fonts.bold, color:   
+  Colors.textMuted, letterSpacing: 1.5, marginTop: 4 },
+
+    /* Plan Cards */
+    planCard: {
+      flexDirection: 'row',
+      backgroundColor: Colors.bgCard, borderRadius: 14,
+      borderWidth: 1, borderColor: Colors.border,
+      overflow: 'hidden',
+    },
+    planCardCurrent: { borderColor: Colors.accent + '50' },        
+    planAccentBar: { width: 3, backgroundColor: Colors.accent },   
+    planInner: { flex: 1, padding: 14, gap: 10 },
+
+    planTop: { flexDirection: 'row', alignItems: 'flex-start' },   
+    planName: { fontSize: 16, fontFamily: Fonts.bold, color:       
+  Colors.textSub },
+    planNameCurrent: { color: Colors.text },
+    planDuration: { fontSize: 11, fontFamily: Fonts.regular, color:
+   Colors.textMuted, marginTop: 2 },
+
+    planPriceCol: { alignItems: 'flex-end', gap: 6 },
+    planPrice: { fontSize: 22, fontFamily: Fonts.condensedBold,    
+  color: Colors.textSub, letterSpacing: 0.5 },
+    planPriceCurrent: { color: Colors.accent },
+
+    currentChip: { backgroundColor: Colors.accentMuted,
+  borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,       
+  borderWidth: 1, borderColor: Colors.accent + '40' },
+    currentChipText: { fontSize: 9, fontFamily: Fonts.bold, color: 
+  Colors.accent, letterSpacing: 1.2 },
+
+    upgradeBtn: { backgroundColor: Colors.accent, borderRadius: 8, 
+  paddingHorizontal: 12, paddingVertical: 6 },
+    upgradeBtnText: { fontSize: 10, fontFamily: Fonts.bold, color: 
+  '#FFF', letterSpacing: 1 },
+    downgradeBtn: { backgroundColor: Colors.bgElevated,
+  borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,      
+  borderWidth: 1, borderColor: Colors.border },
+    downgradeBtnText: { fontSize: 10, fontFamily: Fonts.bold,      
+  color: Colors.textMuted, letterSpacing: 1 },
+
+    planFeatures: { gap: 5 },
+    planFeatureRow: { flexDirection: 'row', alignItems: 'center',  
+  gap: 7 },
+    planFeatureDot: { fontSize: 7, color: Colors.textMuted },      
+    planFeatureText: { fontSize: 12, fontFamily: Fonts.regular,    
+  color: Colors.textMuted },
+
+    /* Info */
+    infoCard: {
+      flexDirection: 'row', alignItems: 'flex-start', gap: 10,     
+      backgroundColor: Colors.bgElevated, borderRadius: 12,        
+  padding: 14,
+      borderWidth: 1, borderColor: Colors.border,
+    },
+    infoIcon: { fontSize: 16, color: Colors.textMuted, marginTop: 1
+   },
+    infoText: { flex: 1, fontSize: 12, fontFamily: Fonts.regular,  
+  color: Colors.textMuted, lineHeight: 18 },
   });

@@ -1,12 +1,9 @@
-import { View, Text, StyleSheet, ScrollView, Alert } from          'react-native';                                                  
-  import { MaterialCommunityIcons } from '@expo/vector-icons';       import { Colors } from '@/constants/colors';                     
-  import AnimatedPressable from '@/components/AnimatedPressable';  
-  import FadeInView from '@/components/FadeInView';                
-
-  const member = {
-    name: 'Rahul Mehta',
-    phone: '+91 98765 00001',
-    email: 'rahul.mehta@gmail.com',
+import { View, Text, StyleSheet, ScrollView, Alert } from          'react-native';                                                    import { MaterialCommunityIcons } from '@expo/vector-icons';       import { Colors } from '@/constants/colors';                     
+  import { Fonts } from '@/constants/fonts';                         import AnimatedPressable from '@/components/AnimatedPressable';  
+  import FadeInView from '@/components/FadeInView';                                                                                   
+  const member = {                                                 
+    name: 'Rahul Mehta',                                               phone: '+91 98765 00001',                                      
+    email: 'rahul.mehta@gmail.com',                                
     joinDate: 'May 1, 2025',
     plan: 'Premium 3 Months',
     expiresIn: 18,
@@ -19,22 +16,31 @@ import { View, Text, StyleSheet, ScrollView, Alert } from          'react-native
   };
 
   const stats = [
-    { label: 'Days Visited', value: '14', emoji: '📅' },
-    { label: 'Day Streak', value: '5', emoji: '🔥' },
-    { label: 'Classes Done', value: '8', emoji: '🧘' },
-    { label: 'Workouts', value: '22', emoji: '💪' },
+    { label: 'VISITED', value: '14', emoji: '📅' },
+    { label: 'STREAK', value: '5', emoji: '🔥' },
+    { label: 'CLASSES', value: '8', emoji: '🧘' },
+    { label: 'WORKOUTS', value: '22', emoji: '💪' },
   ];
 
   const achievements = [
     { title: 'First Check-in', emoji: '🎯', desc: 'Visited gym for the first time', earned: true },
-    { title: '7-Day Streak', emoji: '🔥', desc: '7 consecutive daysat gym', earned: true },
+    { title: '7-Day Streak', emoji: '🔥', desc: '7 consecutive days at gym', earned: true },
     { title: 'Early Bird', emoji: '🌅', desc: 'Check in before 6 AM', earned: true },
-    { title: 'Class Warrior', emoji: '🥋', desc: 'Attend 10 group   classes', earned: false },
-    { title: '30-Day Streak', emoji: '💎', desc: '30 consecutive   days at gym', earned: false },
-    { title: 'Weight Goal', emoji: '⚖️', desc: 'Reach your target   weight', earned: false },
-    { title: 'Referral King', emoji: '👑', desc: 'Refer 5 friends  successfully', earned: false },
     { title: 'Night Owl', emoji: '🦉', desc: 'Check in after 9 PM',
    earned: true },
+    { title: 'Class Warrior', emoji: '🥋', desc: 'Attend 10 group classes', earned: false },
+    { title: '30-Day Streak', emoji: '💎', desc: '30 consecutive days', earned: false },
+    { title: 'Weight Goal', emoji: '⚖️', desc: 'Reach your target  weight', earned: false },
+    { title: 'Referral King', emoji: '👑', desc: 'Refer 5 friends',
+   earned: false },
+  ];
+
+  const personalInfo = [
+    { label: 'PHONE', value: member.phone, emoji: '📞' },
+    { label: 'EMAIL', value: member.email, emoji: '📧' },
+    { label: 'DATE OF BIRTH', value: `${member.dob} (${member.age} 
+  yrs)`, emoji: '🎂' },
+    { label: 'MEMBER SINCE', value: member.joinDate, emoji: '📅' },
   ];
 
   type IconName = React.ComponentProps<typeof
@@ -58,36 +64,38 @@ import { View, Text, StyleSheet, ScrollView, Alert } from          'react-native
     const earnedCount = achievements.filter(a => a.earned).length; 
 
     return (
-      <ScrollView style={styles.container}
-  contentContainerStyle={styles.content}
-  showsVerticalScrollIndicator={false}>
-
-        {/* Avatar & Name */}
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero */}
         <FadeInView delay={0}>
           <View style={styles.heroCard}>
-            <View style={styles.avatarRing}>
-              <View style={styles.avatarCircle}>
+            <View style={styles.avatarOuter}>
+              <View style={styles.avatarInner}>
                 <Text
   style={styles.avatarEmoji}>{member.avatar}</Text>
               </View>
             </View>
             <Text style={styles.memberName}>{member.name}</Text>   
-            <Text style={styles.memberPlan}>📋 {member.plan}</Text>
+            <Text style={styles.memberPlan}>{member.plan}</Text>   
             <View style={styles.expiryChip}>
-              <Text style={styles.expiryText}>⏳ {member.expiresIn}
-   days left</Text>
+              <Text
+  style={styles.expiryNum}>{member.expiresIn}</Text>
+              <Text style={styles.expiryLabel}> DAYS LEFT</Text>   
             </View>
           </View>
         </FadeInView>
 
-        {/* Stats Row */}
+        {/* Stats */}
         <FadeInView delay={80}>
           <View style={styles.statsRow}>
             {stats.map(s => (
               <View key={s.label} style={styles.statBox}>
                 <Text style={styles.statEmoji}>{s.emoji}</Text>    
                 <Text style={styles.statVal}>{s.value}</Text>      
-                <Text style={styles.statLabel}>{s.label}</Text>    
+                <Text style={styles.statLabel}>{s.label}</Text>
               </View>
             ))}
           </View>
@@ -96,16 +104,9 @@ import { View, Text, StyleSheet, ScrollView, Alert } from          'react-native
         {/* Personal Info */}
         <FadeInView delay={160}>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>👤 Personal Info</Text> 
-            {[
-              { label: 'Phone', value: member.phone, emoji: '📞' },
-              { label: 'Email', value: member.email, emoji: '📧' },
-              { label: 'Date of Birth', value: `${member.dob}      
-  (${member.age} yrs)`, emoji: '🎂' },
-              { label: 'Member Since', value: member.joinDate,     
-  emoji: '📅' },
-            ].map(item => (
-              <View key={item.label} style={styles.infoRow}>
+            <Text style={styles.cardTitle}>PERSONAL INFO</Text>    
+            {personalInfo.map((item, i) => (
+              <View key={item.label} style={[styles.infoRow, i <personalInfo.length - 1 && styles.infoRowBorder]}>
                 <Text style={styles.infoEmoji}>{item.emoji}</Text> 
                 <View style={{ flex: 1 }}>
                   <Text
@@ -118,35 +119,32 @@ import { View, Text, StyleSheet, ScrollView, Alert } from          'react-native
           </View>
         </FadeInView>
 
-        {/* Fitness Info */}
+        {/* Fitness Profile */}
         <FadeInView delay={240}>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>💪 Fitness
-  Profile</Text>
+            <Text style={styles.cardTitle}>FITNESS PROFILE</Text>  
             <View style={styles.fitnessGrid}>
-              <View style={styles.fitnessBox}>
-                <Text style={styles.fitnessEmoji}>📏</Text>        
-                <Text
-  style={styles.fitnessVal}>{member.height}</Text>
-                <Text style={styles.fitnessLabel}>Height</Text>    
-              </View>
-              <View style={styles.fitnessBox}>
-                <Text style={styles.fitnessEmoji}>⚖️</Text>        
-                <Text
-  style={styles.fitnessVal}>{member.weight}</Text>
-                <Text style={styles.fitnessLabel}>Weight</Text>    
-              </View>
-              <View style={styles.fitnessBox}>
-                <Text style={styles.fitnessEmoji}>🎯</Text>        
-                <Text style={styles.fitnessVal}>22.6</Text>        
-                <Text style={styles.fitnessLabel}>BMI</Text>       
-              </View>
-              <View style={styles.fitnessBox}>
-                <Text style={styles.fitnessEmoji}>🏆</Text>        
-                <Text
-  style={styles.fitnessVal}>{member.goal}</Text>
-                <Text style={styles.fitnessLabel}>Goal</Text>      
-              </View>
+              {[
+                { emoji: '📏', val: '175', unit: 'cm', label:      
+  'HEIGHT' },
+                { emoji: '⚖️', val: '79.1', unit: 'kg', label:     
+  'WEIGHT' },
+                { emoji: '🎯', val: '22.6', unit: 'bmi', label:    
+  'BMI' },
+                { emoji: '🏆', val: 'Loss', unit: 'wt.', label:   'GOAL' },
+              ].map(f => (
+                <View key={f.label} style={styles.fitnessBox}>     
+                  <Text
+  style={styles.fitnessEmoji}>{f.emoji}</Text>
+                  <View style={styles.fitnessValRow}>
+                    <Text style={styles.fitnessVal}>{f.val}</Text> 
+                    <Text
+  style={styles.fitnessUnit}>{f.unit}</Text>
+                  </View>
+                  <Text
+  style={styles.fitnessLabel}>{f.label}</Text>
+                </View>
+              ))}
             </View>
           </View>
         </FadeInView>
@@ -155,17 +153,23 @@ import { View, Text, StyleSheet, ScrollView, Alert } from          'react-native
         <FadeInView delay={320}>
           <View style={styles.card}>
             <View style={styles.achieveHeader}>
-              <Text style={styles.cardTitle}>🏅 Achievements</Text>
+              <Text style={styles.cardTitle}>ACHIEVEMENTS</Text>   
               <View style={styles.achieveBadge}>
-                <Text style={styles.achieveBadgeText}>{earnedCount}
-  /{achievements.length} earned</Text>
+                <Text
+  style={styles.achieveBadgeNum}>{earnedCount}</Text>
+                <Text
+  style={styles.achieveBadgeOf}>/{achievements.length}</Text>      
               </View>
             </View>
             <View style={styles.achieveGrid}>
               {achievements.map(a => (
-                <View key={a.title} style={[styles.achieveItem, !a.earned && styles.achieveItemLocked]}>
-                  <Text style={[styles.achieveEmoji, !a.earned &&  
-  styles.achieveEmojiLocked]}>
+                <View
+                  key={a.title}
+                  style={[styles.achieveItem, !a.earned &&
+  styles.achieveItemLocked]}
+                >
+                  <Text style={[styles.achieveEmoji, !a.earned && {
+   opacity: 0.3 }]}>
                     {a.earned ? a.emoji : '🔒'}
                   </Text>
                   <Text style={[styles.achieveTitle, !a.earned &&  
@@ -179,26 +183,25 @@ import { View, Text, StyleSheet, ScrollView, Alert } from          'react-native
           </View>
         </FadeInView>
 
-        {/* Settings Menu */}
+        {/* Account Settings */}
         <FadeInView delay={400}>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>⚙️ Account
-  Settings</Text>
+            <Text style={styles.cardTitle}>ACCOUNT SETTINGS</Text> 
             {menuItems.map((item, i) => (
               <AnimatedPressable
                 key={item.label}
                 style={[styles.menuRow, i < menuItems.length - 1 &&
    styles.menuRowBorder]}
                 scaleDown={0.97}
-                onPress={() => Alert.alert(item.label, 'Coming  soon!')}
+                onPress={() => Alert.alert(item.label, 'Coming   soon!')}
               >
-                <View style={[styles.menuIcon, { backgroundColor:  
-  item.color + '20' }]}>
+                <View style={[styles.menuIcon, { backgroundColor:item.color + '18' }]}>
                   <MaterialCommunityIcons name={item.icon}
   size={18} color={item.color} />
                 </View>
                 <Text style={styles.menuLabel}>{item.label}</Text> 
-                <MaterialCommunityIcons name="chevron-right"   size={18} color={Colors.textMuted} />
+                <MaterialCommunityIcons name="chevron-right"       
+  size={18} color={Colors.textMuted} />
               </AnimatedPressable>
             ))}
           </View>
@@ -209,16 +212,18 @@ import { View, Text, StyleSheet, ScrollView, Alert } from          'react-native
           <AnimatedPressable
             style={styles.logoutBtn}
             scaleDown={0.97}
-            onPress={() => Alert.alert('Log Out', 'Are you sure you want to log out?', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Log Out', style: 'destructive' },
-            ])}
+            onPress={() =>
+              Alert.alert('Log Out', 'Are you sure you want to log out?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Log Out', style: 'destructive' },
+              ])
+            }
           >
-            <Text style={styles.logoutText}>🚪 Log Out</Text>      
+            <Text style={styles.logoutText}>LOG OUT</Text>
           </AnimatedPressable>
         </FadeInView>
 
-        <Text style={styles.version}>💪 GymSetu v1.0.0</Text>      
+        <Text style={styles.version}>GYMSETU v1.0.0</Text>
         <View style={{ height: 24 }} />
       </ScrollView>
     );
@@ -228,35 +233,41 @@ import { View, Text, StyleSheet, ScrollView, Alert } from          'react-native
     container: { flex: 1, backgroundColor: Colors.bg },
     content: { padding: 16, gap: 12 },
 
+    /* Hero */
     heroCard: {
       backgroundColor: Colors.bgCard, borderRadius: 20, padding:   
   24,
       alignItems: 'center', gap: 8, borderWidth: 1, borderColor:   
-  Colors.border,
+  Colors.accent + '30',
     },
-    avatarRing: {
-      width: 88, height: 88, borderRadius: 44,
-      borderWidth: 3, borderColor: Colors.accent,
+    avatarOuter: {
+      width: 92, height: 92, borderRadius: 46,
+      borderWidth: 2, borderColor: Colors.accent,
       justifyContent: 'center', alignItems: 'center', marginBottom:
    4,
     },
-    avatarCircle: {
-      width: 76, height: 76, borderRadius: 38,
-      backgroundColor: Colors.accentMuted,
+    avatarInner: {
+      width: 78, height: 78, borderRadius: 39,
+      backgroundColor: Colors.bgElevated,
       justifyContent: 'center', alignItems: 'center',
     },
     avatarEmoji: { fontSize: 36 },
-    memberName: { fontSize: 22, fontWeight: '700', color:
-  Colors.text },
-    memberPlan: { fontSize: 13, color: Colors.textMuted },
+    memberName: { fontSize: 22, fontFamily: Fonts.condensedBold,   
+  color: Colors.text, letterSpacing: 0.5 },
+    memberPlan: { fontSize: 12, fontFamily: Fonts.regular, color:  
+  Colors.textMuted },
     expiryChip: {
-      backgroundColor: Colors.orangeMuted, borderRadius: 20,       
+      flexDirection: 'row', alignItems: 'baseline',
+      backgroundColor: Colors.accentMuted, borderRadius: 20,       
       paddingHorizontal: 14, paddingVertical: 5,
-      borderWidth: 1, borderColor: Colors.orange + '30',
+      borderWidth: 1, borderColor: Colors.accent + '30',
     },
-    expiryText: { fontSize: 12, fontWeight: '600', color:
-  Colors.orange },
+    expiryNum: { fontSize: 18, fontFamily: Fonts.condensedBold,    
+  color: Colors.accent },
+    expiryLabel: { fontSize: 10, fontFamily: Fonts.bold, color:    
+  Colors.accent, letterSpacing: 1 },
 
+    /* Stats */
     statsRow: { flexDirection: 'row', gap: 8 },
     statBox: {
       flex: 1, alignItems: 'center', gap: 3,
@@ -264,42 +275,60 @@ import { View, Text, StyleSheet, ScrollView, Alert } from          'react-native
       paddingVertical: 12, borderWidth: 1, borderColor:
   Colors.border,
     },
-    statEmoji: { fontSize: 18 },
-    statVal: { fontSize: 16, fontWeight: '700', color: Colors.text 
-  },
-    statLabel: { fontSize: 10, color: Colors.textMuted, textAlign: 
-  'center' },
+    statEmoji: { fontSize: 16 },
+    statVal: { fontSize: 20, fontFamily: Fonts.condensedBold,      
+  color: Colors.text },
+    statLabel: { fontSize: 8, fontFamily: Fonts.bold, color:       
+  Colors.textMuted, letterSpacing: 1 },
 
+    /* Card */
     card: { backgroundColor: Colors.bgCard, borderRadius: 16,      
   padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 12 
   },
-    cardTitle: { fontSize: 15, fontWeight: '700', color:
-  Colors.text },
+    cardTitle: { fontSize: 11, fontFamily: Fonts.bold, color:      
+  Colors.accent, letterSpacing: 1.5 },
 
+    /* Info */
     infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap:
-   10 },
-    infoEmoji: { fontSize: 16, marginTop: 2 },
-    infoLabel: { fontSize: 11, color: Colors.textMuted },
-    infoValue: { fontSize: 14, fontWeight: '500', color:
-  Colors.text, marginTop: 1 },
+   10, paddingVertical: 8 },
+    infoRowBorder: { borderBottomWidth: 1, borderBottomColor:      
+  Colors.border },
+    infoEmoji: { fontSize: 16, marginTop: 12 },
+    infoLabel: { fontSize: 9, fontFamily: Fonts.bold, color:       
+  Colors.textMuted, letterSpacing: 1.3 },
+    infoValue: { fontSize: 14, fontFamily: Fonts.medium, color:    
+  Colors.text, marginTop: 2 },
 
+    /* Fitness */
     fitnessGrid: { flexDirection: 'row', gap: 8 },
     fitnessBox: {
-      flex: 1, alignItems: 'center', gap: 4,
+      flex: 1, alignItems: 'center', gap: 3,
       backgroundColor: Colors.bgElevated, borderRadius: 12,        
   paddingVertical: 12,
     },
-    fitnessEmoji: { fontSize: 20 },
-    fitnessVal: { fontSize: 14, fontWeight: '700', color:
-  Colors.text, textAlign: 'center' },
-    fitnessLabel: { fontSize: 10, color: Colors.textMuted },       
+    fitnessEmoji: { fontSize: 18 },
+    fitnessValRow: { flexDirection: 'row', alignItems: 'baseline', 
+  gap: 1 },
+    fitnessVal: { fontSize: 16, fontFamily: Fonts.condensedBold,   
+  color: Colors.text },
+    fitnessUnit: { fontSize: 9, fontFamily: Fonts.bold, color:     
+  Colors.textMuted },
+    fitnessLabel: { fontSize: 8, fontFamily: Fonts.bold, color:    
+  Colors.textMuted, letterSpacing: 1 },
 
+    /* Achievements */
     achieveHeader: { flexDirection: 'row', justifyContent:
   'space-between', alignItems: 'center' },
-    achieveBadge: { backgroundColor: Colors.accentMuted,
-  borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },    
-    achieveBadgeText: { fontSize: 12, fontWeight: '600', color:    
-  Colors.accent },
+    achieveBadge: {
+      flexDirection: 'row', alignItems: 'baseline',
+      backgroundColor: Colors.accentMuted, borderRadius: 8,        
+      paddingHorizontal: 10, paddingVertical: 4,
+      borderWidth: 1, borderColor: Colors.accent + '30',
+    },
+    achieveBadgeNum: { fontSize: 16, fontFamily:
+  Fonts.condensedBold, color: Colors.accent },
+    achieveBadgeOf: { fontSize: 11, fontFamily: Fonts.regular,     
+  color: Colors.accent },
     achieveGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8  
   },
     achieveItem: {
@@ -310,33 +339,34 @@ import { View, Text, StyleSheet, ScrollView, Alert } from          'react-native
     },
     achieveItemLocked: {
       backgroundColor: Colors.bgElevated,
-      borderColor: Colors.border, opacity: 0.5,
+      borderColor: Colors.border, opacity: 0.45,
     },
     achieveEmoji: { fontSize: 24 },
-    achieveEmojiLocked: { opacity: 0.4 },
-    achieveTitle: { fontSize: 10, fontWeight: '700', color:        
-  Colors.text, textAlign: 'center' },
+    achieveTitle: { fontSize: 9, fontFamily: Fonts.bold, color:    
+  Colors.text, textAlign: 'center', letterSpacing: 0.3 },
     achieveTitleLocked: { color: Colors.textMuted },
-    achieveDesc: { fontSize: 9, color: Colors.textMuted, textAlign:
-   'center', lineHeight: 13 },
+    achieveDesc: { fontSize: 8, fontFamily: Fonts.regular, color:  
+  Colors.textMuted, textAlign: 'center', lineHeight: 12 },
 
+    /* Settings */
     menuRow: { flexDirection: 'row', alignItems: 'center', gap: 12,
    paddingVertical: 10 },
     menuRowBorder: { borderBottomWidth: 1, borderBottomColor:      
   Colors.border },
-    menuIcon: { width: 34, height: 34, borderRadius: 9,
+    menuIcon: { width: 36, height: 36, borderRadius: 10,
   justifyContent: 'center', alignItems: 'center' },
-    menuLabel: { flex: 1, fontSize: 14, fontWeight: '500', color:  
-  Colors.text },
+    menuLabel: { flex: 1, fontSize: 14, fontFamily: Fonts.medium,  
+  color: Colors.text },
 
+    /* Logout */
     logoutBtn: {
       alignItems: 'center', paddingVertical: 14, borderRadius: 12, 
       backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: 
   Colors.red + '40',
     },
-    logoutText: { fontSize: 15, fontWeight: '600', color:
-  Colors.red },
+    logoutText: { fontSize: 13, fontFamily: Fonts.bold, color:     
+  Colors.red, letterSpacing: 1.5 },
 
-    version: { textAlign: 'center', color: Colors.textMuted,       
-  fontSize: 12 },
+    version: { textAlign: 'center', fontFamily: Fonts.bold, color: 
+  Colors.textMuted, fontSize: 10, letterSpacing: 2, marginTop: 4 },
   });

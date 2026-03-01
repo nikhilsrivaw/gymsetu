@@ -27,7 +27,6 @@
           <Drawer.Screen name="my-plan" options={{ title: '📋 My  Plan' }} />
           <Drawer.Screen name="gym-info" options={{ title: '🏢 Gym Info' }} />
           <Drawer.Screen name="feedback" options={{ title: '⭐ Feedback' }} />
-          <Drawer.Screen name="refer-friend" options={{ title: '🎁Refer a Friend' }} />
           <Drawer.Screen name="profile" options={{ title: '👤 Profile' }} />
 
           <Drawer.Screen name="workout-tracker" options={{ title:  
@@ -39,7 +38,6 @@
           <Drawer.Screen name="rest-timer" options={{ title: '⏱️  Rest Timer', drawerItemStyle: { display: 'none' } }} />
           <Drawer.Screen name="bmi-calculator" options={{ title:   
   '⚖️ BMI Calculator', drawerItemStyle: { display: 'none' } }} />  
-          <Drawer.Screen name="workout-tips" options={{ title: '💡 Workout Tips', drawerItemStyle: { display: 'none' } }} />        
           <Drawer.Screen name="more" options={{ drawerItemStyle: { display: 'none' } }} />
         </Drawer>
       </GestureHandlerRootView>

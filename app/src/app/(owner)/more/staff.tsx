@@ -1,263 +1,430 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Switch } from 'react-native';
-import { FAB, Portal, Modal, TextInput } from 'react-native-paper';
-import { Stack } from 'expo-router';
-import { Colors } from '@/constants/colors';
-import AnimatedPressable from '@/components/AnimatedPressable';
-import FadeInView from '@/components/FadeInView';
+ import { View, Text, StyleSheet, ScrollView, Pressable, Modal } from                 'react-native';                                                                      import { SafeAreaView } from 'react-native-safe-area-context';                     
+  import { useRouter } from 'expo-router';                                             import { MaterialCommunityIcons } from '@expo/vector-icons';                       
+  import { useState } from 'react';                                                  
+  import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';
+  import FadeInView from '@/components/FadeInView';                                  
+  import AnimatedPressable from '@/components/AnimatedPressable';                    
 
-interface StaffMember {
-  id: string;
-  name: string;
-  phone: string;
-  role: string;
-  avatar: string;
-  joinDate: string;
-  permissions: {
-    members: boolean;
-    payments: boolean;
-    attendance: boolean;
-    reports: boolean;
-    plans: boolean;
-  };
-}
+  type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];       
 
-const mockStaff: StaffMember[] = [
-  {
-    id: '1', name: 'Vikram Trainer', phone: '+919876543210', role: 'Head Trainer',
-    avatar: '🏋️', joinDate: '15 Oct 2025',
-    permissions: { members: true, payments: false, attendance: true, reports: true, plans: false },
-  },
-  {
-    id: '2', name: 'Anita Sharma', phone: '+919812345678', role: 'Front Desk',
-    avatar: '👩', joinDate: '02 Dec 2025',
-    permissions: { members: true, payments: true, attendance: true, reports: false, plans: false },
-  },
-  {
-    id: '3', name: 'Ravi Kumar', phone: '+919898765432', role: 'Trainer',
-    avatar: '💪', joinDate: '10 Jan 2026',
-    permissions: { members: false, payments: false, attendance: true, reports: false, plans: false },
-  },
-];
+  const staff = [
+    { id: '1', name: 'Arjun Verma',   role: 'Head Trainer',     shift: 'Morning',    
+  status: 'active',  phone: '9876543210', since: 'Jan 2023', salary: '₹32,000',      
+  sessions: 148, rating: 4.8, initials: 'AV', color: Colors.accent  },
+    { id: '2', name: 'Priya Kapoor',  role: 'Nutritionist',     shift: 'Full Day',   
+  status: 'active',  phone: '9812345678', since: 'Mar 2023', salary: '₹28,000',      
+  sessions: 92,  rating: 4.9, initials: 'PK', color: Colors.green   },
+    { id: '3', name: 'Ravi Shankar',  role: 'Trainer',          shift: 'Evening',    
+  status: 'active',  phone: '9898989898', since: 'Jun 2023', salary: '₹22,000',      
+  sessions: 211, rating: 4.6, initials: 'RS', color: '#3B82F6'       },
+    { id: '4', name: 'Meena Joshi',   role: 'Receptionist',     shift: 'Morning',    
+  status: 'active',  phone: '9123456789', since: 'Aug 2022', salary: '₹18,000',      
+  sessions: 0,   rating: 4.7, initials: 'MJ', color: '#EC4899'       },
+    { id: '5', name: 'Suresh Patil',  role: 'Trainer',          shift: 'Morning',    
+  status: 'on-leave',phone: '9765432109', since: 'Nov 2022', salary: '₹22,000',      
+  sessions: 176, rating: 4.5, initials: 'SP', color: Colors.orange   },
+    { id: '6', name: 'Kavya Nair',    role: 'Yoga Instructor',  shift: 'Morning',    
+  status: 'active',  phone: '9654321098', since: 'Feb 2024', salary: '₹20,000',      
+  sessions: 64,  rating: 5.0, initials: 'KN', color: '#A78BFA'       },
+  ];
 
-const permLabels: { key: keyof StaffMember['permissions']; label: string; emoji: string }[] = [
-  { key: 'members', label: 'Manage Members', emoji: '👥' },
-  { key: 'payments', label: 'Record Payments', emoji: '💳' },
-  { key: 'attendance', label: 'Mark Attendance', emoji: '📋' },
-  { key: 'reports', label: 'View Reports', emoji: '📊' },
-  { key: 'plans', label: 'Manage Plans', emoji: '📝' },
-];
+  const roles   = ['All', 'Trainer', 'Nutritionist', 'Receptionist', 'Yoga Instructor'];
+  const shifts  = ['Morning', 'Evening', 'Full Day'];
+  const statuses= ['active', 'on-leave', 'inactive'];
 
-export default function StaffScreen() {
-  const [staff] = useState(mockStaff);
-  const [show, setShow] = useState(false);
-  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [role, setRole] = useState('');
-  const [perms, setPerms] = useState({ members: false, payments: false, attendance: true, reports: false, plans: false });
-  const [saving, setSaving] = useState(false);
-
-  const ip = { mode: 'outlined' as const, style: styles.input, outlineColor: Colors.border, activeOutlineColor: Colors.accent, textColor: Colors.text, theme: { colors: { onSurfaceVariant: Colors.textSub } } };
-
-  const handleAdd = () => {
-    if (!name.trim() || !phone.trim()) return;
-    setSaving(true);
-    setTimeout(() => { setSaving(false); setShow(false); setName(''); setPhone(''); setRole(''); }, 400);
+  const statusMeta: Record<string, { label: string; color: string }> = {
+    'active':   { label: 'ACTIVE',    color: Colors.green  },
+    'on-leave': { label: 'ON LEAVE',  color: Colors.orange },
+    'inactive': { label: 'INACTIVE',  color: Colors.red    },
   };
 
-  const openDetail = (s: StaffMember) => {
-    setSelectedStaff(s);
+  const shiftIcon: Record<string, IconName> = {
+    'Morning':  'weather-sunny',
+    'Evening':  'weather-sunset',
+    'Full Day': 'calendar-today',
   };
 
-  const activePerms = (p: StaffMember['permissions']) =>
-    Object.values(p).filter(Boolean).length;
+  export default function StaffScreen() {
+    const router = useRouter();
+    const [filter, setFilter]       = useState('All');
+    const [selected, setSelected]   = useState<typeof staff[0] | null>(null);        
+    const [addModal, setAddModal]   = useState(false);
 
-  return (
-    <>
-      <Stack.Screen options={{ title: '👨‍💼 Staff Management' }} />
-      <View style={styles.container}>
-        {/* Summary */}
-        <FadeInView delay={0}>
-          <View style={styles.summary}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryEmoji}>👨‍💼</Text>
-              <Text style={styles.summaryLabel}>Total Staff</Text>
-              <Text style={styles.summaryValue}>{staff.length}</Text>
+    const active   = staff.filter(s => s.status === 'active').length;
+    const onLeave  = staff.filter(s => s.status === 'on-leave').length;
+    const filtered = filter === 'All' ? staff : staff.filter(s => s.role === filter);
+
+    return (
+      <SafeAreaView style={styles.safe} edges={['bottom']}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.scroll}   
+  showsVerticalScrollIndicator={false}>
+
+          {/* ── Hero ───────────────────────────────────────── */}
+          <FadeInView delay={0}>
+            <View style={styles.hero}>
+              <View style={styles.heroGlow} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.heroMicro}>STAFF MANAGEMENT</Text>
+                <Text style={styles.heroTitle}>{staff.length} MEMBERS</Text>
+                <Text style={styles.heroSub}>Manage your gym team</Text>
+              </View>
+              <View style={styles.heroStats}>
+                <View style={styles.heroStatItem}>
+                  <Text style={styles.heroStatVal}>{active}</Text>
+                  <Text style={[styles.heroStatLabel, { color: Colors.green 
+  }]}>ACTIVE</Text>
+                </View>
+                <View style={styles.heroStatDivider} />
+                <View style={styles.heroStatItem}>
+                  <Text style={styles.heroStatVal}>{onLeave}</Text>
+                  <Text style={[styles.heroStatLabel, { color: Colors.orange
+  }]}>LEAVE</Text>
+                </View>
+              </View>
             </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryEmoji}>✅</Text>
-              <Text style={styles.summaryLabel}>Active</Text>
-              <Text style={styles.summaryValue}>{staff.length}</Text>
-            </View>
-          </View>
-        </FadeInView>
-
-        {staff.length === 0 ? (
-          <FadeInView delay={150} style={styles.empty}>
-            <Text style={styles.emptyEmoji}>👨‍💼</Text>
-            <Text style={styles.emptyTitle}>No staff added yet</Text>
-            <Text style={styles.emptyDesc}>Tap + to add your first team member</Text>
           </FadeInView>
-        ) : (
-          <FlatList
-            data={staff}
-            keyExtractor={item => item.id}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.list}
-            renderItem={({ item, index }) => (
-              <FadeInView delay={100 + index * 60}>
-                <AnimatedPressable style={styles.staffRow} scaleDown={0.98} onPress={() => openDetail(item)}>
-                  <View style={styles.avatarWrap}>
-                    <Text style={styles.avatarEmoji}>{item.avatar}</Text>
+
+          {/* ── Role Filter ─────────────────────────────────── */}
+          <FadeInView delay={60}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+  contentContainerStyle={styles.chipRow}>
+              {roles.map(r => (
+                <Pressable
+                  key={r}
+                  style={[styles.chip, filter === r && styles.chipActive]}
+                  onPress={() => setFilter(r)}
+                >
+                  <Text style={[styles.chipText, filter === r &&
+  styles.chipTextActive]}>{r.toUpperCase()}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </FadeInView>
+
+          {/* ── Staff Cards ─────────────────────────────────── */}
+          <Text style={styles.sectionLabel}>{filtered.length} STAFF{filter !== 'All' 
+  ? ` — ${filter.toUpperCase()}` : ''}</Text>
+
+          {filtered.map((member, i) => {
+            const meta = statusMeta[member.status];
+            return (
+              <FadeInView key={member.id} delay={120 + i * 55}>
+                <AnimatedPressable
+                  style={styles.card}
+                  scaleDown={0.97}
+                  onPress={() => setSelected(member)}
+                >
+                  {/* Left accent */}
+                  <View style={[styles.cardAccent, { backgroundColor: member.color   
+  }]} />
+
+                  {/* Avatar */}
+                  <View style={[styles.avatar, { backgroundColor: member.color +     
+  '20', borderColor: member.color + '50' }]}>
+                    <Text style={[styles.avatarText, { color: member.color
+  }]}>{member.initials}</Text>
                   </View>
-                  <View style={styles.staffInfo}>
-                    <Text style={styles.staffName}>{item.name}</Text>
-                    <Text style={styles.staffRole}>{item.role}</Text>
-                    <Text style={styles.staffMeta}>Since {item.joinDate} · {activePerms(item.permissions)} permissions</Text>
+
+                  {/* Info */}
+                  <View style={styles.cardInfo}>
+                    <View style={styles.cardRow}>
+                      <Text style={styles.cardName}>{member.name}</Text>
+                      <View style={[styles.statusPill, { backgroundColor: meta.color 
+  + '18' }]}>
+                        <View style={[styles.statusDot, { backgroundColor: meta.color
+   }]} />
+                        <Text style={[styles.statusText, { color: meta.color
+  }]}>{meta.label}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.cardRole}>{member.role}</Text>
+                    <View style={styles.cardMeta}>
+                      <MaterialCommunityIcons name={shiftIcon[member.shift]}
+  size={11} color={Colors.textMuted} />
+                      <Text style={styles.cardMetaText}>{member.shift}</Text>        
+                      {member.sessions > 0 && (
+                        <>
+                          <Text style={styles.cardMetaDot}>·</Text>
+                          <Text style={styles.cardMetaText}>{member.sessions}        
+  sessions</Text>
+                        </>
+                      )}
+                      <Text style={styles.cardMetaDot}>·</Text>
+                      <MaterialCommunityIcons name="star" size={11}
+  color={Colors.accent} />
+                      <Text style={[styles.cardMetaText, { color: Colors.accent      
+  }]}>{member.rating}</Text>
+                    </View>
                   </View>
-                  <View style={styles.permBadge}>
-                    <Text style={styles.permBadgeText}>{activePerms(item.permissions)}/5</Text>
-                  </View>
+
+                  <MaterialCommunityIcons name="chevron-right" size={18}
+  color={Colors.textMuted} />
                 </AnimatedPressable>
               </FadeInView>
-            )}
-          />
-        )}
+            );
+          })}
 
-        <FAB icon="plus" style={styles.fab} onPress={() => setShow(true)} color="#FFF" customSize={56} />
+          {/* ── Add Staff Button ─────────────────────────────── */}
+          <FadeInView delay={520}>
+            <AnimatedPressable style={styles.addBtn} scaleDown={0.97} onPress={() => 
+  setAddModal(true)}>
+              <MaterialCommunityIcons name="plus" size={18} color={Colors.bg} />     
+              <Text style={styles.addBtnText}>ADD STAFF MEMBER</Text>
+            </AnimatedPressable>
+          </FadeInView>
 
-        {/* Add Staff Modal */}
-        <Portal>
-          <Modal visible={show} onDismiss={() => setShow(false)} contentContainerStyle={styles.modal}>
-            <Text style={styles.modalTitle}>➕ Add Staff Member</Text>
-            <View style={styles.modalForm}>
-              <TextInput label="Full name" value={name} onChangeText={setName} {...ip} />
-              <TextInput label="Phone number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" {...ip} />
-              <TextInput label="Role (e.g., Trainer)" value={role} onChangeText={setRole} {...ip} />
+          <View style={{ height: 32 }} />
+        </ScrollView>
 
-              <Text style={styles.permTitle}>🔐 Permissions</Text>
-              {permLabels.map(p => (
-                <View key={p.key} style={styles.permRow}>
-                  <Text style={styles.permEmoji}>{p.emoji}</Text>
-                  <Text style={styles.permLabel}>{p.label}</Text>
-                  <Switch
-                    value={perms[p.key]}
-                    onValueChange={v => setPerms(prev => ({ ...prev, [p.key]: v }))}
-                    trackColor={{ false: Colors.bgInput, true: Colors.accentSoft }}
-                    thumbColor={perms[p.key] ? Colors.accent : Colors.textMuted}
-                  />
+        {/* ── Detail Modal ──────────────────────────────────── */}
+        <Modal visible={!!selected} transparent animationType="slide"
+  onRequestClose={() => setSelected(null)}>
+          <Pressable style={styles.backdrop} onPress={() => setSelected(null)} />    
+          {selected && (
+            <View style={styles.sheet}>
+              {/* Handle */}
+              <View style={styles.handle} />
+
+              {/* Header */}
+              <View style={styles.sheetHeader}>
+                <View style={[styles.sheetAvatar, { backgroundColor: selected.color +
+   '20', borderColor: selected.color }]}>
+                  <Text style={[styles.sheetAvatarText, { color: selected.color      
+  }]}>{selected.initials}</Text>
                 </View>
-              ))}
-            </View>
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setShow(false)}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
-              <AnimatedPressable
-                style={[styles.recordBtn, (!name.trim() || !phone.trim()) && { opacity: 0.4 }]}
-                onPress={handleAdd}
-                disabled={saving || !name.trim() || !phone.trim()}
-                scaleDown={0.95}
-              >
-                <Text style={styles.recordBtnText}>{saving ? 'Adding...' : '✅ Add Staff'}</Text>
-              </AnimatedPressable>
-            </View>
-          </Modal>
-        </Portal>
-
-        {/* Staff Detail Modal */}
-        <Portal>
-          <Modal visible={!!selectedStaff} onDismiss={() => setSelectedStaff(null)} contentContainerStyle={styles.modal}>
-            {selectedStaff && (
-              <>
-                <View style={styles.detailHeader}>
-                  <Text style={styles.detailAvatar}>{selectedStaff.avatar}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.detailName}>{selectedStaff.name}</Text>
-                    <Text style={styles.detailRole}>{selectedStaff.role} · Since {selectedStaff.joinDate}</Text>
-                  </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sheetName}>{selected.name}</Text>
+                  <Text style={styles.sheetRole}>{selected.role}</Text>
                 </View>
-                <Text style={styles.detailPhone}>📞 {selectedStaff.phone}</Text>
+                <Pressable style={styles.closeBtn} onPress={() => setSelected(null)}>
+                  <MaterialCommunityIcons name="close" size={18}
+  color={Colors.textMuted} />
+                </Pressable>
+              </View>
 
-                <Text style={styles.permTitle}>🔐 Permissions</Text>
-                {permLabels.map(p => (
-                  <View key={p.key} style={styles.permRow}>
-                    <Text style={styles.permEmoji}>{p.emoji}</Text>
-                    <Text style={styles.permLabel}>{p.label}</Text>
-                    <View style={[styles.statusDot, { backgroundColor: selectedStaff.permissions[p.key] ? Colors.green : Colors.red }]} />
-                    <Text style={[styles.statusText, { color: selectedStaff.permissions[p.key] ? Colors.green : Colors.textMuted }]}>
-                      {selectedStaff.permissions[p.key] ? 'Yes' : 'No'}
-                    </Text>
+              {/* Stats */}
+              <View style={styles.sheetStats}>
+                {[
+                  { label: 'SALARY',   val: selected.salary,              icon:      
+  'cash-multiple'        as IconName },
+                  { label: 'SESSIONS', val: String(selected.sessions),    icon:      
+  'dumbbell'             as IconName },
+                  { label: 'RATING',   val: `${selected.rating} ★`,      icon:       
+  'star-outline'         as IconName },
+                  { label: 'SINCE',    val: selected.since,               icon:      
+  'calendar-outline'     as IconName },
+                ].map(s => (
+                  <View key={s.label} style={styles.sheetStat}>
+                    <MaterialCommunityIcons name={s.icon} size={16}
+  color={selected.color} />
+                    <Text style={styles.sheetStatVal}>{s.val}</Text>
+                    <Text style={styles.sheetStatLabel}>{s.label}</Text>
                   </View>
                 ))}
+              </View>
 
-                <View style={styles.modalActions}>
-                  <AnimatedPressable style={styles.editBtn} scaleDown={0.95} onPress={() => setSelectedStaff(null)}>
-                    <Text style={styles.editBtnText}>✏️ Edit</Text>
-                  </AnimatedPressable>
-                  <AnimatedPressable style={styles.removeBtn} scaleDown={0.95} onPress={() => setSelectedStaff(null)}>
-                    <Text style={styles.removeBtnText}>🗑️ Remove</Text>
-                  </AnimatedPressable>
-                </View>
-              </>
-            )}
-          </Modal>
-        </Portal>
-      </View>
-    </>
-  );
-}
+              {/* Details */}
+              <View style={styles.sheetDetail}>
+                {[
+                  { label: 'SHIFT',  val: selected.shift,  icon:
+  shiftIcon[selected.shift]      },
+                  { label: 'PHONE',  val: selected.phone,  icon: 'phone-outline'  as 
+  IconName   },
+                  { label: 'STATUS', val: statusMeta[selected.status].label, icon:   
+  'circle-outline' as IconName },
+                ].map(d => (
+                  <View key={d.label} style={styles.detailRow}>
+                    <MaterialCommunityIcons name={d.icon} size={15}
+  color={Colors.textMuted} />
+                    <Text style={styles.detailLabel}>{d.label}</Text>
+                    <Text style={styles.detailVal}>{d.val}</Text>
+                  </View>
+                ))}
+              </View>
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
+              {/* Actions */}
+              <View style={styles.sheetActions}>
+                <AnimatedPressable style={[styles.actionBtn, { backgroundColor:      
+  Colors.green + '18', borderColor: Colors.green + '30' }]} scaleDown={0.95}>        
+                  <MaterialCommunityIcons name="phone" size={16} color={Colors.green}
+   />
+                  <Text style={[styles.actionBtnText, { color: Colors.green
+  }]}>CALL</Text>
+                </AnimatedPressable>
+                <AnimatedPressable style={[styles.actionBtn, { backgroundColor:      
+  Colors.accent + '18', borderColor: Colors.accent + '30' }]} scaleDown={0.95}>      
+                  <MaterialCommunityIcons name="pencil-outline" size={16}
+  color={Colors.accent} />
+                  <Text style={[styles.actionBtnText, { color: Colors.accent
+  }]}>EDIT</Text>
+                </AnimatedPressable>
+                <AnimatedPressable style={[styles.actionBtn, { backgroundColor:      
+  Colors.red + '18', borderColor: Colors.red + '30' }]} scaleDown={0.95}>
+                  <MaterialCommunityIcons name="account-remove-outline" size={16}    
+  color={Colors.red} />
+                  <Text style={[styles.actionBtnText, { color: Colors.red
+  }]}>REMOVE</Text>
+                </AnimatedPressable>
+              </View>
+            </View>
+          )}
+        </Modal>
 
-  summary: { flexDirection: 'row', margin: 16, backgroundColor: Colors.bgCard, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: Colors.border },
-  summaryItem: { flex: 1, alignItems: 'center' },
-  summaryEmoji: { fontSize: 24, marginBottom: 6 },
-  summaryLabel: { fontSize: 12, color: Colors.textMuted, marginBottom: 6 },
-  summaryValue: { fontSize: 24, fontWeight: '700', color: Colors.text },
-  summaryDivider: { width: 1, backgroundColor: Colors.border, marginHorizontal: 8 },
+        {/* ── Add Modal ─────────────────────────────────────── */}
+        <Modal visible={addModal} transparent animationType="slide"
+  onRequestClose={() => setAddModal(false)}>
+          <Pressable style={styles.backdrop} onPress={() => setAddModal(false)} />   
+          <View style={styles.sheet}>
+            <View style={styles.handle} />
+            <View style={styles.addModalHeader}>
+              <Text style={styles.addModalTitle}>ADD STAFF MEMBER</Text>
+              <Pressable style={styles.closeBtn} onPress={() => setAddModal(false)}> 
+                <MaterialCommunityIcons name="close" size={18}
+  color={Colors.textMuted} />
+              </Pressable>
+            </View>
+            <Text style={styles.addModalSub}>Staff management form coming
+  soon.</Text>
+            <AnimatedPressable style={styles.addBtn} scaleDown={0.97} onPress={() => 
+  setAddModal(false)}>
+              <Text style={styles.addBtnText}>CLOSE</Text>
+            </AnimatedPressable>
+          </View>
+        </Modal>
+      </SafeAreaView>
+    );
+  }
 
-  list: { paddingHorizontal: 16, gap: 8, paddingBottom: 80 },
-  staffRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgCard, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: Colors.border },
-  avatarWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: Colors.accentMuted, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  avatarEmoji: { fontSize: 22 },
-  staffInfo: { flex: 1 },
-  staffName: { fontSize: 15, fontWeight: '600', color: Colors.text },
-  staffRole: { fontSize: 13, color: Colors.accent, fontWeight: '500', marginTop: 1 },
-  staffMeta: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  permBadge: { backgroundColor: Colors.accentMuted, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  permBadgeText: { fontSize: 12, fontWeight: '700', color: Colors.accent },
+  const styles = StyleSheet.create({
+    safe:      { flex: 1, backgroundColor: Colors.bg },
+    container: { flex: 1 },
+    scroll:    { paddingHorizontal: 16, paddingBottom: 24, paddingTop: 16 },
 
-  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 60 },
-  emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: { fontSize: 17, fontWeight: '600', color: Colors.textSub },
-  emptyDesc: { fontSize: 14, color: Colors.textMuted, marginTop: 6 },
+    // Hero
+    hero: {
+      backgroundColor: Colors.bgCard, borderRadius: 20, padding: 20,
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      borderWidth: 1, borderColor: Colors.accent + '20',
+      overflow: 'hidden', marginBottom: 16,
+    },
+    heroGlow: {
+      position: 'absolute', top: -30, left: -20,
+      width: 100, height: 100, borderRadius: 50,
+      backgroundColor: Colors.accentGlow,
+    },
+    heroMicro:  { fontFamily: Fonts.medium, fontSize: 9, color: Colors.accent,       
+  letterSpacing: 1.5 },
+    heroTitle:  { fontFamily: Fonts.condensedBold, fontSize: 30, color: Colors.text, 
+  letterSpacing: 0.5 },
+    heroSub:    { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted,  
+  marginTop: 2 },
+    heroStats:  { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    heroStatItem: { alignItems: 'center', gap: 2 },
+    heroStatVal:  { fontFamily: Fonts.condensedBold, fontSize: 22, color: Colors.text
+   },
+    heroStatLabel:{ fontFamily: Fonts.bold, fontSize: 8, letterSpacing: 1 },
+    heroStatDivider: { width: 1, height: 28, backgroundColor: Colors.border },       
 
-  fab: { position: 'absolute', right: 20, bottom: 20, backgroundColor: Colors.accent, borderRadius: 16 },
+    // Chips
+    chipRow:    { gap: 8, paddingBottom: 16 },
+    chip:       { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,       
+  backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border },      
+    chipActive: { backgroundColor: Colors.accentMuted, borderColor: Colors.accent }, 
+    chipText:   { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted,      
+  letterSpacing: 0.8 },
+    chipTextActive: { color: Colors.accent },
 
-  modal: { backgroundColor: Colors.bgCard, margin: 24, borderRadius: 20, padding: 24, borderWidth: 1, borderColor: Colors.border, maxHeight: '85%' },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 16 },
-  modalForm: { gap: 10 },
-  input: { backgroundColor: Colors.bgElevated },
-  permTitle: { fontSize: 14, fontWeight: '600', color: Colors.textSub, marginTop: 8 },
-  permRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 8 },
-  permEmoji: { fontSize: 16, width: 24 },
-  permLabel: { flex: 1, fontSize: 14, color: Colors.text },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 20 },
-  cancelText: { fontSize: 15, color: Colors.textMuted, fontWeight: '500' },
-  recordBtn: { backgroundColor: Colors.accent, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
-  recordBtnText: { fontSize: 15, fontWeight: '600', color: '#FFF' },
+    sectionLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted,    
+  letterSpacing: 1.8, marginBottom: 10, marginTop: 4 },
 
-  detailHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  detailAvatar: { fontSize: 36 },
-  detailName: { fontSize: 18, fontWeight: '700', color: Colors.text },
-  detailRole: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
-  detailPhone: { fontSize: 14, color: Colors.textSub, marginBottom: 12 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 13, fontWeight: '500', width: 28 },
-  editBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: Colors.accentMuted, alignItems: 'center' },
-  editBtnText: { fontSize: 14, fontWeight: '600', color: Colors.accent },
-  removeBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: Colors.redMuted, alignItems: 'center' },
-  removeBtnText: { fontSize: 14, fontWeight: '600', color: Colors.red },
-});
+    // Staff Card
+    card: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      backgroundColor: Colors.bgCard, borderRadius: 14, padding: 14,
+      borderWidth: 1, borderColor: Colors.border,
+      overflow: 'hidden', marginBottom: 8,
+    },
+    cardAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3 },      
+    avatar: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center',     
+  alignItems: 'center', borderWidth: 2 },
+    avatarText: { fontFamily: Fonts.condensedBold, fontSize: 16, letterSpacing: 0.5  
+  },
+    cardInfo:   { flex: 1 },
+    cardRow:    { flexDirection: 'row', alignItems: 'center', justifyContent:        
+  'space-between', marginBottom: 2 },
+    cardName:   { fontFamily: Fonts.bold, fontSize: 14, color: Colors.text },        
+    cardRole:   { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted,  
+  marginBottom: 4 },
+    cardMeta:   { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    cardMetaText: { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted 
+  },
+    cardMetaDot:  { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted 
+  },
+    statusPill:   { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius:
+   20, paddingHorizontal: 8, paddingVertical: 3 },
+    statusDot:    { width: 5, height: 5, borderRadius: 3 },
+    statusText:   { fontFamily: Fonts.bold, fontSize: 8, letterSpacing: 0.8 },       
+
+    // Add button
+    addBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,  
+      backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 14,
+  marginTop: 8,
+    },
+    addBtnText: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.bg,
+  letterSpacing: 1.2 },
+
+    // Modal
+    backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' 
+  },
+    sheet: {
+      position: 'absolute', bottom: 0, left: 0, right: 0,
+      backgroundColor: Colors.bgCard, borderTopLeftRadius: 24, borderTopRightRadius: 
+  24,
+      paddingHorizontal: 20, paddingBottom: 36, paddingTop: 12,
+    },
+    handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.border, 
+  alignSelf: 'center', marginBottom: 20 },
+    closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor:
+  Colors.bgElevated, justifyContent: 'center', alignItems: 'center' },
+
+    sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom:
+   20 },
+    sheetAvatar: { width: 54, height: 54, borderRadius: 27, justifyContent: 'center',
+   alignItems: 'center', borderWidth: 2 },
+    sheetAvatarText: { fontFamily: Fonts.condensedBold, fontSize: 20, letterSpacing: 
+  0.5 },
+    sheetName: { fontFamily: Fonts.bold, fontSize: 18, color: Colors.text },
+    sheetRole: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted,   
+  marginTop: 2 },
+
+    sheetStats: { flexDirection: 'row', backgroundColor: Colors.bgElevated,
+  borderRadius: 14, padding: 14, marginBottom: 16, gap: 4 },
+    sheetStat:  { flex: 1, alignItems: 'center', gap: 3 },
+    sheetStatVal:  { fontFamily: Fonts.condensedBold, fontSize: 15, color:
+  Colors.text },
+    sheetStatLabel:{ fontFamily: Fonts.bold, fontSize: 8, color: Colors.textMuted,   
+  letterSpacing: 0.8 },
+
+    sheetDetail: { backgroundColor: Colors.bgElevated, borderRadius: 14, overflow:   
+  'hidden', marginBottom: 16 },
+    detailRow:   { flexDirection: 'row', alignItems: 'center', gap: 10,
+  paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1,
+  borderBottomColor: Colors.border },
+    detailLabel: { fontFamily: Fonts.medium, fontSize: 11, color: Colors.textMuted,  
+  flex: 1 },
+    detailVal:   { fontFamily: Fonts.bold, fontSize: 12, color: Colors.text },       
+
+    sheetActions: { flexDirection: 'row', gap: 8 },
+    actionBtn:    { flex: 1, flexDirection: 'row', alignItems: 'center',
+  justifyContent: 'center', gap: 6, borderRadius: 10, paddingVertical: 12,
+  borderWidth: 1 },
+    actionBtnText:{ fontFamily: Fonts.bold, fontSize: 10, letterSpacing: 0.8 },      
+
+    addModalHeader: { flexDirection: 'row', justifyContent: 'space-between',
+  alignItems: 'center', marginBottom: 12 },
+    addModalTitle:  { fontFamily: Fonts.condensedBold, fontSize: 20, color:
+  Colors.text, letterSpacing: 0.5 },
+    addModalSub:    { fontFamily: Fonts.regular, fontSize: 13, color:
+  Colors.textMuted, marginBottom: 20 },
+  });

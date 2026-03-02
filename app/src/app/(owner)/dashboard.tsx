@@ -4,103 +4,94 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
 import { Colors } from '@/constants/colors';
+import { Fonts } from '@/constants/fonts';
 import AnimatedPressable from '@/components/AnimatedPressable';
 import FadeInView from '@/components/FadeInView';
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
-interface StatItem {
-  label: string;
-  value: string;
-  emoji: string;
-  icon: IconName;
-  iconBg: string;
-  iconColor: string;
-}
-
-const stats: StatItem[] = [
-  { label: 'Total Members', value: '148', emoji: '📊', icon: 'account-group-outline', iconBg: Colors.accentMuted, iconColor: Colors.accent },
-  { label: 'Active', value: '112', emoji: '✅', icon: 'check-circle-outline', iconBg: Colors.greenMuted, iconColor: Colors.green },
-  { label: 'Expiring Soon', value: '6', emoji: '⏳', icon: 'clock-alert-outline', iconBg: Colors.orangeMuted, iconColor: Colors.orange },
-  { label: 'Pending Dues', value: '₹24,500', emoji: '💰', icon: 'alert-circle-outline', iconBg: Colors.redMuted, iconColor: Colors.red },
-  { label: 'Today Attendance', value: '68', emoji: '📋', icon: 'calendar-check-outline', iconBg: Colors.greenMuted, iconColor: Colors.green },
-  { label: 'This Month', value: '₹1,96,000', emoji: '💸', icon: 'trending-up', iconBg: Colors.accentMuted, iconColor: Colors.accent },
+const stats: {
+  label: string; value: string; sub: string;
+  icon: IconName; iconBg: string; iconColor: string;
+}[] = [
+  { label: 'MEMBERS',       value: '148', sub: 'total enrolled',    icon: 'account-group-outline',  iconBg: Colors.accentMuted, iconColor: Colors.accent },
+  { label: 'ACTIVE',        value: '112', sub: 'valid plans',        icon: 'check-circle-outline',   iconBg: Colors.greenMuted,  iconColor: Colors.green  },
+  { label: 'EXPIRING',      value: '6',   sub: 'within 7 days',      icon: 'clock-alert-outline',    iconBg: Colors.orangeMuted, iconColor: Colors.orange },
+  { label: 'DUES',          value: '₹24.5K', sub: 'pending',         icon: 'alert-circle-outline',   iconBg: Colors.redMuted,    iconColor: Colors.red    },
+  { label: 'ATTENDANCE',    value: '68',  sub: 'checked in today',   icon: 'calendar-check-outline', iconBg: Colors.greenMuted,  iconColor: Colors.green  },
+  { label: 'REVENUE',       value: '₹1.96L', sub: 'this month',      icon: 'trending-up',            iconBg: Colors.accentMuted, iconColor: Colors.accent },
 ];
 
-interface ActionItem {
-  label: string;
-  emoji: string;
-  icon: IconName;
-  route: string;
-}
-
-const quickActions: ActionItem[] = [
-  { label: 'Add Member', emoji: '👤', icon: 'account-plus-outline', route: '/(owner)/members/add' },
-  { label: 'Payment', emoji: '💳', icon: 'plus-circle-outline', route: '/(owner)/payments' },
-  { label: 'Attendance', emoji: '📝', icon: 'check-circle-outline', route: '/(owner)/more/attendance' },
-  { label: 'Plans', emoji: '📄', icon: 'refresh', route: '/(owner)/plans' },
+const quickActions: { label: string; emoji: string; icon: IconName; route: string }[] = [
+  { label: 'ADD\nMEMBER',   emoji: '👤', icon: 'account-plus-outline',  route: '/(owner)/members/add'         },
+  { label: 'PAYMENT',       emoji: '💳', icon: 'plus-circle-outline',   route: '/(owner)/payments'            },
+  { label: 'ATTENDANCE',    emoji: '📝', icon: 'check-circle-outline',  route: '/(owner)/more/attendance'     },
+  { label: 'PLANS',         emoji: '📄', icon: 'refresh',               route: '/(owner)/plans'               },
 ];
 
 const recentActivity = [
-  { emoji: '💳', text: 'Rahul Sharma paid ₹3,500', time: '2h ago' },
-  { emoji: '👤', text: 'Sneha Gupta joined (1 Month)', time: '5h ago' },
-  { emoji: '📋', text: '68 members checked in today', time: '6h ago' },
-  { emoji: '⚠️', text: 'Vikram Singh\'s plan expired', time: '1d ago' },
-  { emoji: '💰', text: 'Priya Patel paid ₹6,000', time: '1d ago' },
+  { emoji: '💳', text: 'Rahul Sharma paid ₹3,500',           time: '2h ago'  },
+  { emoji: '👤', text: 'Sneha Gupta joined — 1 Month',       time: '5h ago'  },
+  { emoji: '📋', text: '68 members checked in today',         time: '6h ago'  },
+  { emoji: '⚠️', text: "Vikram Singh's plan expired",        time: '1d ago'  },
+  { emoji: '💰', text: 'Priya Patel paid ₹6,000',            time: '1d ago'  },
 ];
 
 export default function DashboardScreen() {
   const { profile } = useAuthStore();
-  const router = useRouter();
-
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const greetEmoji = hour < 12 ? '🌤️' : hour < 17 ? '☀️' : '🌙';
+  const router    = useRouter();
+  const hour      = new Date().getHours();
+  const greeting  = hour < 12 ? 'GOOD MORNING' : hour < 17 ? 'GOOD AFTERNOON' : 'GOOD EVENING';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView style={styles.container} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Header */}
+
+        {/* ── Header ───────────────────────────────────────────── */}
         <FadeInView delay={0}>
           <View style={styles.header}>
-            <View>
-              <Text style={styles.greeting}>{greeting} {greetEmoji}</Text>
-              <Text style={styles.name}>{profile?.full_name || 'Owner'}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.greeting}>{greeting}</Text>
+              <Text style={styles.ownerName}>{profile?.full_name || 'OWNER'}</Text>
             </View>
-            <AnimatedPressable style={styles.avatarBtn} scaleDown={0.9} onPress={() => router.push('/(owner)/more/settings' as any)}>
-              <MaterialCommunityIcons name="account-circle-outline" size={32} color={Colors.textSub} />
+            <AnimatedPressable
+              style={styles.avatarBtn}
+              scaleDown={0.9}
+              onPress={() => router.push('/(owner)/more/settings' as any)}
+            >
+              <MaterialCommunityIcons name="account-circle-outline" size={28} color={Colors.accent} />
             </AnimatedPressable>
           </View>
         </FadeInView>
 
-        {/* Stats Grid */}
+        {/* ── Stats Grid ───────────────────────────────────────── */}
         <View style={styles.statsGrid}>
           {stats.map((s, i) => (
-            <FadeInView key={s.label} delay={80 + i * 60} style={styles.statCardWrap}>
+            <FadeInView key={s.label} delay={60 + i * 55} style={styles.statWrap}>
               <AnimatedPressable style={styles.statCard} scaleDown={0.96}>
-                <View style={styles.statTop}>
+                {/* left accent bar */}
+                <View style={[styles.statAccent, { backgroundColor: s.iconColor }]} />
+                <View style={styles.statInner}>
                   <View style={[styles.statIcon, { backgroundColor: s.iconBg }]}>
-                    <MaterialCommunityIcons name={s.icon} size={18} color={s.iconColor} />
+                    <MaterialCommunityIcons name={s.icon} size={16} color={s.iconColor} />
                   </View>
-                  <Text style={styles.statEmoji}>{s.emoji}</Text>
+                  <Text style={styles.statVal}>{s.value}</Text>
+                  <Text style={styles.statLabel}>{s.label}</Text>
+                  <Text style={styles.statSub}>{s.sub}</Text>
                 </View>
-                <Text style={styles.statValue}>{s.value}</Text>
-                <Text style={styles.statLabel}>{s.label}</Text>
               </AnimatedPressable>
             </FadeInView>
           ))}
         </View>
 
-        {/* Quick Actions */}
-        <FadeInView delay={500}>
-          <Text style={styles.sectionTitle}>⚡ Quick Actions</Text>
-        </FadeInView>
+        {/* ── Quick Actions ─────────────────────────────────────── */}
+        <Text style={styles.sectionLabel}>QUICK ACTIONS</Text>
         <View style={styles.actionsRow}>
           {quickActions.map((a, i) => (
-            <FadeInView key={a.label} delay={540 + i * 60} style={{ flex: 1 }}>
+            <FadeInView key={a.label} delay={440 + i * 55} style={{ flex: 1 }}>
               <AnimatedPressable
                 style={styles.actionBtn}
-                scaleDown={0.94}
+                scaleDown={0.93}
                 onPress={() => router.push(a.route as any)}
               >
                 <View style={styles.actionIcon}>
@@ -112,25 +103,33 @@ export default function DashboardScreen() {
           ))}
         </View>
 
-        {/* Alerts */}
-        <FadeInView delay={800}>
-          <Text style={styles.sectionTitle}>🔔 Alerts</Text>
-          <AnimatedPressable style={styles.alertCard} scaleDown={0.98} onPress={() => router.push('/(owner)/more/reports-expiry' as any)}>
+        {/* ── Alert ────────────────────────────────────────────── */}
+        <FadeInView delay={680}>
+          <Text style={styles.sectionLabel}>ALERTS</Text>
+          <AnimatedPressable
+            style={styles.alertCard}
+            scaleDown={0.98}
+            onPress={() => router.push('/(owner)/more/reports-expiry' as any)}
+          >
+            <View style={styles.alertAccent} />
             <Text style={styles.alertEmoji}>⚠️</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.alertTextMain}>6 memberships expiring soon</Text>
-              <Text style={styles.alertText}>2 expired today · 4 within this week</Text>
+              <Text style={styles.alertTitle}>6 MEMBERSHIPS EXPIRING SOON</Text>
+              <Text style={styles.alertSub}>2 expired today  ·  4 within this week</Text>
             </View>
-            <MaterialCommunityIcons name="chevron-right" size={18} color={Colors.textMuted} />
+            <MaterialCommunityIcons name="chevron-right" size={18} color={Colors.orange} />
           </AnimatedPressable>
         </FadeInView>
 
-        {/* Recent Activity */}
-        <FadeInView delay={900}>
-          <Text style={styles.sectionTitle}>💬 Recent Activity</Text>
+        {/* ── Recent Activity ───────────────────────────────────── */}
+        <FadeInView delay={780}>
+          <Text style={styles.sectionLabel}>RECENT ACTIVITY</Text>
           <View style={styles.activityCard}>
             {recentActivity.map((item, i) => (
-              <View key={i} style={[styles.activityRow, i < recentActivity.length - 1 && styles.activityBorder]}>
+              <View
+                key={i}
+                style={[styles.activityRow, i < recentActivity.length - 1 && styles.activityBorder]}
+              >
                 <Text style={styles.activityEmoji}>{item.emoji}</Text>
                 <Text style={styles.activityText} numberOfLines={1}>{item.text}</Text>
                 <Text style={styles.activityTime}>{item.time}</Text>
@@ -138,82 +137,135 @@ export default function DashboardScreen() {
             ))}
           </View>
         </FadeInView>
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
+  safe:      { flex: 1, backgroundColor: Colors.bg },
   container: { flex: 1 },
-  scroll: { paddingHorizontal: 20, paddingBottom: 24 },
+  scroll:    { paddingHorizontal: 16, paddingBottom: 24 },
 
   // Header
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, marginBottom: 24 },
-  greeting: { fontSize: 15, color: Colors.textSub },
-  name: { fontSize: 24, fontWeight: '700', color: Colors.text, marginTop: 2 },
-  avatarBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.bgCard, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', paddingTop: 16, marginBottom: 20,
+  },
+  greeting: {
+    fontFamily: Fonts.medium,
+    fontSize: 9, color: Colors.accent, letterSpacing: 1.8,
+  },
+  ownerName: {
+    fontFamily: Fonts.condensedBold,
+    fontSize: 30, color: Colors.text, letterSpacing: 0.5, marginTop: 2,
+  },
+  avatarBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: Colors.bgCard,
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: Colors.accent + '30',
+  },
 
-  // Stats
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
-  statCardWrap: { width: '48%' },
+  // Stats grid
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
+  statWrap:  { width: '48%' },
   statCard: {
     backgroundColor: Colors.bgCard,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderRadius: 14,
+    borderWidth: 1, borderColor: Colors.border,
+    overflow: 'hidden',
+    flexDirection: 'row',
   },
-  statTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  statIcon: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  statEmoji: { fontSize: 16 },
-  statValue: { fontSize: 26, fontWeight: '700', color: Colors.text },
-  statLabel: { fontSize: 13, color: Colors.textSub, marginTop: 4 },
+  statAccent: { width: 3 },
+  statInner:  { flex: 1, padding: 14, gap: 3 },
+  statIcon: {
+    width: 30, height: 30, borderRadius: 9,
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 6,
+  },
+  statVal: {
+    fontFamily: Fonts.condensedBold,
+    fontSize: 26, color: Colors.text,
+  },
+  statLabel: {
+    fontFamily: Fonts.bold,
+    fontSize: 9, color: Colors.textMuted, letterSpacing: 1.2,
+  },
+  statSub: {
+    fontFamily: Fonts.regular,
+    fontSize: 10, color: Colors.textMuted,
+  },
 
-  // Section
-  sectionTitle: { fontSize: 17, fontWeight: '600', color: Colors.text, marginBottom: 12 },
+  // Section label
+  sectionLabel: {
+    fontFamily: Fonts.bold,
+    fontSize: 9, color: Colors.textMuted,
+    letterSpacing: 1.8, marginBottom: 10, marginTop: 4,
+  },
 
-  // Quick Actions
-  actionsRow: { flexDirection: 'row', gap: 10, marginBottom: 28 },
+  // Quick actions
+  actionsRow: { flexDirection: 'row', gap: 8, marginBottom: 24 },
   actionBtn: {
     backgroundColor: Colors.bgCard,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderRadius: 14, paddingVertical: 14,
+    alignItems: 'center', gap: 6,
+    borderWidth: 1, borderColor: Colors.border,
   },
-  actionIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: Colors.accentMuted, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  actionIcon: {
+    width: 42, height: 42, borderRadius: 12,
+    backgroundColor: Colors.accentMuted,
+    justifyContent: 'center', alignItems: 'center',
+  },
   actionEmoji: { fontSize: 20 },
-  actionLabel: { fontSize: 11, fontWeight: '500', color: Colors.textSub, textAlign: 'center' },
-
-  // Alerts
-  alertCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.orangeMuted,
-    borderRadius: 14,
-    padding: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: Colors.orange + '25',
-    marginBottom: 28,
+  actionLabel: {
+    fontFamily: Fonts.bold,
+    fontSize: 8, color: Colors.textMuted,
+    letterSpacing: 0.8, textAlign: 'center',
   },
-  alertEmoji: { fontSize: 28 },
-  alertTextMain: { fontSize: 15, fontWeight: '600', color: Colors.text },
-  alertText: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
+
+  // Alert
+  alertCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderRadius: 14, padding: 16, gap: 12,
+    borderWidth: 1, borderColor: Colors.orange + '30',
+    overflow: 'hidden', marginBottom: 24,
+  },
+  alertAccent: {
+    position: 'absolute', left: 0, top: 0, bottom: 0,
+    width: 3, backgroundColor: Colors.orange,
+  },
+  alertEmoji: { fontSize: 26 },
+  alertTitle: {
+    fontFamily: Fonts.bold,
+    fontSize: 12, color: Colors.text, letterSpacing: 0.5,
+  },
+  alertSub: {
+    fontFamily: Fonts.regular,
+    fontSize: 11, color: Colors.textMuted, marginTop: 3,
+  },
 
   // Activity
   activityCard: {
     backgroundColor: Colors.bgCard,
-    borderRadius: 14,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderRadius: 14, overflow: 'hidden',
+    borderWidth: 1, borderColor: Colors.border,
   },
-  activityRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14 },
+  activityRow: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: 10, paddingVertical: 13, paddingHorizontal: 14,
+  },
   activityBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
-  activityEmoji: { fontSize: 16 },
-  activityText: { flex: 1, fontSize: 13, color: Colors.text, fontWeight: '500' },
-  activityTime: { fontSize: 11, color: Colors.textMuted },
+  activityEmoji: { fontSize: 15 },
+  activityText: {
+    flex: 1, fontFamily: Fonts.medium,
+    fontSize: 13, color: Colors.text,
+  },
+  activityTime: {
+    fontFamily: Fonts.regular,
+    fontSize: 10, color: Colors.textMuted,
+  },
 });

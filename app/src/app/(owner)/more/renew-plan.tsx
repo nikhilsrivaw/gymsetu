@@ -1,209 +1,450 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
-import { Colors } from '@/constants/colors';
-import AnimatedPressable from '@/components/AnimatedPressable';
-import FadeInView from '@/components/FadeInView';
+                                                                                      import { View, Text, StyleSheet, ScrollView, Pressable, Modal, TextInput } from      'react-native';                                                                      import { SafeAreaView } from 'react-native-safe-area-context';                       import { MaterialCommunityIcons } from '@expo/vector-icons';                       
+  import { useState } from 'react';                                                    import { Colors } from '@/constants/colors';                                       
+  import { Fonts } from '@/constants/fonts';                                           import FadeInView from '@/components/FadeInView';                                  
+  import AnimatedPressable from '@/components/AnimatedPressable';                    
+                                                                                     
+  type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
-const plans = [
-  { id: '1', name: '1 Month Basic', duration: '30 days', price: 1500, emoji: '🎫' },
-  { id: '2', name: '3 Month Standard', duration: '90 days', price: 3500, emoji: '🎟️' },
-  { id: '3', name: '6 Month Premium', duration: '180 days', price: 6000, emoji: '⭐' },
-  { id: '4', name: '1 Year Ultimate', duration: '365 days', price: 10000, emoji: '👑' },
-];
+  const expiringMembers = [
+    { id: '1', name: 'Vikram Singh',   plan: '1 Month',   daysLeft: 0,  paid:        
+  '₹1,500', initials: 'VS', color: Colors.red    },
+    { id: '2', name: 'Anjali Sharma',  plan: '3 Months',  daysLeft: 2,  paid:        
+  '₹3,800', initials: 'AS', color: Colors.orange },
+    { id: '3', name: 'Rohit Mehra',    plan: '1 Month',   daysLeft: 3,  paid:        
+  '₹1,500', initials: 'RM', color: Colors.orange },
+    { id: '4', name: 'Pooja Tiwari',   plan: '6 Months',  daysLeft: 5,  paid:        
+  '₹7,200', initials: 'PT', color: Colors.orange },
+    { id: '5', name: 'Karan Malhotra', plan: '1 Month',   daysLeft: 6,  paid:        
+  '₹1,500', initials: 'KM', color: Colors.accent },
+    { id: '6', name: 'Sneha Joshi',    plan: '3 Months',  daysLeft: 7,  paid:        
+  '₹3,800', initials: 'SJ', color: Colors.accent },
+  ];
 
-const payMethods = [
-  { id: 'upi', label: 'UPI', emoji: '📱' },
-  { id: 'cash', label: 'Cash', emoji: '💵' },
-  { id: 'card', label: 'Card', emoji: '💳' },
-  { id: 'bank', label: 'Bank', emoji: '🏦' },
-];
+  const plans = [
+    { id: 'p1', label: '1 Month',   price: 1500, tag: 'BASIC',   color: Colors.accent
+   },
+    { id: 'p2', label: '3 Months',  price: 3800, tag: 'POPULAR', color: Colors.green 
+   },
+    { id: 'p3', label: '6 Months',  price: 7200, tag: 'VALUE',   color: '#3B82F6'    
+   },
+    { id: 'p4', label: '12 Months', price: 12000,tag: 'BEST',    color: '#A78BFA'    
+   },
+  ];
 
-export default function RenewPlanScreen() {
-  const router = useRouter();
-  const { memberId, memberName } = useLocalSearchParams<{ memberId: string; memberName: string }>();
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [selectedMethod, setSelectedMethod] = useState('upi');
-  const [saving, setSaving] = useState(false);
+  const paymentMethods: { label: string; icon: IconName; color: string }[] = [       
+    { label: 'UPI',          icon: 'qrcode-scan',      color: '#4F6EF7' },
+    { label: 'Cash',         icon: 'cash',              color: Colors.green },       
+    { label: 'Card',         icon: 'credit-card-outline',color: Colors.orange },     
+    { label: 'Bank Transfer',icon: 'bank-outline',      color: Colors.accent },      
+  ];
 
-  const plan = plans.find(p => p.id === selectedPlan);
+  export default function RenewPlanScreen() {
+    const [selected, setSelected]   = useState<typeof expiringMembers[0] |
+  null>(null);
+    const [selectedPlan, setSelectedPlan] = useState(plans[0].id);
+    const [payMethod, setPayMethod] = useState('Cash');
+    const [note, setNote]           = useState('');
+    const [successModal, setSuccessModal] = useState(false);
 
-  const handleRenew = () => {
-    if (!selectedPlan) return;
-    setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      Alert.alert(
-        '✅ Plan Assigned!',
-        `${plan?.name} assigned to ${memberName || 'member'}.\nPayment of ₹${plan?.price.toLocaleString('en-IN')} recorded via ${payMethods.find(m => m.id === selectedMethod)?.label}.`,
-        [{ text: 'Done', onPress: () => router.back() }],
-      );
-    }, 600);
-  };
+    const expired  = expiringMembers.filter(m => m.daysLeft === 0).length;
+    const critical = expiringMembers.filter(m => m.daysLeft > 0 && m.daysLeft <=     
+  3).length;
+    const upcoming = expiringMembers.filter(m => m.daysLeft > 3).length;
 
-  return (
-    <>
-      <Stack.Screen options={{ title: '🔄 Assign / Renew Plan' }} />
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {/* Member Info */}
-        <FadeInView delay={0}>
-          <View style={styles.memberBanner}>
-            <View style={styles.memberAvatar}>
-              <Text style={styles.memberInitials}>
-                {(memberName || 'M').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-              </Text>
-            </View>
-            <View>
-              <Text style={styles.memberName}>{memberName || 'Member'}</Text>
-              <Text style={styles.memberId}>Assigning new plan</Text>
-            </View>
-          </View>
-        </FadeInView>
+    const activePlan = plans.find(p => p.id === selectedPlan)!;
 
-        {/* Select Plan */}
-        <FadeInView delay={100}>
-          <Text style={styles.sectionTitle}>📋 Select Plan</Text>
-        </FadeInView>
+    const urgencyColor = (days: number) => {
+      if (days === 0) return Colors.red;
+      if (days <= 3)  return Colors.orange;
+      return Colors.accent;
+    };
 
-        {plans.map((p, i) => {
-          const active = selectedPlan === p.id;
-          return (
-            <FadeInView key={p.id} delay={150 + i * 50}>
-              <AnimatedPressable
-                style={[styles.planCard, active && styles.planCardActive]}
-                scaleDown={0.97}
-                onPress={() => setSelectedPlan(p.id)}
-              >
-                <Text style={styles.planEmoji}>{p.emoji}</Text>
-                <View style={styles.planInfo}>
-                  <Text style={[styles.planName, active && { color: Colors.accent }]}>{p.name}</Text>
-                  <Text style={styles.planDuration}>{p.duration}</Text>
-                </View>
-                <Text style={styles.planPrice}>₹{p.price.toLocaleString('en-IN')}</Text>
-                <View style={[styles.radio, active && styles.radioActive]}>
-                  {active && <View style={styles.radioInner} />}
-                </View>
-              </AnimatedPressable>
-            </FadeInView>
-          );
-        })}
+    const urgencyLabel = (days: number) => {
+      if (days === 0) return 'EXPIRED';
+      if (days === 1) return '1 DAY LEFT';
+      return `${days} DAYS LEFT`;
+    };
 
-        {/* Payment Method */}
-        <FadeInView delay={400}>
-          <Text style={styles.sectionTitle}>💰 Payment Method</Text>
-          <View style={styles.methodRow}>
-            {payMethods.map(m => {
-              const active = selectedMethod === m.id;
-              return (
-                <AnimatedPressable
-                  key={m.id}
-                  style={[styles.methodChip, active && styles.methodChipActive]}
-                  scaleDown={0.95}
-                  onPress={() => setSelectedMethod(m.id)}
-                >
-                  <Text style={styles.methodEmoji}>{m.emoji}</Text>
-                  <Text style={[styles.methodLabel, active && styles.methodLabelActive]}>{m.label}</Text>
-                </AnimatedPressable>
-              );
-            })}
-          </View>
-        </FadeInView>
+    return (
+      <SafeAreaView style={styles.safe} edges={['bottom']}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.scroll}   
+  showsVerticalScrollIndicator={false}>
 
-        {/* Summary */}
-        {plan && (
-          <FadeInView delay={500}>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryTitle}>🧾 Summary</Text>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Plan</Text>
-                <Text style={styles.summaryValue}>{plan.name}</Text>
+          {/* ── Hero ─────────────────────────────────────────── */}
+          <FadeInView delay={0}>
+            <View style={styles.hero}>
+              <View style={styles.heroGlow} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.heroMicro}>RENEWAL DASHBOARD</Text>
+                <Text style={styles.heroTitle}>EXPIRING SOON</Text>
+                <Text style={styles.heroSub}>Act fast to retain members</Text>       
               </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Duration</Text>
-                <Text style={styles.summaryValue}>{plan.duration}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Payment</Text>
-                <Text style={styles.summaryValue}>{payMethods.find(m => m.id === selectedMethod)?.label}</Text>
-              </View>
-              <View style={[styles.summaryRow, styles.totalRow]}>
-                <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.totalValue}>₹{plan.price.toLocaleString('en-IN')}</Text>
+              <View style={styles.heroCountWrap}>
+                <Text style={styles.heroCountVal}>{expiringMembers.length}</Text>    
+                <Text style={styles.heroCountLabel}>MEMBERS</Text>
               </View>
             </View>
           </FadeInView>
-        )}
 
-        {/* Confirm Button */}
-        <FadeInView delay={600}>
-          <AnimatedPressable
-            style={[styles.confirmBtn, (!selectedPlan || saving) && { opacity: 0.5 }]}
-            scaleDown={0.97}
-            onPress={handleRenew}
-            disabled={!selectedPlan || saving}
-          >
-            <Text style={styles.confirmBtnText}>
-              {saving ? '⏳ Processing...' : '✅ Confirm & Assign Plan'}
+          {/* ── Summary Pills ─────────────────────────────────── */}
+          <FadeInView delay={60}>
+            <View style={styles.summaryRow}>
+              {[
+                { label: 'EXPIRED',  val: expired,  color: Colors.red    },
+                { label: 'CRITICAL', val: critical, color: Colors.orange },
+                { label: 'UPCOMING', val: upcoming, color: Colors.accent },
+              ].map(s => (
+                <View key={s.label} style={[styles.summaryPill, { borderColor:       
+  s.color + '30', backgroundColor: s.color + '10' }]}>
+                  <Text style={[styles.summaryVal, { color: s.color
+  }]}>{s.val}</Text>
+                  <Text style={[styles.summaryLabel, { color: s.color
+  }]}>{s.label}</Text>
+                </View>
+              ))}
+            </View>
+          </FadeInView>
+
+          {/* ── Member Cards ──────────────────────────────────── */}
+          <Text style={styles.sectionLabel}>SELECT MEMBER TO RENEW</Text>
+
+          {expiringMembers.map((member, i) => {
+            const isSelected = selected?.id === member.id;
+            const uColor = urgencyColor(member.daysLeft);
+            return (
+              <FadeInView key={member.id} delay={100 + i * 50}>
+                <AnimatedPressable
+                  style={[styles.memberCard, isSelected &&
+  styles.memberCardSelected]}
+                  scaleDown={0.97}
+                  onPress={() => setSelected(isSelected ? null : member)}
+                >
+                  {/* Left urgency bar */}
+                  <View style={[styles.cardBar, { backgroundColor: uColor }]} />     
+
+                  {/* Avatar */}
+                  <View style={[styles.avatar, { backgroundColor: member.color +     
+  '20', borderColor: member.color + '50' }]}>
+                    <Text style={[styles.avatarText, { color: member.color
+  }]}>{member.initials}</Text>
+                  </View>
+
+                  {/* Info */}
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.memberName}>{member.name}</Text>
+                    <Text style={styles.memberPlan}>{member.plan}  ·
+  {member.paid}</Text>
+                  </View>
+
+                  {/* Urgency badge */}
+                  <View style={[styles.urgencyBadge, { backgroundColor: uColor + '18'
+   }]}>
+                    <Text style={[styles.urgencyText, { color: uColor
+  }]}>{urgencyLabel(member.daysLeft)}</Text>
+                  </View>
+
+                  {isSelected && (
+                    <MaterialCommunityIcons name="check-circle" size={18}
+  color={Colors.accent} />
+                  )}
+                </AnimatedPressable>
+              </FadeInView>
+            );
+          })}
+
+          {/* ── Plan Selector ─────────────────────────────────── */}
+          {selected && (
+            <FadeInView delay={0}>
+              <Text style={styles.sectionLabel}>SELECT NEW PLAN</Text>
+              <View style={styles.planGrid}>
+                {plans.map(p => {
+                  const isActive = selectedPlan === p.id;
+                  return (
+                    <AnimatedPressable
+                      key={p.id}
+                      style={[styles.planCard, isActive && { borderColor: p.color,   
+  backgroundColor: p.color + '10' }]}
+                      scaleDown={0.96}
+                      onPress={() => setSelectedPlan(p.id)}
+                    >
+                      <View style={[styles.planTag, { backgroundColor: p.color + '20'
+   }]}>
+                        <Text style={[styles.planTagText, { color: p.color
+  }]}>{p.tag}</Text>
+                      </View>
+                      <Text style={[styles.planPrice, { color: isActive ? p.color :  
+  Colors.text }]}>
+                        ₹{p.price.toLocaleString('en-IN')}
+                      </Text>
+                      <Text style={styles.planDuration}>{p.label}</Text>
+                      {isActive && (
+                        <View style={[styles.planCheck, { backgroundColor: p.color   
+  }]}>
+                          <MaterialCommunityIcons name="check" size={10} color="#fff"
+   />
+                        </View>
+                      )}
+                    </AnimatedPressable>
+                  );
+                })}
+              </View>
+
+              {/* Payment Method */}
+              <Text style={styles.sectionLabel}>PAYMENT METHOD</Text>
+              <View style={styles.payRow}>
+                {paymentMethods.map(m => (
+                  <AnimatedPressable
+                    key={m.label}
+                    style={[styles.payChip, payMethod === m.label && { borderColor:  
+  m.color, backgroundColor: m.color + '12' }]}
+                    scaleDown={0.95}
+                    onPress={() => setPayMethod(m.label)}
+                  >
+                    <MaterialCommunityIcons name={m.icon} size={15} color={payMethod 
+  === m.label ? m.color : Colors.textMuted} />
+                    <Text style={[styles.payChipText, payMethod === m.label && {     
+  color: m.color }]}>{m.label}</Text>
+                  </AnimatedPressable>
+                ))}
+              </View>
+
+              {/* Note */}
+              <Text style={styles.sectionLabel}>NOTE (OPTIONAL)</Text>
+              <TextInput
+                value={note}
+                onChangeText={setNote}
+                placeholder="Add a note for this renewal..."
+                placeholderTextColor={Colors.textMuted}
+                style={styles.noteInput}
+                multiline
+                numberOfLines={2}
+              />
+
+              {/* Summary */}
+              <View style={styles.summaryCard}>
+                <View style={styles.summaryCardBar} />
+                <View style={styles.summaryCardInner}>
+                  <View style={styles.summaryCardRow}>
+                    <Text style={styles.summaryCardLabel}>MEMBER</Text>
+                    <Text style={styles.summaryCardVal}>{selected.name}</Text>       
+                  </View>
+                  <View style={styles.summaryCardRow}>
+                    <Text style={styles.summaryCardLabel}>NEW PLAN</Text>
+                    <Text style={styles.summaryCardVal}>{activePlan.label}</Text>    
+                  </View>
+                  <View style={styles.summaryCardRow}>
+                    <Text style={styles.summaryCardLabel}>AMOUNT</Text>
+                    <Text style={[styles.summaryCardVal, { color: Colors.green }]}>  
+                      ₹{activePlan.price.toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                  <View style={styles.summaryCardRow}>
+                    <Text style={styles.summaryCardLabel}>PAYMENT</Text>
+                    <Text style={styles.summaryCardVal}>{payMethod}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Confirm Button */}
+              <AnimatedPressable
+                style={styles.confirmBtn}
+                scaleDown={0.97}
+                onPress={() => setSuccessModal(true)}
+              >
+                <MaterialCommunityIcons name="refresh" size={18} color={Colors.bg} />
+                <Text style={styles.confirmBtnText}>CONFIRM RENEWAL</Text>
+              </AnimatedPressable>
+            </FadeInView>
+          )}
+
+          <View style={{ height: 32 }} />
+        </ScrollView>
+
+        {/* ── Success Modal ────────────────────────────────── */}
+        <Modal visible={successModal} transparent animationType="fade"
+  onRequestClose={() => setSuccessModal(false)}>
+          <Pressable style={styles.backdrop} onPress={() => setSuccessModal(false)}  
+  />
+          <View style={styles.successSheet}>
+            <View style={styles.successIcon}>
+              <MaterialCommunityIcons name="check-circle" size={48}
+  color={Colors.green} />
+            </View>
+            <Text style={styles.successTitle}>RENEWAL CONFIRMED!</Text>
+            <Text style={styles.successSub}>
+              {selected?.name}'s plan has been renewed for {activePlan.label}.       
             </Text>
-          </AnimatedPressable>
-        </FadeInView>
+            <View style={styles.successDetail}>
+              {[
+                { label: 'AMOUNT PAID', val:
+  `₹${activePlan.price.toLocaleString('en-IN')}` },
+                { label: 'METHOD',      val: payMethod },
+                { label: 'VALID FOR',   val: activePlan.label },
+              ].map(d => (
+                <View key={d.label} style={styles.successRow}>
+                  <Text style={styles.successLabel}>{d.label}</Text>
+                  <Text style={styles.successVal}>{d.val}</Text>
+                </View>
+              ))}
+            </View>
+            <AnimatedPressable
+              style={styles.successBtn}
+              scaleDown={0.97}
+              onPress={() => { setSuccessModal(false); setSelected(null); }}
+            >
+              <Text style={styles.successBtnText}>DONE</Text>
+            </AnimatedPressable>
+          </View>
+        </Modal>
+      </SafeAreaView>
+    );
+  }
 
-        <View style={{ height: 32 }} />
-      </ScrollView>
-    </>
-  );
-}
+  const styles = StyleSheet.create({
+    safe:      { flex: 1, backgroundColor: Colors.bg },
+    container: { flex: 1 },
+    scroll:    { paddingHorizontal: 16, paddingBottom: 24, paddingTop: 16 },
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
-  content: { padding: 16, gap: 10 },
+    // Hero
+    hero: {
+      backgroundColor: Colors.bgCard, borderRadius: 20, padding: 20,
+      flexDirection: 'row', alignItems: 'center', gap: 14,
+      borderWidth: 1, borderColor: Colors.orange + '30',
+      overflow: 'hidden', marginBottom: 12,
+    },
+    heroGlow: {
+      position: 'absolute', top: -30, left: -20,
+      width: 100, height: 100, borderRadius: 50,
+      backgroundColor: Colors.accentGlow,
+    },
+    heroMicro:     { fontFamily: Fonts.medium, fontSize: 9, color: Colors.orange,    
+  letterSpacing: 1.5 },
+    heroTitle:     { fontFamily: Fonts.condensedBold, fontSize: 30, color:
+  Colors.text, letterSpacing: 0.5 },
+    heroSub:       { fontFamily: Fonts.regular, fontSize: 11, color:
+  Colors.textMuted, marginTop: 2 },
+    heroCountWrap: { alignItems: 'center', backgroundColor: Colors.orange + '15',    
+  borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+    heroCountVal:  { fontFamily: Fonts.condensedBold, fontSize: 28, color:
+  Colors.orange },
+    heroCountLabel:{ fontFamily: Fonts.bold, fontSize: 8, color: Colors.orange,      
+  letterSpacing: 1 },
 
-  memberBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.bgCard,
-    borderRadius: 14, padding: 16, borderWidth: 1, borderColor: Colors.border,
+    // Summary pills
+    summaryRow:   { flexDirection: 'row', gap: 8, marginBottom: 20 },
+    summaryPill:  { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius:
+   12, borderWidth: 1, gap: 2 },
+    summaryVal:   { fontFamily: Fonts.condensedBold, fontSize: 22 },
+    summaryLabel: { fontFamily: Fonts.bold, fontSize: 8, letterSpacing: 0.8 },       
+
+    sectionLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted,    
+  letterSpacing: 1.8, marginBottom: 10, marginTop: 4 },
+
+    // Member card
+    memberCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      backgroundColor: Colors.bgCard, borderRadius: 14, padding: 14,
+      borderWidth: 1, borderColor: Colors.border,
+      overflow: 'hidden', marginBottom: 8,
+    },
+    memberCardSelected: { borderColor: Colors.accent, backgroundColor:
+  Colors.accentMuted },
+    cardBar:    { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3 },      
+    avatar:     { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', 
+  alignItems: 'center', borderWidth: 2 },
+    avatarText: { fontFamily: Fonts.condensedBold, fontSize: 14, letterSpacing: 0.5  
   },
-  memberAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: Colors.accentMuted, justifyContent: 'center', alignItems: 'center' },
-  memberInitials: { fontSize: 16, fontWeight: '700', color: Colors.accent },
-  memberName: { fontSize: 17, fontWeight: '700', color: Colors.text },
-  memberId: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
+    cardInfo:   { flex: 1 },
+    memberName: { fontFamily: Fonts.bold, fontSize: 14, color: Colors.text },        
+    memberPlan: { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted,  
+  marginTop: 2 },
+    urgencyBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },     
+    urgencyText:  { fontFamily: Fonts.bold, fontSize: 9, letterSpacing: 0.6 },       
 
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.text, marginTop: 8 },
-
-  planCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.bgCard,
-    borderRadius: 14, padding: 16, borderWidth: 1.5, borderColor: Colors.border,
+    // Plan grid
+    planGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },  
+    planCard: {
+      width: '48%', backgroundColor: Colors.bgCard, borderRadius: 14,
+      borderWidth: 1.5, borderColor: Colors.border,
+      padding: 14, gap: 4, overflow: 'hidden',
+    },
+    planTag:      { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 7,  
+  paddingVertical: 3, marginBottom: 4 },
+    planTagText:  { fontFamily: Fonts.bold, fontSize: 8, letterSpacing: 0.8 },       
+    planPrice:    { fontFamily: Fonts.condensedBold, fontSize: 24 },
+    planDuration: { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted 
   },
-  planCardActive: { borderColor: Colors.accent, backgroundColor: Colors.accentMuted },
-  planEmoji: { fontSize: 24 },
-  planInfo: { flex: 1 },
-  planName: { fontSize: 15, fontWeight: '600', color: Colors.text },
-  planDuration: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  planPrice: { fontSize: 16, fontWeight: '700', color: Colors.accent },
-  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: Colors.border, justifyContent: 'center', alignItems: 'center' },
-  radioActive: { borderColor: Colors.accent },
-  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.accent },
+    planCheck: {
+      position: 'absolute', top: 10, right: 10,
+      width: 18, height: 18, borderRadius: 9,
+      justifyContent: 'center', alignItems: 'center',
+    },
 
-  methodRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  methodChip: {
-    flex: 1, alignItems: 'center', gap: 4, paddingVertical: 12, borderRadius: 12,
-    backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border,
+    // Payment
+    payRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20  
   },
-  methodChipActive: { backgroundColor: Colors.accentMuted, borderColor: Colors.accent },
-  methodEmoji: { fontSize: 18 },
-  methodLabel: { fontSize: 12, fontWeight: '500', color: Colors.textMuted },
-  methodLabelActive: { color: Colors.accent, fontWeight: '600' },
+    payChip:     { flexDirection: 'row', alignItems: 'center', gap: 6,
+  paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor:      
+  Colors.bgCard, borderWidth: 1, borderColor: Colors.border },
+    payChipText: { fontFamily: Fonts.bold, fontSize: 10, color: Colors.textMuted,    
+  letterSpacing: 0.5 },
 
-  summaryCard: {
-    backgroundColor: Colors.bgCard, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 10, marginTop: 4,
+    // Note
+    noteInput: {
+      backgroundColor: Colors.bgCard, borderRadius: 12,
+      borderWidth: 1, borderColor: Colors.border,
+      paddingHorizontal: 14, paddingVertical: 12,
+      fontFamily: Fonts.regular, fontSize: 13, color: Colors.text,
+      marginBottom: 20, textAlignVertical: 'top',
+    },
+
+    // Summary card
+    summaryCard: {
+      flexDirection: 'row', backgroundColor: Colors.bgCard,
+      borderRadius: 14, borderWidth: 1, borderColor: Colors.green + '30',
+      overflow: 'hidden', marginBottom: 16,
+    },
+    summaryCardBar:   { width: 3, backgroundColor: Colors.green },
+    summaryCardInner: { flex: 1, padding: 14, gap: 8 },
+    summaryCardRow:   { flexDirection: 'row', justifyContent: 'space-between',       
+  alignItems: 'center' },
+    summaryCardLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted,
+   letterSpacing: 1 },
+    summaryCardVal:   { fontFamily: Fonts.bold, fontSize: 13, color: Colors.text },  
+
+    // Confirm
+    confirmBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,  
+      backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 15,
+    },
+    confirmBtnText: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.bg,        
+  letterSpacing: 1.2 },
+
+    // Modal
+    backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.7)' 
   },
-  summaryTitle: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 4 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  summaryLabel: { fontSize: 13, color: Colors.textMuted },
-  summaryValue: { fontSize: 13, fontWeight: '600', color: Colors.text },
-  totalRow: { borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 10, marginTop: 4 },
-  totalLabel: { fontSize: 15, fontWeight: '700', color: Colors.text },
-  totalValue: { fontSize: 18, fontWeight: '700', color: Colors.green },
-
-  confirmBtn: { backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 18, alignItems: 'center', marginTop: 8 },
-  confirmBtnText: { fontSize: 16, fontWeight: '600', color: '#FFF' },
-});
+    successSheet: {
+      position: 'absolute', bottom: 0, left: 0, right: 0,
+      backgroundColor: Colors.bgCard,
+      borderTopLeftRadius: 28, borderTopRightRadius: 28,
+      paddingHorizontal: 24, paddingBottom: 40, paddingTop: 32,
+      alignItems: 'center',
+    },
+    successIcon:  { marginBottom: 16 },
+    successTitle: { fontFamily: Fonts.condensedBold, fontSize: 26, color:
+  Colors.text, letterSpacing: 0.5, marginBottom: 6 },
+    successSub:   { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted,
+   textAlign: 'center', marginBottom: 24 },
+    successDetail:{ width: '100%', backgroundColor: Colors.bgElevated, borderRadius: 
+  14, overflow: 'hidden', marginBottom: 24 },
+    successRow:   { flexDirection: 'row', justifyContent: 'space-between',
+  alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
+  borderBottomWidth: 1, borderBottomColor: Colors.border },
+    successLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted,    
+  letterSpacing: 1 },
+    successVal:   { fontFamily: Fonts.bold, fontSize: 13, color: Colors.text },      
+    successBtn:   { width: '100%', backgroundColor: Colors.green, borderRadius: 12,  
+  paddingVertical: 14, alignItems: 'center' },
+    successBtnText: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.bg,        
+  letterSpacing: 1.5 },
+  });

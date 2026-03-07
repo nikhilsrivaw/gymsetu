@@ -1,331 +1,225 @@
- import { View, Text, ScrollView, StyleSheet, Linking } from 'react-native';          import { Stack, useRouter } from 'expo-router';                                      import { MaterialCommunityIcons } from '@expo/vector-icons';                         import { Colors } from '@/constants/colors';                                       
-  import { Fonts } from '@/constants/fonts';                                           import FadeInView from '@/components/FadeInView';                                  
-  import AnimatedPressable from '@/components/AnimatedPressable';                      import { expiringMembers } from '@/components/reports/mockData';                   
-                                                                                     
-  type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];       
-
-  function urgencyColor(days: number) {
-    if (days <= 0) return Colors.red;
-    if (days <= 3) return Colors.orange;
-    return Colors.accent;
+ import { useState, useCallback } from 'react';                                       import { View, Text, StyleSheet, FlatList, TouchableOpacity, Linking,                ActivityIndicator } from 'react-native';                                             import { MaterialCommunityIcons } from '@expo/vector-icons';                         import { Stack, useFocusEffect } from 'expo-router';                                 import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                           import { supabase } from '@/lib/supabase';                                         
+  import { useAuthStore } from '@/store/authStore';                                    import FadeInView from '@/components/FadeInView';                                  
+                                                                                       interface ExpiryMember {                                                           
+    id:        string;                                                               
+    full_name: string;                                                               
+    phone:     string | null;
+    plan_name: string;
+    end_date:  string;
+    daysLeft:  number;
   }
 
-  function urgencyLabel(days: number) {
-    if (days <= 0) return 'EXPIRED';
-    if (days <= 3) return 'URGENT';
-    if (days <= 7) return 'SOON';
-    return 'UPCOMING';
-  }
+  export default function ReportsExpiryScreen() {
+    const { profile } = useAuthStore();
+    const [expiring, setExpiring] = useState<ExpiryMember[]>([]);
+    const [expired,  setExpired]  = useState<ExpiryMember[]>([]);
+    const [loading,  setLoading]  = useState(true);
 
-  function urgencyIcon(days: number): IconName {
-    if (days <= 0) return 'close-circle-outline';
-    if (days <= 3) return 'alert-circle-outline';
-    return 'clock-alert-outline';
-  }
+    const fetchData = useCallback(async () => {
+      if (!profile?.gym_id) return;
+      setLoading(true);
 
-  function daysText(days: number) {
-    if (days <= 0) return 'Expired today';
-    if (days === 1) return '1 day left';
-    return `${days} days left`;
-  }
+      const todayStr = new Date().toISOString().split('T')[0];
 
-  export default function ExpiryDashboard() {
-    const router = useRouter();
+      const { data: rows } = await supabase
+        .from('members')
+        .select('id, full_name, phone, member_plans(end_date, status,membership_plans(name))')
+        .eq('gym_id', profile.gym_id)
+        .in('status', ['active', 'expired']);
 
-    const expired  = expiringMembers.filter(m => m.expiresIn <= 0);
-    const urgent   = expiringMembers.filter(m => m.expiresIn > 0 && m.expiresIn <=   
-  3);
-    const soon     = expiringMembers.filter(m => m.expiresIn > 3 && m.expiresIn <=   
-  7);
-    const upcoming = expiringMembers.filter(m => m.expiresIn > 7);
+      if (!rows) { setLoading(false); return; }
 
-    const criticalCount = expired.length + urgent.length;
+      const expiringList: ExpiryMember[] = [];
+      const expiredList:  ExpiryMember[] = [];
 
-    const groups = [
-      { label: 'EXPIRED',  color: Colors.red,    members: expired  },
-      { label: 'URGENT',   color: Colors.orange, members: urgent   },
-      { label: 'SOON',     color: Colors.accent, members: soon     },
-      { label: 'UPCOMING', color: Colors.green,  members: upcoming },
-    ].filter(g => g.members.length > 0);
+      rows.forEach((m: any) => {
+        const plan = m.member_plans?.find((mp: any) => mp.status === 'active')       
+          ?? m.member_plans?.[0];
+        if (!plan?.end_date) return;
+
+        const daysLeft = Math.round(
+          (new Date(plan.end_date).getTime() - new Date(todayStr).getTime())
+          / (1000 * 60 * 60 * 24)
+        );
+
+        const item: ExpiryMember = {
+          id:        m.id,
+          full_name: m.full_name,
+          phone:     m.phone,
+          plan_name: plan.membership_plans?.name ?? 'Unknown Plan',
+          end_date:  new Date(plan.end_date).toLocaleDateString('en-IN', { day:      
+  '2-digit', month: 'short', year: 'numeric' }),
+          daysLeft,
+        };
+
+        if (daysLeft >= 0 && daysLeft <= 30) expiringList.push(item);
+        else if (daysLeft < 0 && daysLeft >= -30) expiredList.push(item);
+      });
+
+      expiringList.sort((a, b) => a.daysLeft - b.daysLeft);
+      expiredList.sort((a,  b) => b.daysLeft - a.daysLeft);
+
+      setExpiring(expiringList);
+      setExpired(expiredList);
+      setLoading(false);
+    }, [profile?.gym_id]);
+
+    useFocusEffect(useCallback(() => { fetchData(); }, [fetchData]));
+
+    const urgencyColor = (d: number) => {
+      if (d < 0)  return Colors.red;
+      if (d <= 3) return Colors.red;
+      if (d <= 7) return Colors.orange;
+      return Colors.green;
+    };
+
+    const urgencyLabel = (d: number) => {
+      if (d < 0)   return `${Math.abs(d)}d ago`;
+      if (d === 0) return 'Today';
+      if (d === 1) return 'Tomorrow';
+      return `${d}d left`;
+    };
+
+    const renderCard = ({ item, index }: { item: ExpiryMember; index: number }) => { 
+      const color    = urgencyColor(item.daysLeft);
+      const initials = item.full_name.split(' ').map(n => n[0]).join('').slice(0,    
+  2).toUpperCase();
+      return (
+        <FadeInView delay={index * 45}>
+          <View style={[styles.card, { borderColor: color + '35' }]}>
+            <View style={[styles.cardBar, { backgroundColor: color }]} />
+            <View style={[styles.avatar, { borderColor: color + '50' }]}>
+              <Text style={[styles.avatarText, { color }]}>{initials}</Text>
+            </View>
+            <View style={styles.cardInfo}>
+              <Text style={styles.cardName}>{item.full_name}</Text>
+              <Text style={styles.cardMeta}>{item.plan_name}  ·
+  {item.end_date}</Text>
+            </View>
+            <View style={[styles.badge, { backgroundColor: color + '15' }]}>
+              <Text style={[styles.badgeText, { color
+  }]}>{urgencyLabel(item.daysLeft)}</Text>
+            </View>
+            {item.phone && (
+              <TouchableOpacity
+                style={styles.callBtn}
+                onPress={() => Linking.openURL(`tel:${item.phone}`)}
+              >
+                <MaterialCommunityIcons name="phone" size={18} color={Colors.green}  
+  />
+              </TouchableOpacity>
+            )}
+          </View>
+        </FadeInView>
+      );
+    };
+
+    if (loading) return (
+      <>
+        <Stack.Screen options={{ title: 'Expiry Dashboard' }} />
+        <View style={styles.center}><ActivityIndicator color={Colors.accent} 
+  size="large" /></View>
+      </>
+    );
+
+    const allItems = [...expiring, ...expired];
 
     return (
       <>
         <Stack.Screen options={{ title: 'Expiry Dashboard' }} />
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}  
-  showsVerticalScrollIndicator={false}>
-
-          {/* ── Hero ─────────────────────────────────────────── */}
-          <FadeInView delay={0}>
-            <View style={[styles.hero, { borderColor: criticalCount > 0 ? Colors.red 
-  + '40' : Colors.border }]}>
-              <View style={styles.heroGlow} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.heroMicro, { color: criticalCount > 0 ?
-  Colors.red : Colors.accent }]}>
-                  EXPIRY DASHBOARD
-                </Text>
-                <Text style={styles.heroTitle}>{expiringMembers.length}
-  EXPIRING</Text>
-                <Text style={styles.heroSub}>Members needing renewal action</Text>   
-              </View>
-              {criticalCount > 0 && (
-                <View style={styles.criticalBadge}>
-                  <MaterialCommunityIcons name="alert" size={16} color={Colors.red}  
-  />
-                  <Text style={styles.criticalVal}>{criticalCount}</Text>
-                  <Text style={styles.criticalLabel}>CRITICAL</Text>
-                </View>
-              )}
-            </View>
-          </FadeInView>
-
-          {/* ── Summary Pills ─────────────────────────────────── */}
-          <FadeInView delay={60}>
-            <View style={styles.pillsRow}>
-              {[
-                { label: 'EXPIRED',  val: expired.length,  color: Colors.red    },   
-                { label: 'URGENT',   val: urgent.length,   color: Colors.orange },   
-                { label: 'SOON',     val: soon.length,     color: Colors.accent },   
-                { label: 'UPCOMING', val: upcoming.length, color: Colors.green  },   
-              ].map(p => (
-                <View key={p.label} style={[styles.pill, { backgroundColor: p.color +
-   '12', borderColor: p.color + '30' }]}>
-                  <Text style={[styles.pillVal, { color: p.color }]}>{p.val}</Text>  
-                  <Text style={[styles.pillLabel, { color: p.color
-  }]}>{p.label}</Text>
-                </View>
-              ))}
-            </View>
-          </FadeInView>
-
-          {/* ── Alert Banner (only if critical) ──────────────── */}
-          {criticalCount > 0 && (
-            <FadeInView delay={100}>
-              <View style={styles.alertBanner}>
-                <View style={styles.alertAccent} />
-                <Text style={styles.alertEmoji}>⚠️</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.alertTitle}>{criticalCount}
-  MEMBER{criticalCount > 1 ? 'S' : ''} NEED IMMEDIATE ATTENTION</Text>
-                  <Text style={styles.alertSub}>
-                    {expired.length > 0 ? `${expired.length} expired` : ''}
-                    {expired.length > 0 && urgent.length > 0 ? '  ·  ' : ''}
-                    {urgent.length > 0 ? `${urgent.length} expiring within 3 days` : 
-  ''}
-                  </Text>
-                </View>
-              </View>
-            </FadeInView>
-          )}
-
-          {/* ── Grouped Member Cards ──────────────────────────── */}
-          {groups.map((group, gi) => (
-            <FadeInView key={group.label} delay={160 + gi * 60}>
-              <Text style={styles.sectionLabel}>{group.label} —
-  {group.members.length}</Text>
-              {group.members.map((member, i) => {
-                const uColor = urgencyColor(member.expiresIn);
-                const uLabel = urgencyLabel(member.expiresIn);
-                const uIcon  = urgencyIcon(member.expiresIn);
-
-                return (
-                  <View key={member.id} style={[styles.memberCard, { borderColor:    
-  uColor + '30' }, i < group.members.length - 1 && { marginBottom: 8 }]}>
-                    {/* Left urgency bar */}
-                    <View style={[styles.memberCardBar, { backgroundColor: uColor }]}
-   />
-
-                    {/* Content */}
-                    <View style={styles.memberCardInner}>
-                      {/* Header */}
-                      <View style={styles.memberHeader}>
-                        <View style={[styles.memberAvatarWrap, { backgroundColor:    
-  uColor + '15' }]}>
-                          <Text style={styles.memberAvatar}>{member.avatar}</Text>   
-                        </View>
-                        <View style={styles.memberInfo}>
-                          <Text style={styles.memberName}>{member.name}</Text>       
-                          <Text style={styles.memberPlan}>{member.plan} plan</Text>  
-                        </View>
-                        <View style={[styles.urgBadge, { backgroundColor: uColor +   
-  '18' }]}>
-                          <MaterialCommunityIcons name={uIcon} size={11}
-  color={uColor} />
-                          <Text style={[styles.urgText, { color: uColor
-  }]}>{uLabel}</Text>
-                        </View>
-                      </View>
-
-                      {/* Days indicator */}
-                      <View style={styles.daysRow}>
-                        <MaterialCommunityIcons name="clock-outline" size={12}       
-  color={uColor} />
-                        <Text style={[styles.daysLeft, { color: uColor
-  }]}>{daysText(member.expiresIn)}</Text>
-                        {member.expiresIn > 0 && (
-                          <View style={styles.daysTrack}>
-                            <View style={[styles.daysFill, {
-                              width: `${Math.min(100, (member.expiresIn / 30) *      
-  100)}%` as any,
-                              backgroundColor: uColor,
-                            }]} />
-                          </View>
-                        )}
-                      </View>
-
-                      {/* Actions */}
-                      <View style={styles.actionRow}>
-                        <AnimatedPressable
-                          style={[styles.actionBtn, { backgroundColor: Colors.green +
-   '15', borderColor: Colors.green + '30' }]}
-                          scaleDown={0.95}
-                          onPress={() => Linking.openURL(`tel:${member.phone}`)}     
-                        >
-                          <MaterialCommunityIcons name="phone" size={14}
-  color={Colors.green} />
-                          <Text style={[styles.actionBtnText, { color: Colors.green  
-  }]}>CALL</Text>
-                        </AnimatedPressable>
-                        <AnimatedPressable
-                          style={[styles.actionBtn, { backgroundColor: '#25D366' +   
-  '15', borderColor: '#25D366' + '30' }]}
-                          scaleDown={0.95}
-                          onPress={() =>
-  Linking.openURL(`https://wa.me/91${member.phone}`)}
-                        >
-                          <MaterialCommunityIcons name="whatsapp" size={14}
-  color="#25D366" />
-                          <Text style={[styles.actionBtnText, { color: '#25D366'     
-  }]}>WHATSAPP</Text>
-                        </AnimatedPressable>
-                        <AnimatedPressable
-                          style={[styles.actionBtn, styles.renewBtn]}
-                          scaleDown={0.95}
-                          onPress={() => router.push('/(owner)/more/renew-plan' as   
-  any)}
-                        >
-                          <MaterialCommunityIcons name="refresh" size={14}
-  color={Colors.bg} />
-                          <Text style={[styles.actionBtnText, { color: Colors.bg     
-  }]}>RENEW</Text>
-                        </AnimatedPressable>
-                      </View>
+        <FlatList
+          style={styles.container}
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          data={allItems}
+          keyExtractor={item => item.id}
+          renderItem={renderCard}
+          ListHeaderComponent={() => (
+            <>
+              {expiring.length > 0 && (
+                <FadeInView delay={0}>
+                  <View style={styles.alertBanner}>
+                    <View style={styles.alertAccent} />
+                    <MaterialCommunityIcons name="clock-alert-outline" size={22}     
+  color={Colors.orange} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.alertTitle}>
+                        {expiring.filter(m => m.daysLeft <= 7).length} expiring      
+  within 7 days
+                      </Text>
+                      <Text style={styles.alertSub}>
+                        {expiring.length} in next 30 days  ·  {expired.length}       
+  already expired
+                      </Text>
                     </View>
                   </View>
-                );
-              })}
-            </FadeInView>
-          ))}
-
-          {/* ── All Clear State ───────────────────────────────── */}
-          {expiringMembers.length === 0 && (
-            <FadeInView delay={100}>
-              <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="check-circle-outline" size={52}        
-  color={Colors.green} />
-                <Text style={styles.emptyTitle}>ALL CLEAR</Text>
-                <Text style={styles.emptySub}>No memberships expiring in the next 30 
-  days.</Text>
-              </View>
+                </FadeInView>
+              )}
+              {expiring.length > 0 && (
+                <Text style={styles.sectionLabel}>EXPIRING SOON</Text>
+              )}
+            </>
+          )}
+          ListFooterComponent={() =>
+            expired.length > 0 ? (
+              <Text style={[styles.sectionLabel, { marginTop: 20 }]}>RECENTLY        
+  EXPIRED</Text>
+            ) : null
+          }
+          ListEmptyComponent={() => (
+            <FadeInView delay={100} style={styles.empty}>
+              <Text style={styles.emptyEmoji}>✅</Text>
+              <Text style={styles.emptyTitle}>All clear!</Text>
+              <Text style={styles.emptyDesc}>No memberships expiring in the next 30  
+  days</Text>
             </FadeInView>
           )}
-
-          <View style={{ height: 32 }} />
-        </ScrollView>
+        />
       </>
     );
   }
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
-    content:   { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 12 },
+    scroll:    { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40, gap: 8 }, 
+    center:    { flex: 1, justifyContent: 'center', alignItems: 'center',
+  backgroundColor: Colors.bg },
 
-    // Hero
-    hero: {
-      backgroundColor: Colors.bgCard, borderRadius: 20, padding: 20,
-      flexDirection: 'row', alignItems: 'center', gap: 14,
-      borderWidth: 1, overflow: 'hidden',
-    },
-    heroGlow: {
-      position: 'absolute', top: -30, left: -20,
-      width: 100, height: 100, borderRadius: 50,
-      backgroundColor: Colors.accentGlow,
-    },
-    heroMicro:     { fontFamily: Fonts.medium, fontSize: 9, letterSpacing: 1.5 },    
-    heroTitle:     { fontFamily: Fonts.condensedBold, fontSize: 28, color:
-  Colors.text, letterSpacing: 0.3 },
-    heroSub:       { fontFamily: Fonts.regular, fontSize: 11, color:
-  Colors.textMuted, marginTop: 2 },
-    criticalBadge: { alignItems: 'center', backgroundColor: Colors.red + '15',       
-  borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1,      
-  borderColor: Colors.red + '30', gap: 2 },
-    criticalVal:   { fontFamily: Fonts.condensedBold, fontSize: 24, color: Colors.red
-   },
-    criticalLabel: { fontFamily: Fonts.bold, fontSize: 8, color: Colors.red,
-  letterSpacing: 1 },
-
-    // Pills
-    pillsRow: { flexDirection: 'row', gap: 8 },
-    pill: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12,    
-  borderWidth: 1, gap: 2 },
-    pillVal:   { fontFamily: Fonts.condensedBold, fontSize: 20 },
-    pillLabel: { fontFamily: Fonts.bold, fontSize: 7, letterSpacing: 0.8 },
-
-    // Alert banner
     alertBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 12,
-      backgroundColor: Colors.bgCard, borderRadius: 14, padding: 14,
-      borderWidth: 1, borderColor: Colors.red + '30', overflow: 'hidden',
+      backgroundColor: Colors.bgCard, borderRadius: 14,
+      borderWidth: 1, borderColor: Colors.orange + '30',
+      padding: 16, marginBottom: 20, overflow: 'hidden',
     },
     alertAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,       
-  backgroundColor: Colors.red },
-    alertEmoji:  { fontSize: 24 },
-    alertTitle:  { fontFamily: Fonts.bold, fontSize: 12, color: Colors.text,
-  letterSpacing: 0.3 },
+  backgroundColor: Colors.orange },
+    alertTitle:  { fontFamily: Fonts.bold,    fontSize: 13, color: Colors.text },    
     alertSub:    { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, 
   marginTop: 2 },
 
     sectionLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted,    
-  letterSpacing: 1.8, marginTop: 4, marginBottom: 6 },
+  letterSpacing: 1.8, marginBottom: 10 },
 
-    // Member card
-    memberCard: {
-      flexDirection: 'row', backgroundColor: Colors.bgCard,
-      borderRadius: 14, borderWidth: 1, overflow: 'hidden',
-    },
-    memberCardBar:   { width: 3 },
-    memberCardInner: { flex: 1, padding: 14, gap: 10 },
-    memberHeader:    { flexDirection: 'row', alignItems: 'center', gap: 10 },        
-    memberAvatarWrap:{ width: 40, height: 40, borderRadius: 20, justifyContent:      
-  'center', alignItems: 'center' },
-    memberAvatar:    { fontSize: 22 },
-    memberInfo:      { flex: 1 },
-    memberName:      { fontFamily: Fonts.bold, fontSize: 14, color: Colors.text },   
-    memberPlan:      { fontFamily: Fonts.regular, fontSize: 11, color:
-  Colors.textMuted, marginTop: 1 },
-    urgBadge:        { flexDirection: 'row', alignItems: 'center', gap: 4,
-  borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
-    urgText:         { fontFamily: Fonts.bold, fontSize: 9, letterSpacing: 0.5 },    
+    card:      { flexDirection: 'row', alignItems: 'center', gap: 10,
+  backgroundColor: Colors.bgCard, borderRadius: 14, borderWidth: 1, paddingVertical: 
+  12, paddingRight: 12, overflow: 'hidden' },
+    cardBar:   { width: 3, alignSelf: 'stretch' },
+    avatar:    { width: 40, height: 40, borderRadius: 20, backgroundColor:
+  Colors.bgElevated, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5
+   },
+    avatarText:{ fontFamily: Fonts.condensedBold, fontSize: 14 },
+    cardInfo:  { flex: 1 },
+    cardName:  { fontFamily: Fonts.bold,    fontSize: 14, color: Colors.text },      
+    cardMeta:  { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted,   
+  marginTop: 2 },
+    badge:     { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },        
+    badgeText: { fontFamily: Fonts.bold, fontSize: 9, letterSpacing: 0.5 },
+    callBtn:   { width: 36, height: 36, borderRadius: 10, backgroundColor:
+  Colors.greenMuted, justifyContent: 'center', alignItems: 'center' },
 
-    // Days row
-    daysRow:   { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    daysLeft:  { fontFamily: Fonts.bold, fontSize: 12 },
-    daysTrack: { flex: 1, height: 4, backgroundColor: Colors.border, borderRadius: 2,
-   overflow: 'hidden' },
-    daysFill:  { height: 4, borderRadius: 2 },
-
-    // Actions
-    actionRow:     { flexDirection: 'row', gap: 8 },
-    actionBtn:     { flex: 1, flexDirection: 'row', alignItems: 'center',
-  justifyContent: 'center', gap: 5, borderRadius: 8, paddingVertical: 9, borderWidth:
-   1 },
-    actionBtnText: { fontFamily: Fonts.bold, fontSize: 10, letterSpacing: 0.5 },     
-    renewBtn:      { backgroundColor: Colors.accent, borderColor: Colors.accent },   
-
-    // Empty state
-    emptyState: { alignItems: 'center', paddingVertical: 48, gap: 10 },
-    emptyTitle: { fontFamily: Fonts.condensedBold, fontSize: 24, color: Colors.text, 
-  letterSpacing: 0.5 },
-    emptySub:   { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted,  
-  textAlign: 'center' },
+    empty:      { alignItems: 'center', paddingTop: 80 },
+    emptyEmoji: { fontSize: 44, marginBottom: 12 },
+    emptyTitle: { fontFamily: Fonts.bold,    fontSize: 16, color: Colors.text },     
+    emptyDesc:  { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted,  
+  marginTop: 6, textAlign: 'center' },
   });

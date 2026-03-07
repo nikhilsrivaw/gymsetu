@@ -1,8 +1,19 @@
- import { useState } from 'react';                                                    import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';            import { TextInput, SegmentedButtons } from 'react-native-paper';                    import { Stack, useRouter } from 'expo-router';                                      import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                         
-  import AnimatedPressable from '@/components/AnimatedPressable';                      import FadeInView from '@/components/FadeInView';                                  
-                                                                                       export default function AddMemberScreen() {                                        
-    const router = useRouter();                                                      
-    const [fullName, setFullName]             = useState('');                        
+ import { useState } from 'react';
+  import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+  import { TextInput, SegmentedButtons } from 'react-native-paper';
+  import { Stack, useRouter } from 'expo-router';
+  import { Colors } from '@/constants/colors';
+  import { Fonts } from '@/constants/fonts';
+  import AnimatedPressable from '@/components/AnimatedPressable';
+  import FadeInView from '@/components/FadeInView';
+  import { supabase } from '@/lib/supabase';
+  import { useAuthStore } from '@/store/authStore';
+
+  export default function AddMemberScreen() {
+    const router = useRouter();
+    const { profile } = useAuthStore();
+
+    const [fullName, setFullName]             = useState('');
     const [phone, setPhone]                   = useState('');
     const [email, setEmail]                   = useState('');
     const [gender, setGender]                 = useState('male');
@@ -33,16 +44,46 @@
       },
     };
 
-    const handleSave = () => {
+    // Convert DD/MM/YYYY → YYYY-MM-DD for Supabase
+    const parseDob = (raw: string): string | null => {
+      const parts = raw.split('/');
+      if (parts.length === 3 && parts[2].length === 4) {
+        return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2,      
+  '0')}`;
+      }
+      return null;
+    };
+
+    const handleSave = async () => {
       if (!fullName.trim()) { Alert.alert('Required', 'Enter member name'); return; }
       if (!phone.trim())    { Alert.alert('Required', 'Enter phone number'); return; 
   }
+      if (!profile?.gym_id) { Alert.alert('Error', 'No gym found for your account'); 
+  return; }
+
       setSaving(true);
-      setTimeout(() => {
-        setSaving(false);
-        Alert.alert('Done', 'Member added', [{ text: 'OK', onPress: () =>
+      const { error } = await supabase.from('members').insert({
+        gym_id:                  profile.gym_id,
+        full_name:               fullName.trim(),
+        phone:                   phone.trim(),
+        email:                   email.trim() || null,
+        gender:                  gender as any,
+        date_of_birth:           dob ? parseDob(dob) : null,
+        height_cm:               height ? parseFloat(height) : null,
+        weight_kg:               weight ? parseFloat(weight) : null,
+        goal:                    goal as any,
+        emergency_contact_name:  emergencyName.trim() || null,
+        emergency_contact_phone: emergencyPhone.trim() || null,
+        notes:                   notes.trim() || null,
+        status:                  'active',
+        join_date:               new Date().toISOString().split('T')[0],
+        created_by:              profile.id,
+      });
+
+      setSaving(false);
+      if (error) { Alert.alert('Error', error.message); return; }
+      Alert.alert('Done', 'Member added successfully', [{ text: 'OK', onPress: () => 
   router.back() }]);
-      }, 400);
     };
 
     return (
@@ -58,22 +99,24 @@
           <FadeInView delay={0}>
             <Text style={styles.sectionLabel}>PERSONAL INFO</Text>
             <View style={styles.card}>
-              <TextInput label="Full name *"                value={fullName}
-  onChangeText={setFullName}       {...ip} />
-              <TextInput label="Phone *"                    value={phone}
-  onChangeText={setPhone}          keyboardType="phone-pad"    {...ip} />
-              <TextInput label="Email"                      value={email}
-  onChangeText={setEmail}          keyboardType="email-address" autoCapitalize="none"
-   {...ip} />
+              <TextInput label="Full name *" value={fullName}
+  onChangeText={setFullName} {...ip} />
+              <TextInput label="Phone *"     value={phone}    onChangeText={setPhone}
+      keyboardType="phone-pad"     {...ip} />
+              <TextInput label="Email"       value={email}    onChangeText={setEmail}
+      keyboardType="email-address" autoCapitalize="none" {...ip} />
               <Text style={styles.fieldLabel}>GENDER</Text>
               <SegmentedButtons
                 value={gender} onValueChange={setGender}
-                buttons={[{ value: 'male', label: 'Male' }, { value: 'female', label:
-   'Female' }, { value: 'other', label: 'Other' }]}
+                buttons={[
+                  { value: 'male',   label: 'Male'   },
+                  { value: 'female', label: 'Female' },
+                  { value: 'other',  label: 'Other'  },
+                ]}
                 theme={seg}
               />
               <TextInput label="Date of birth (DD/MM/YYYY)" value={dob}
-  onChangeText={setDob}   keyboardType="numeric" {...ip} />
+  onChangeText={setDob} keyboardType="numeric" {...ip} />
             </View>
           </FadeInView>
 
@@ -93,10 +136,10 @@
               <SegmentedButtons
                 value={goal} onValueChange={setGoal}
                 buttons={[
-                  { value: 'weight_loss',      label: 'Lose'  },
-                  { value: 'muscle_gain',      label: 'Gain'  },
-                  { value: 'general_fitness',  label: 'Fit'   },
-                  { value: 'other',            label: 'Other' },
+                  { value: 'weight_loss',     label: 'Lose'  },
+                  { value: 'muscle_gain',     label: 'Gain'  },
+                  { value: 'general_fitness', label: 'Fit'   },
+                  { value: 'other',           label: 'Other' },
                 ]}
                 theme={seg}
               />
@@ -135,7 +178,7 @@
               disabled={saving}
               scaleDown={0.97}
             >
-              <Text style={styles.saveBtnText}>{saving ? 'SAVING...' : '+ ADD   MEMBER'}</Text>
+              <Text style={styles.saveBtnText}>{saving ? 'SAVING...' : '+ ADD  MEMBER'}</Text>
             </AnimatedPressable>
           </FadeInView>
 
@@ -162,19 +205,15 @@
       gap: 14,
     },
     input:      { backgroundColor: Colors.bgElevated },
-    fieldLabel: {
-      fontFamily: Fonts.bold,
-      fontSize: 9, color: Colors.textMuted, letterSpacing: 1.5,
-    },
-    row: { flexDirection: 'row', gap: 12 },
+    fieldLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted,      
+  letterSpacing: 1.5 },
+    row:        { flexDirection: 'row', gap: 12 },
 
     saveBtn: {
       backgroundColor: Colors.accent,
       borderRadius: 14, paddingVertical: 18,
       alignItems: 'center', marginTop: 8,
     },
-    saveBtnText: {
-      fontFamily: Fonts.bold,
-      fontSize: 13, color: '#FFF', letterSpacing: 1.5,
-    },
+    saveBtnText: { fontFamily: Fonts.bold, fontSize: 13, color: '#FFF',
+  letterSpacing: 1.5 },
   });

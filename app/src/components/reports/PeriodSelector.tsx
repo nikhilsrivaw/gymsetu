@@ -1,47 +1,37 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { Colors } from '@/constants/colors';
-import AnimatedPressable from '@/components/AnimatedPressable';
+ import { View, StyleSheet, Text } from 'react-native';                               import AnimatedPressable from '@/components/AnimatedPressable';                      import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                                                                                                                export type Period = 'week' | 'month' | 'year';                                                                                                                           interface Props {                                                                  
+    value:    Period;                                                                    onChange: (p: Period) => void;                                                   
+  }                                                                                                                                                                       
+  const options: { label: string; value: Period }[] = [                              
+    { label: 'WEEK',  value: 'week'  },                                              
+    { label: 'MONTH', value: 'month' },
+    { label: 'YEAR',  value: 'year'  },
+  ];
 
-interface Props {
-  options: string[];
-  selected: string;
-  onSelect: (option: string) => void;
-}
-
-export default function PeriodSelector({ options, selected, onSelect }: Props) {
-  return (
-    <View style={styles.container}>
-      {options.map(opt => {
-        const active = opt === selected;
-        return (
+  export default function PeriodSelector({ value, onChange }: Props) {
+    return (
+      <View style={styles.row}>
+        {options.map(o => (
           <AnimatedPressable
-            key={opt}
-            style={[styles.chip, active && styles.chipActive]}
-            scaleDown={0.95}
-            onPress={() => onSelect(opt)}
+            key={o.value}
+            style={[styles.chip, value === o.value && styles.chipActive]}
+            scaleDown={0.94}
+            onPress={() => onChange(o.value)}
           >
-            <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt}</Text>
+            <Text style={[styles.text, value === o.value && styles.textActive]}>     
+              {o.label}
+            </Text>
           </AnimatedPressable>
-        );
-      })}
-    </View>
-  );
-}
+        ))}
+      </View>
+    );
+  }
 
-const styles = StyleSheet.create({
-  container: { flexDirection: 'row', gap: 8 },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: Colors.bgInput,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  chipActive: {
-    backgroundColor: Colors.accentMuted,
-    borderColor: Colors.accent,
-  },
-  chipText: { fontSize: 13, fontWeight: '500', color: Colors.textMuted },
-  chipTextActive: { color: Colors.accent, fontWeight: '600' },
-});
+  const styles = StyleSheet.create({
+    row:       { flexDirection: 'row', gap: 8 },
+    chip:      { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20,        
+  backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border },      
+    chipActive:{ backgroundColor: Colors.accent, borderColor: Colors.accent },       
+    text:      { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted,       
+  letterSpacing: 1 },
+    textActive:{ color: '#FFF' },
+  });

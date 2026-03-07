@@ -1,61 +1,50 @@
-import { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet } from 'react-native';
-import { Colors } from '@/constants/colors';
+import { useEffect, useRef } from 'react';                                           import { View, Text, StyleSheet, Animated } from 'react-native';                     import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                                                                                                                interface Props {                                                                      label: string;                                                                       value: number;                                                                   
+    total: number;                                                                       color: string;                                                                   
+    formatValue?: (v: number) => string;                                               }                                                                                  
+                                                                                     
+  export default function HorizontalBar({ label, value, total, color, formatValue }: 
+  Props) {
+    const widthAnim = useRef(new Animated.Value(0)).current;
+    const pct = total > 0 ? (value / total) * 100 : 0;
 
-interface BarItem {
-  label: string;
-  percent: number;
-  color: string;
-}
+    useEffect(() => {
+      Animated.timing(widthAnim, {
+        toValue:  pct,
+        duration: 600,
+        useNativeDriver: false,
+      }).start();
+    }, [value, total]);
 
-interface Props {
-  data: BarItem[];
-}
+    return (
+      <View style={styles.row}>
+        <Text style={styles.label} numberOfLines={1}>{label}</Text>
+        <View style={styles.track}>
+          <Animated.View
+            style={[
+              styles.fill,
+              {
+                backgroundColor: color,
+                width: widthAnim.interpolate({
+                  inputRange:  [0, 100],
+                  outputRange: ['0%', '100%'],
+                }),
+              },
+            ]}
+          />
+        </View>
+        <Text style={[styles.value, { color }]}>
+          {formatValue ? formatValue(value) : value}
+        </Text>
+      </View>
+    );
+  }
 
-export default function HorizontalBar({ data }: Props) {
-  const anims = useRef(data.map(() => new Animated.Value(0))).current;
-
-  useEffect(() => {
-    Animated.stagger(
-      100,
-      anims.map(a =>
-        Animated.timing(a, { toValue: 1, duration: 500, useNativeDriver: false })
-      )
-    ).start();
-  }, []);
-
-  return (
-    <View style={styles.container}>
-      {data.map((item, i) => {
-        const width = anims[i].interpolate({
-          inputRange: [0, 1],
-          outputRange: ['0%', `${item.percent}%`],
-        });
-
-        return (
-          <View key={item.label} style={styles.row}>
-            <View style={styles.labelRow}>
-              <View style={[styles.dot, { backgroundColor: item.color }]} />
-              <Text style={styles.label}>{item.label}</Text>
-              <Text style={styles.percent}>{item.percent}%</Text>
-            </View>
-            <View style={styles.track}>
-              <Animated.View style={[styles.fill, { width, backgroundColor: item.color }]} />
-            </View>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { gap: 12 },
-  row: { gap: 6 },
-  labelRow: { flexDirection: 'row', alignItems: 'center' },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  label: { flex: 1, fontSize: 13, color: Colors.textSub, marginLeft: 8, fontWeight: '500' },
-  percent: { fontSize: 13, color: Colors.text, fontWeight: '600' },
-  track: { height: 8, borderRadius: 4, backgroundColor: Colors.bgInput, overflow: 'hidden' },
-  fill: { height: 8, borderRadius: 4 },
-});
+  const styles = StyleSheet.create({
+    row:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    label: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.textMuted, width: 
+  72 },
+    track: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden',
+  backgroundColor: Colors.bgElevated },
+    fill:  { height: '100%', borderRadius: 4 },
+    value: { fontFamily: Fonts.bold, fontSize: 12, width: 50, textAlign: 'right' },  
+  });

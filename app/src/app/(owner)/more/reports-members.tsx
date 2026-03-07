@@ -1,181 +1,176 @@
-import { View, Text, ScrollView, StyleSheet } from 'react-native';                   import { Stack } from 'expo-router';                                                 import { MaterialCommunityIcons } from '@expo/vector-icons';                         import { Colors } from '@/constants/colors';                                       
-  import { Fonts } from '@/constants/fonts';                                           import FadeInView from '@/components/FadeInView';                                  
-  import BarChart from '@/components/reports/BarChart';                                import HorizontalBar from '@/components/reports/HorizontalBar';                    
-  import StatCard from '@/components/reports/StatCard';                              
-  import {                                                                           
-    memberGrowth,
-    membersByStatus,
-    membersByGender,
-    membersByGoal,
-  } from '@/components/reports/mockData';
+ import { useState, useCallback } from 'react';
+  import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from
+  'react-native';                   
+  import { Stack, useFocusEffect } from 'expo-router';
+  import { Colors } from '@/constants/colors';
+  import { Fonts } from '@/constants/fonts';           
+  import { supabase } from '@/lib/supabase';
+  import { useAuthStore } from '@/store/authStore';    
+  import FadeInView from '@/components/FadeInView';                                    import StatCard from '@/components/reports/StatCard';
+  import HorizontalBar from '@/components/reports/HorizontalBar';                                                                                                         
+  const GOAL_COLORS: Record<string, string> = {                                      
+    'Weight Loss':     Colors.red,                                                   
+    'Muscle Gain':     Colors.green,
+    'Fitness':         Colors.accent,
+    'Cardio':          '#3B82F6',
+    'Flexibility':     '#EC4899',
+    'General Health':  Colors.textMuted,
+  };
 
-  type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];       
+  const PLAN_COLORS = [Colors.accent, Colors.green, '#4F6EF7', Colors.orange,        
+  '#EC4899'];
 
-  export default function MembersReport() {
-    const total  = membersByStatus.reduce((s, m) => s + m.value, 0);
-    const active = membersByStatus.find(m => m.label === 'Active')!;
-    const inactive = membersByStatus.find(m => m.label === 'Inactive')!;
-    const frozen   = membersByStatus.find(m => m.label === 'Frozen');
+  interface MembersData {
+    total:          number;
+    active:         number;
+    expired:        number;
+    suspended:      number;
+    maleCount:      number;
+    femaleCount:    number;
+    otherCount:     number;
+    goalBreakdown:  { label: string; value: number; color: string }[];
+    planBreakdown:  { label: string; value: number; color: string }[];
+  }
 
-    const retentionRate = Math.round((active.value / total) * 100);
-    const netNew = memberGrowth[memberGrowth.length - 1].count -
-  memberGrowth[memberGrowth.length - 2].count;
+  export default function ReportsMembersScreen() {
+    const { profile } = useAuthStore();
+    const [data, setData]       = useState<MembersData | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    const statusBars = membersByStatus.map(m => ({
-      label:   `${m.label} (${m.value})`,
-      percent: Math.round((m.value / total) * 100),
-      color:   m.color,
-    }));
+    const fetchData = useCallback(async () => {
+      if (!profile?.gym_id) return;
+      setLoading(true);
 
-    const genderBars = membersByGender.map(m => ({
-      label:   `${m.label} (${m.value})`,
-      percent: Math.round((m.value / total) * 100),
-      color:   m.color,
-    }));
+      const { data: members } = await supabase
+        .from('members')
+        .select('id, status, gender, goal, member_plans(status,membership_plans(name))')
+        .eq('gym_id', profile.gym_id);
 
-    const summaryStats: { label: string; value: string; icon: IconName; color:       
-  string; sub: string }[] = [
-      { label: 'TOTAL',     value: String(total),          icon:
-  'account-group-outline',  color: Colors.accent, sub: 'enrolled members'    },      
-      { label: 'ACTIVE',    value: String(active.value),   icon:
-  'check-circle-outline',   color: Colors.green,  sub: `${retentionRate}% retention` 
-  },
-      { label: 'INACTIVE',  value: String(inactive?.value ?? 0), icon:
-  'account-off-outline', color: Colors.red, sub: 'no active plan'       },
-      { label: 'NET NEW',   value: `+${netNew}`,           icon:
-  'account-plus-outline',   color: '#3B82F6',     sub: 'added this month'    },      
-    ];
+      if (!members) { setLoading(false); return; }
+
+      const active    = members.filter(m => m.status === 'active').length;
+      const expired   = members.filter(m => m.status === 'expired').length;
+      const suspended = members.filter(m => m.status === 'suspended').length;        
+
+      const maleCount   = members.filter(m => m.gender === 'male').length;
+      const femaleCount = members.filter(m => m.gender === 'female').length;
+      const otherCount  = members.length - maleCount - femaleCount;
+
+      // Goal breakdown
+      const goalMap: Record<string, number> = {};
+      members.forEach((m: any) => {
+        if (m.goal) goalMap[m.goal] = (goalMap[m.goal] || 0) + 1;
+      });
+      const goalBreakdown = Object.entries(goalMap)
+        .map(([label, value]) => ({ label, value, color: GOAL_COLORS[label] ||       
+  Colors.accent }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+
+      // Plan popularity from active member_plans
+      const planMap: Record<string, number> = {};
+      members.forEach((m: any) => {
+        const activePlan = m.member_plans?.find((mp: any) => mp.status === 'active');
+        if (activePlan?.membership_plans?.name) {
+          const name = activePlan.membership_plans.name;
+          planMap[name] = (planMap[name] || 0) + 1;
+        }
+      });
+      const planBreakdown = Object.entries(planMap)
+        .map(([label, value], i) => ({ label, value, color: PLAN_COLORS[i %
+  PLAN_COLORS.length] }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+
+      setData({ total: members.length, active, expired, suspended, maleCount,        
+  femaleCount, otherCount, goalBreakdown, planBreakdown });
+      setLoading(false);
+    }, [profile?.gym_id]);
+
+    useFocusEffect(useCallback(() => { fetchData(); }, [fetchData]));
+
+    if (loading) return (
+      <>
+        <Stack.Screen options={{ title: 'Member Analytics' }} />
+        <View style={styles.center}><ActivityIndicator color={Colors.accent}
+  size="large" /></View>
+      </>
+    );
+
+    const total = data?.total || 1;
 
     return (
       <>
         <Stack.Screen options={{ title: 'Member Analytics' }} />
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}  
+        <ScrollView style={styles.container} contentContainerStyle={styles.scroll}   
   showsVerticalScrollIndicator={false}>
 
-          {/* ── Hero ─────────────────────────────────────────── */}
           <FadeInView delay={0}>
-            <View style={styles.hero}>
-              <View style={styles.heroGlow} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.heroMicro}>MEMBER REPORT</Text>
-                <Text style={styles.heroTitle}>{total} MEMBERS</Text>
-                <Text style={styles.heroSub}>Total enrolled strength</Text>
-              </View>
-              <View style={styles.retentionWrap}>
-                <Text style={styles.retentionVal}>{retentionRate}%</Text>
-                <Text style={styles.retentionLabel}>RETENTION</Text>
-              </View>
+            <View style={styles.statRow}>
+              <StatCard emoji="👥" label="TOTAL"   value={(data?.total    ??
+  0).toString()} color={Colors.accent} />
+              <StatCard emoji="✅" label="ACTIVE"  value={(data?.active   ??
+  0).toString()} color={Colors.green}  />
+              <StatCard emoji="❌" label="EXPIRED" value={(data?.expired  ??
+  0).toString()} color={Colors.red}    />
             </View>
           </FadeInView>
 
-          {/* ── Summary Stats ─────────────────────────────────── */}
-          <FadeInView delay={60}>
-            <View style={styles.statsGrid}>
-              {summaryStats.map(s => (
-                <View key={s.label} style={styles.statCard}>
-                  <View style={[styles.statBar, { backgroundColor: s.color }]} />    
-                  <View style={styles.statInner}>
-                    <View style={[styles.statIcon, { backgroundColor: s.color + '18' 
-  }]}>
-                      <MaterialCommunityIcons name={s.icon} size={14} color={s.color}
-   />
-                    </View>
-                    <Text style={styles.statVal}>{s.value}</Text>
-                    <Text style={styles.statLabel}>{s.label}</Text>
-                    <Text style={styles.statSub}>{s.sub}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </FadeInView>
-
-          {/* ── Growth Chart ──────────────────────────────────── */}
-          <FadeInView delay={140}>
+          <FadeInView delay={80}>
             <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={[styles.cardDot, { backgroundColor: Colors.accent }]} />
-                <Text style={styles.cardTitle}>MEMBER GROWTH — 6 MONTHS</Text>       
-              </View>
-              <BarChart
-                data={memberGrowth.map(m => ({ label: m.month, value: m.count }))}   
-                color={Colors.accent}
-              />
-              <View style={styles.growthFooter}>
-                <MaterialCommunityIcons name="trending-up" size={13}
-  color={Colors.green} />
-                <Text style={styles.growthFooterText}>
-                  +{netNew} new members this month vs last month
-                </Text>
+              <Text style={styles.cardTitle}>MEMBERSHIP STATUS</Text>
+              <View style={styles.barsGap}>
+                <HorizontalBar label="Active"    value={data?.active    ?? 0}        
+  total={total} color={Colors.green}  />
+                <HorizontalBar label="Expired"   value={data?.expired   ?? 0}        
+  total={total} color={Colors.red}    />
+                <HorizontalBar label="Suspended" value={data?.suspended ?? 0}        
+  total={total} color={Colors.orange} />
               </View>
             </View>
           </FadeInView>
 
-          {/* ── Status Breakdown ──────────────────────────────── */}
-          <FadeInView delay={240}>
+          <FadeInView delay={160}>
             <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={[styles.cardDot, { backgroundColor: Colors.green }]} /> 
-                <Text style={styles.cardTitle}>STATUS BREAKDOWN</Text>
-              </View>
-              <HorizontalBar data={statusBars} />
-              <View style={styles.statusChips}>
-                {membersByStatus.map(m => (
-                  <View key={m.label} style={[styles.statusChip, { backgroundColor:  
-  m.color + '15', borderColor: m.color + '30' }]}>
-                    <View style={[styles.statusDot, { backgroundColor: m.color }]} />
-                    <Text style={[styles.statusChipText, { color: m.color
-  }]}>{m.label}</Text>
-                    <Text style={[styles.statusChipVal, { color: m.color
-  }]}>{m.value}</Text>
-                  </View>
-                ))}
+              <Text style={styles.cardTitle}>GENDER SPLIT</Text>
+              <View style={styles.barsGap}>
+                <HorizontalBar label="Male"   value={data?.maleCount   ?? 0}
+  total={total} color={Colors.accent}   />
+                <HorizontalBar label="Female" value={data?.femaleCount ?? 0}
+  total={total} color="#EC4899"          />
+                <HorizontalBar label="Other"  value={data?.otherCount  ?? 0}
+  total={total} color={Colors.textMuted} />
               </View>
             </View>
           </FadeInView>
 
-          {/* ── Gender Split ──────────────────────────────────── */}
-          <FadeInView delay={340}>
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={[styles.cardDot, { backgroundColor: '#3B82F6' }]} />    
-                <Text style={styles.cardTitle}>GENDER SPLIT</Text>
-              </View>
-              <HorizontalBar data={genderBars} />
-              <View style={styles.genderRow}>
-                {membersByGender.map(g => (
-                  <View key={g.label} style={styles.genderItem}>
-                    <Text style={[styles.genderVal, { color: g.color
-  }]}>{g.value}</Text>
-                    <Text style={styles.genderLabel}>{g.label.toUpperCase()}</Text>  
-                    <Text style={styles.genderPct}>{Math.round((g.value / total) *   
-  100)}%</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          </FadeInView>
-
-          {/* ── Fitness Goals ─────────────────────────────────── */}
-          <FadeInView delay={440}>
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={[styles.cardDot, { backgroundColor: '#A78BFA' }]} />    
+          {(data?.goalBreakdown.length ?? 0) > 0 && (
+            <FadeInView delay={240}>
+              <View style={styles.card}>
                 <Text style={styles.cardTitle}>FITNESS GOALS</Text>
+                <View style={styles.barsGap}>
+                  {data!.goalBreakdown.map(g => (
+                    <HorizontalBar key={g.label} label={g.label} value={g.value}     
+  total={total} color={g.color} />
+                  ))}
+                </View>
               </View>
-              <HorizontalBar data={membersByGoal} />
-            </View>
-          </FadeInView>
+            </FadeInView>
+          )}
 
-          {/* ── Quick Stats Row ───────────────────────────────── */}
-          <FadeInView delay={520}>
-            <Text style={styles.sectionLabel}>SNAPSHOT</Text>
-            <View style={styles.snapshotRow}>
-              <StatCard emoji="👥" label="Total"   value={String(total)}
-  trend={13.0} />
-              <StatCard emoji="✅" label="Active"  value={String(active.value)}      
-  trend={8.2}  />
-            </View>
-          </FadeInView>
+          {(data?.planBreakdown.length ?? 0) > 0 && (
+            <FadeInView delay={320}>
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>POPULAR PLANS</Text>
+                <View style={styles.barsGap}>
+                  {data!.planBreakdown.map(p => (
+                    <HorizontalBar key={p.label} label={p.label} value={p.value}     
+  total={data?.active || 1} color={p.color} />
+                  ))}
+                </View>
+              </View>
+            </FadeInView>
+          )}
 
           <View style={{ height: 32 }} />
         </ScrollView>
@@ -185,86 +180,14 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';              
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
-    content:   { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 12 },
+    scroll:    { paddingHorizontal: 16, paddingTop: 16 },
+    center:    { flex: 1, justifyContent: 'center', alignItems: 'center',
+  backgroundColor: Colors.bg },
 
-    // Hero
-    hero: {
-      backgroundColor: Colors.bgCard, borderRadius: 20, padding: 20,
-      flexDirection: 'row', alignItems: 'center', gap: 14,
-      borderWidth: 1, borderColor: Colors.accent + '20',
-      overflow: 'hidden',
-    },
-    heroGlow: {
-      position: 'absolute', top: -30, left: -20,
-      width: 100, height: 100, borderRadius: 50,
-      backgroundColor: Colors.accentGlow,
-    },
-    heroMicro:      { fontFamily: Fonts.medium, fontSize: 9, color: Colors.accent,   
-  letterSpacing: 1.5 },
-    heroTitle:      { fontFamily: Fonts.condensedBold, fontSize: 28, color:
-  Colors.text, letterSpacing: 0.3 },
-    heroSub:        { fontFamily: Fonts.regular, fontSize: 11, color:
-  Colors.textMuted, marginTop: 2 },
-    retentionWrap:  { alignItems: 'center', backgroundColor: Colors.green + '15',    
-  borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1,      
-  borderColor: Colors.green + '30' },
-    retentionVal:   { fontFamily: Fonts.condensedBold, fontSize: 26, color:
-  Colors.green },
-    retentionLabel: { fontFamily: Fonts.bold, fontSize: 8, color: Colors.green,      
-  letterSpacing: 1 },
-
-    // Stats
-    statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    statCard: {
-      width: '48%', flexDirection: 'row',
-      backgroundColor: Colors.bgCard, borderRadius: 14,
-      borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
-    },
-    statBar:   { width: 3 },
-    statInner: { flex: 1, padding: 12, gap: 2 },
-    statIcon:  { width: 28, height: 28, borderRadius: 8, justifyContent: 'center',   
-  alignItems: 'center', marginBottom: 5 },
-    statVal:   { fontFamily: Fonts.condensedBold, fontSize: 20, color: Colors.text },
-    statLabel: { fontFamily: Fonts.bold, fontSize: 8, color: Colors.textMuted,       
-  letterSpacing: 1 },
-    statSub:   { fontFamily: Fonts.regular, fontSize: 9, color: Colors.textMuted,    
-  marginTop: 1 },
-
-    sectionLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted,    
-  letterSpacing: 1.8, marginTop: 4 },
-
-    // Card
-    card: {
-      backgroundColor: Colors.bgCard, borderRadius: 16,
-      padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 14,
-    },
-    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    cardDot:    { width: 8, height: 8, borderRadius: 4 },
-    cardTitle:  { fontFamily: Fonts.bold, fontSize: 11, color: Colors.text,
-  letterSpacing: 0.8 },
-
-    growthFooter:     { flexDirection: 'row', alignItems: 'center', gap: 6,
-  marginTop: -6 },
-    growthFooterText: { fontFamily: Fonts.regular, fontSize: 11, color:
-  Colors.textMuted },
-
-    // Status chips
-    statusChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: -4 },  
-    statusChip:  { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 
-  20, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1 },
-    statusDot:   { width: 6, height: 6, borderRadius: 3 },
-    statusChipText: { fontFamily: Fonts.bold, fontSize: 9, letterSpacing: 0.5 },     
-    statusChipVal:  { fontFamily: Fonts.condensedBold, fontSize: 13 },
-
-    // Gender
-    genderRow:   { flexDirection: 'row', gap: 8, marginTop: -4 },
-    genderItem:  { flex: 1, alignItems: 'center', backgroundColor: Colors.bgElevated,
-   borderRadius: 10, paddingVertical: 10, gap: 2 },
-    genderVal:   { fontFamily: Fonts.condensedBold, fontSize: 22 },
-    genderLabel: { fontFamily: Fonts.bold, fontSize: 8, color: Colors.textMuted,     
-  letterSpacing: 0.8 },
-    genderPct:   { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted  
-  },
-
-    snapshotRow: { flexDirection: 'row', gap: 10 },
+    statRow:   { flexDirection: 'row', gap: 8, marginBottom: 14 },
+    card:      { backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1,   
+  borderColor: Colors.border, padding: 18, marginBottom: 14 },
+    cardTitle: { fontFamily: Fonts.bold, fontSize: 10, color: Colors.textMuted,      
+  letterSpacing: 1.5, marginBottom: 14 },
+    barsGap:   { gap: 14 },
   });

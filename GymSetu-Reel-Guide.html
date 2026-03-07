@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GymSetu — Reel & Ad Creation Guide</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; color: #1a1a1a; }
+    .page { max-width: 920px; margin: 40px auto; background: #fff; padding: 60px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); border-radius: 8px; }
+
+    .doc-header { text-align: center; border-bottom: 3px solid #E8501A; padding-bottom: 24px; margin-bottom: 36px; }
+    .doc-header h1 { font-size: 30px; color: #E8501A; letter-spacing: 3px; font-weight: 800; }
+    .doc-header .sub { font-size: 13px; color: #888; margin-top: 6px; letter-spacing: 1px; }
+    .doc-header .badge { display: inline-block; background: #E8501A; color: #fff; font-size: 11px; font-weight: 700; padding: 4px 14px; border-radius: 20px; margin-top: 10px; letter-spacing: 1px; }
+
+    .section { margin-bottom: 44px; }
+    .section-title { font-size: 13px; font-weight: 800; color: #E8501A; letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: #E8501A30; }
+
+    /* Reel Type Cards */
+    .reel-card { border: 1px solid #eee; border-radius: 14px; padding: 24px; margin-bottom: 20px; position: relative; overflow: hidden; }
+    .reel-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+    .reel-card.type1::before { background: #E8501A; }
+    .reel-card.type2::before { background: #22C55E; }
+    .reel-card.type3::before { background: #3B82F6; }
+    .reel-card.type4::before { background: #F59E0B; }
+    .reel-card.type5::before { background: #A78BFA; }
+    .reel-number { font-size: 10px; font-weight: 800; letter-spacing: 2px; margin-bottom: 6px; }
+    .reel-title { font-size: 18px; font-weight: 800; color: #1a1a1a; margin-bottom: 4px; }
+    .reel-subtitle { font-size: 12px; color: #888; margin-bottom: 16px; }
+    .reel-meta { display: flex; gap: 20px; margin-bottom: 16px; flex-wrap: wrap; }
+    .reel-meta-item { font-size: 11px; font-weight: 700; color: #444; background: #f5f5f5; padding: 4px 12px; border-radius: 20px; }
+
+    /* Script blocks */
+    .script-block { margin: 12px 0; }
+    .script-label { font-size: 9px; font-weight: 800; letter-spacing: 2px; color: #888; margin-bottom: 5px; }
+    .script-box { background: #1a1a1a; color: #fff; border-radius: 10px; padding: 14px 18px; font-size: 13px; line-height: 1.7; }
+    .script-box .hook { color: #ff6b35; font-weight: 800; font-size: 14px; }
+    .script-box .visual { color: #60a5fa; font-style: italic; font-size: 11px; }
+    .script-box .narration { color: #f0f0f0; }
+    .script-box .cta { color: #4ade80; font-weight: 700; }
+    .script-box .text-overlay { color: #fbbf24; font-weight: 700; }
+
+    /* Shot list */
+    .shot-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+    .shot-item { display: flex; gap: 12px; align-items: flex-start; padding: 10px 14px; background: #f9f9f9; border-radius: 8px; border-left: 3px solid #eee; }
+    .shot-num { width: 24px; height: 24px; border-radius: 50%; background: #E8501A; color: #fff; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .shot-text strong { font-size: 12px; color: #1a1a1a; display: block; }
+    .shot-text span { font-size: 11px; color: #888; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
+    thead tr { background: #E8501A; color: #fff; }
+    thead th { padding: 10px 14px; text-align: left; font-weight: 700; letter-spacing: 0.5px; }
+    tbody tr:nth-child(even) { background: #fafafa; }
+    tbody tr:hover { background: #fff4f0; }
+    tbody td { padding: 10px 14px; border-bottom: 1px solid #eee; vertical-align: top; }
+    .total-row td { font-weight: 800; background: #fff4f0 !important; color: #E8501A; }
+
+    /* Caption template */
+    .caption-box { background: #f9f9f9; border: 1px solid #eee; border-radius: 10px; padding: 18px; font-size: 13px; line-height: 1.9; color: #333; font-family: Georgia, serif; }
+    .caption-box .emoji { font-style: normal; }
+    .caption-box .hashtags { color: #3B82F6; font-size: 12px; margin-top: 10px; display: block; line-height: 2; }
+
+    /* Hashtag grid */
+    .hashtag-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+    .hashtag { background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 20px; border: 1px solid #bfdbfe; }
+    .hashtag.fire { background: #fff4f0; color: #E8501A; border-color: #fecaca; }
+    .hashtag.green { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+
+    /* Don't list */
+    .dont-list { display: flex; flex-direction: column; gap: 10px; }
+    .dont-item { display: flex; gap: 12px; padding: 12px 16px; border-radius: 10px; align-items: flex-start; }
+    .dont-item.bad { background: #fef2f2; border: 1px solid #fecaca; }
+    .dont-item.good { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .dont-icon { font-size: 16px; flex-shrink: 0; }
+    .dont-text strong { font-size: 13px; display: block; margin-bottom: 2px; }
+    .dont-text span { font-size: 11px; color: #666; }
+
+    /* Info boxes */
+    .info-box { background: #fff4f0; border-left: 4px solid #E8501A; padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 13px; color: #444; line-height: 1.7; }
+    .info-box strong { color: #E8501A; }
+    .info-box.green { background: #f0fdf4; border-left-color: #22C55E; }
+    .info-box.green strong { color: #15803d; }
+    .info-box.blue { background: #eff6ff; border-left-color: #3B82F6; }
+    .info-box.blue strong { color: #1d4ed8; }
+    .info-box.dark { background: #1a1a1a; border-left-color: #E8501A; color: #ccc; }
+    .info-box.dark strong { color: #ff6b35; }
+
+    /* Targeting grid */
+    .target-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0; }
+    .target-card { border: 1px solid #eee; border-radius: 10px; padding: 16px; }
+    .target-card h4 { font-size: 11px; font-weight: 800; color: #888; letter-spacing: 1.5px; margin-bottom: 10px; }
+    .target-card ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    .target-card ul li { font-size: 12px; color: #444; padding: 5px 10px; background: #f5f5f5; border-radius: 6px; }
+    .target-card ul li::before { content: '→ '; color: #E8501A; font-weight: 700; }
+
+    /* Schedule */
+    .schedule-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin: 12px 0; }
+    .day-card { border: 1px solid #eee; border-radius: 8px; padding: 10px 6px; text-align: center; }
+    .day-card.post-day { border-color: #E8501A; background: #fff4f0; }
+    .day-card .day-name { font-size: 9px; font-weight: 800; color: #888; letter-spacing: 1px; margin-bottom: 6px; }
+    .day-card .day-content { font-size: 10px; color: #444; line-height: 1.4; }
+    .day-card.post-day .day-content { color: #E8501A; font-weight: 700; }
+
+    .highlight { color: #E8501A; font-weight: 700; }
+    .green-text { color: #22C55E; font-weight: 700; }
+    .muted { color: #888; font-size: 11px; }
+
+    .doc-footer { text-align: center; margin-top: 48px; padding-top: 24px; border-top: 1px solid #eee; font-size: 11px; color: #aaa; letter-spacing: 1px; }
+
+    @media print {
+      body { background: #fff; }
+      .page { box-shadow: none; margin: 0; padding: 40px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="doc-header">
+    <h1>GYMSETU — REEL &amp; AD GUIDE</h1>
+    <div class="sub">SCRIPTS · SHOT LISTS · CAPTIONS · HASHTAGS · AD TARGETING</div>
+    <div class="badge">INSTAGRAM &amp; META ADS PLAYBOOK</div>
+  </div>
+
+  <!-- ═══ THE GOLDEN RULE ═══ -->
+  <div class="section">
+    <div class="section-title">00 — The Golden Rule of Reels</div>
+    <div class="info-box dark">
+      <strong>You have 1.7 seconds.</strong> That's how long someone takes to scroll past your reel if the first frame doesn't grab them. The hook is everything. Your first 3 seconds must either create CURIOSITY ("how is that possible?"), show PAIN ("does your gym owner still use notebooks?"), or trigger DESIRE ("this gym earns ₹1.2L/month, here's how"). Everything else — the app demo, the features, the CTA — only matters if they stay for second 4.
+    </div>
+    <div class="info-box blue">
+      <strong>The formula that works:</strong> Hook (0–3s) → Problem/Pain (3–8s) → Solution reveal (8–18s) → Quick demo (18–35s) → Strong CTA (35–45s). Total: 45–60 seconds is the sweet spot. Under 30s feels rushed. Over 90s loses people.
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 1: REEL TYPE 1 ═══ -->
+  <div class="section">
+    <div class="section-title">01 — The 5 Reel Types You Must Make</div>
+
+    <!-- Type 1 -->
+    <div class="reel-card type1">
+      <div class="reel-number" style="color:#E8501A;">REEL TYPE 01 / 05</div>
+      <div class="reel-title">The Problem-Solution Reel</div>
+      <div class="reel-subtitle">Show the gym owner's pain → reveal GymSetu as the fix. Highest conversion reel type.</div>
+      <div class="reel-meta">
+        <div class="reel-meta-item">⏱ 45–60 seconds</div>
+        <div class="reel-meta-item">🎯 Cold audience</div>
+        <div class="reel-meta-item">📱 POV / Selfie cam</div>
+        <div class="reel-meta-item">🔥 Run as paid ad</div>
+      </div>
+
+      <div class="script-block">
+        <div class="script-label">FULL SCRIPT</div>
+        <div class="script-box">
+          <div class="hook">[0–3s] TEXT ON SCREEN: "Gym owners in 2025 are still doing THIS 👇"</div>
+          <br/>
+          <div class="visual">[VISUAL: Show someone writing in a register with pen — or just narrate over blank screen]</div>
+          <br/>
+          <div class="narration">[3–8s] "Bhai, ek baat bata — tu abhi bhi register mein naam likhta hai? Dues yaad rakhne ke liye WhatsApp pe khud message bhejta hai? Month end pe calculator lekar baithta hai?"</div>
+          <br/>
+          <div class="visual">[VISUAL: Switch to phone showing GymSetu dashboard]</div>
+          <br/>
+          <div class="narration">[8–20s] "Main bana diya ek app sirf gym owners ke liye — GymSetu. Ek screen pe tera poora gym — members, payments, dues, attendance, sab kuch."</div>
+          <br/>
+          <div class="text-overlay">[TEXT OVERLAY: Show: Members list → Payment screen → Dashboard stats]</div>
+          <br/>
+          <div class="narration">[20–35s] "Membership expire hone se 7 din pehle member ko automatic WhatsApp jaata hai. Payment hua — receipt bhi seedha phone pe. Tu sirf results dekh."</div>
+          <br/>
+          <div class="cta">[35–45s] "Link in bio pe ja, free demo book kar. Ek baar dekh — phir khud decide kar."</div>
+        </div>
+      </div>
+
+      <div class="script-block">
+        <div class="script-label">SHOT LIST — WHAT TO FILM</div>
+        <div class="shot-list">
+          <div class="shot-item">
+            <div class="shot-num">1</div>
+            <div class="shot-text"><strong>Register shot (2–3s)</strong><span>Film a physical register with names written — just the book, no face needed. Or skip if you don't have one.</span></div>
+          </div>
+          <div class="shot-item">
+            <div class="shot-num">2</div>
+            <div class="shot-text"><strong>Selfie talking to camera (5–8s)</strong><span>Casual, direct — like talking to a friend. No formal setup needed. Natural light, gym or home background.</span></div>
+          </div>
+          <div class="shot-item">
+            <div class="shot-num">3</div>
+            <div class="shot-text"><strong>Screen recording of GymSetu (15s)</strong><span>Record your phone screen: open dashboard → tap Members → open Payments → show the expiry alert card. Keep it flowing.</span></div>
+          </div>
+          <div class="shot-item">
+            <div class="shot-num">4</div>
+            <div class="shot-text"><strong>WhatsApp notification mockup (3s)</strong><span>Screenshot of a WhatsApp message saying "Your gym membership expires in 7 days" — show it on screen.</span></div>
+          </div>
+          <div class="shot-item">
+            <div class="shot-num">5</div>
+            <div class="shot-text"><strong>Final CTA — selfie (5s)</strong><span>"Link in bio" with pointing gesture. Keep it natural, not salesy.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Type 2 -->
+    <div class="reel-card type2">
+      <div class="reel-number" style="color:#22C55E;">REEL TYPE 02 / 05</div>
+      <div class="reel-title">The Feature Demo Reel</div>
+      <div class="reel-subtitle">Pure screen recording — show the app doing something impressive. No talking needed.</div>
+      <div class="reel-meta">
+        <div class="reel-meta-item">⏱ 30–45 seconds</div>
+        <div class="reel-meta-item">🎯 Warm audience (retargeting)</div>
+        <div class="reel-meta-item">📱 Screen record only</div>
+        <div class="reel-meta-item">📈 Great for organic reach</div>
+      </div>
+
+      <div class="script-block">
+        <div class="script-label">FULL SCRIPT (Text overlays only — no voiceover needed)</div>
+        <div class="script-box">
+          <div class="hook">[0–3s] TEXT: "POV: You run a gym and THIS is your Monday morning 🔥"</div>
+          <br/>
+          <div class="visual">[VISUAL: Open GymSetu → Dashboard loads — show "TODAY IN: 68 check-ins", "THIS MONTH: ₹1.96L"]</div>
+          <br/>
+          <div class="text-overlay">[3–8s] TEXT: "Kitne log aaye aaj? → Already tracked ✅"</div>
+          <div class="visual">[Tap Attendance screen — show list of names checked in]</div>
+          <br/>
+          <div class="text-overlay">[8–15s] TEXT: "Kiska payment pending hai? → One tap 👆"</div>
+          <div class="visual">[Tap Dues section — show members with pending amounts highlighted in red]</div>
+          <br/>
+          <div class="text-overlay">[15–25s] TEXT: "Membership expire kaun si hoti hai? → Already alerted ⚠️"</div>
+          <div class="visual">[Show expiry alert card — "6 memberships expiring this week"]</div>
+          <br/>
+          <div class="text-overlay">[25–35s] TEXT: "Is month kitna kamaya? → Revenue report dekho 📊"</div>
+          <div class="visual">[Open Reports → show bar chart going up → ₹1.96L]</div>
+          <br/>
+          <div class="cta">[35–40s] TEXT: "GymSetu — Apne gym ka poora control, ek app mein. Link in bio 🔗"</div>
+        </div>
+      </div>
+
+      <div class="script-block">
+        <div class="script-label">SHOT LIST</div>
+        <div class="shot-list">
+          <div class="shot-item">
+            <div class="shot-num">1</div>
+            <div class="shot-text"><strong>Phone screen recording — full flow</strong><span>Use Android's built-in screen recorder. Record in one take: Dashboard → Attendance → Payments/Dues → Expiry Alert → Reports. Keep each screen for 5–6 seconds.</span></div>
+          </div>
+          <div class="shot-item">
+            <div class="shot-num">2</div>
+            <div class="shot-text"><strong>Add text overlays in CapCut</strong><span>Import screen recording → add bold white text with black shadow for each transition. Use CapCut's auto-caption or manual text. Add trending audio underneath.</span></div>
+          </div>
+          <div class="shot-item">
+            <div class="shot-num">3</div>
+            <div class="shot-text"><strong>Trending background music</strong><span>Pick an upbeat trending track from CapCut or Instagram's music library. Keep it at 15–20% volume so the text is the focus.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Type 3 -->
+    <div class="reel-card type3">
+      <div class="reel-number" style="color:#3B82F6;">REEL TYPE 03 / 05</div>
+      <div class="reel-title">The "What If" / Curiosity Reel</div>
+      <div class="reel-subtitle">Ask a question that gym owners can't ignore. Drives comments and saves.</div>
+      <div class="reel-meta">
+        <div class="reel-meta-item">⏱ 30–40 seconds</div>
+        <div class="reel-meta-item">🎯 Cold audience</div>
+        <div class="reel-meta-item">📱 Selfie cam talking</div>
+        <div class="reel-meta-item">💬 Drives comments</div>
+      </div>
+
+      <div class="script-block">
+        <div class="script-label">FULL SCRIPT</div>
+        <div class="script-box">
+          <div class="hook">[0–3s] "Agar teri gym ka ek member aaj payment nahi karta, tujhe pata bhi nahi chalega — sach hai ya jhooth?"</div>
+          <br/>
+          <div class="narration">[3–12s] "Dekh, zyaadatar gym owners ke paas ek proper system hi nahi hai. Koi member 2 mahine se due nahi deta — owner ko yaad hi nahi. Woh member quietly chala jaata hai. Paise bhi gaye, member bhi gaya."</div>
+          <br/>
+          <div class="visual">[VISUAL: App screen showing dues alert — "Rahul Singh — ₹3,500 overdue — 45 days"]</div>
+          <br/>
+          <div class="narration">[12–28s] "GymSetu mein ek dedicated dues tracker hai. Har pending payment — member ka naam, amount, kitne din se pending — sab ek jagah. Auto-reminder bhi jaata hai WhatsApp pe. Tu sirf confirm karta hai."</div>
+          <br/>
+          <div class="cta">[28–35s] "Comment mein bata — teri gym mein kitna pending dues hai abhi? I bet it's more than you think. Link in bio pe demo dekh."</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Type 4 -->
+    <div class="reel-card type4">
+      <div class="reel-number" style="color:#F59E0B;">REEL TYPE 04 / 05</div>
+      <div class="reel-title">The Numbers / Results Reel</div>
+      <div class="reel-subtitle">Show real-looking numbers and revenue data. Greed and ambition are powerful motivators.</div>
+      <div class="reel-meta">
+        <div class="reel-meta-item">⏱ 45–60 seconds</div>
+        <div class="reel-meta-item">🎯 All audiences</div>
+        <div class="reel-meta-item">📱 Mix of cam + screen</div>
+        <div class="reel-meta-item">🔥 Highest share rate</div>
+      </div>
+
+      <div class="script-block">
+        <div class="script-label">FULL SCRIPT</div>
+        <div class="script-box">
+          <div class="hook">[0–3s] TEXT ON SCREEN: "Ek chhote gym ki monthly income kitni honi chahiye? 🤔"</div>
+          <br/>
+          <div class="narration">[3–10s] "Maan le teri gym mein 150 members hain. Average plan ₹800/month. Theoritcally ₹1.2 lakh/month. But reality mein kitna aata hai? Usually 60–70% only. Baaki kahan jaata hai?"</div>
+          <br/>
+          <div class="narration">[10–22s] "Leaked dues. Members jo quietly chale gaye. Payments jo record hi nahi hue. Plans jo expire ho gayi aur koi notice nahi kiya. Yahi gap hai theory aur reality ke beech."</div>
+          <br/>
+          <div class="visual">[VISUAL: GymSetu Reports screen — show ₹1.96L this month, dues ₹24.5K pending, 6 expiring this week]</div>
+          <br/>
+          <div class="narration">[22–38s] "GymSetu ke saath ek gym owner ne mujhe bataya — pehle mahine hi usne ₹18,000 ka dues recover kiya jo ushe pata bhi nahi tha chal raha tha. Sirf because app ne automatically track kiya."</div>
+          <br/>
+          <div class="cta">[38–48s] "Tera gym bhi yeh kar sakta hai. 999 rupaye/month. Link in bio pe free demo book kar — 15 minute mein poori app dikha dunga."</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Type 5 -->
+    <div class="reel-card type5">
+      <div class="reel-number" style="color:#A78BFA;">REEL TYPE 05 / 05</div>
+      <div class="reel-title">The "Behind the Build" Reel</div>
+      <div class="reel-subtitle">Show yourself building GymSetu. Authenticity builds trust faster than any ad.</div>
+      <div class="reel-meta">
+        <div class="reel-meta-item">⏱ 30–45 seconds</div>
+        <div class="reel-meta-item">🎯 Brand building</div>
+        <div class="reel-meta-item">📱 Selfie + desk shots</div>
+        <div class="reel-meta-item">❤️ Builds loyal followers</div>
+      </div>
+
+      <div class="script-block">
+        <div class="script-label">FULL SCRIPT</div>
+        <div class="script-box">
+          <div class="hook">[0–3s] "Main ek gym management app bana raha hoon. Yeh meri journey hai — Day 1 se."</div>
+          <br/>
+          <div class="visual">[VISUAL: Desk setup / laptop / VS Code / phone showing the app]</div>
+          <br/>
+          <div class="narration">[3–15s] "Meine notice kiya ki mere sheher ke zyaadatar gym owners abhi bhi registers aur WhatsApp groups se apna gym chalate hain. No proper system. So main kuch build karne baitha."</div>
+          <br/>
+          <div class="narration">[15–28s] "GymSetu — yeh main akele bana raha hoon. Member management, automatic WhatsApp reminders, payment tracking, AI insights — sab ek app mein. Aur mein yeh sirf ₹999/month mein de raha hoon."</div>
+          <br/>
+          <div class="visual">[VISUAL: Show app screens quickly — dashboard, members, payments]</div>
+          <br/>
+          <div class="cta">[28–35s] "Agar tu ek gym owner hai — mujhe DM kar. Main personally demo dunga. Pehle 20 gyms free trial milegi."</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 2: HOOK FORMULAS ═══ -->
+  <div class="section">
+    <div class="section-title">02 — 20 Hook Lines to Steal</div>
+    <div class="info-box">
+      <strong>Rule:</strong> Never start with "Hi, I'm..." or "Today I'm going to show you...". Start with a statement that creates instant curiosity, pain, or desire. Copy these directly.
+    </div>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Hook Line</th><th>Why It Works</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>"Gym owners, yeh reel dekh lo — seriously."</td><td class="muted">Direct address + urgency</td></tr>
+        <tr><td>2</td><td>"Tu abhi bhi register mein naam likhta hai? 😬"</td><td class="muted">Pain + slight shame = watch</td></tr>
+        <tr><td>3</td><td>"Ek gym owner ne ₹18,000 recover kiya — ek app se."</td><td class="muted">Specific number = curiosity</td></tr>
+        <tr><td>4</td><td>"Teri gym mein kitna pending dues hai — guess kar."</td><td class="muted">Interactive challenge</td></tr>
+        <tr><td>5</td><td>"POV: Tu subah uthta hai aur tera gym ka saara data ready hai."</td><td class="muted">POV format — very viral</td></tr>
+        <tr><td>6</td><td>"Agar tera gym ₹50K bhi earn nahi kar raha — yeh kyun?"</td><td class="muted">Revenue aspiration + mystery</td></tr>
+        <tr><td>7</td><td>"Gym software companies ₹5,000/month le rahe hain. Main ₹999 mein deta hoon. Kyon?"</td><td class="muted">Price contrast = instant value</td></tr>
+        <tr><td>8</td><td>"Member expire hua aur tujhe pata nahi — yeh kitni baar hua hai?"</td><td class="muted">Relatable guilt</td></tr>
+        <tr><td>9</td><td>"Main ek student hoon aur main ek gym app bana raha hoon. Yeh kyun?"</td><td class="muted">Underdog story = sympathy</td></tr>
+        <tr><td>10</td><td>"Teri gym ke 6 members is hafte expire ho rahe hain. Tu jaanta hai?"</td><td class="muted">Urgency + data = fear</td></tr>
+        <tr><td>11</td><td>"Automatic WhatsApp message — bina tu kuch kiye. Dekh kaise."</td><td class="muted">Automation fantasy</td></tr>
+        <tr><td>12</td><td>"Gym management itna easy nahi hona chahiye — but it is."</td><td class="muted">Contrarian hook</td></tr>
+        <tr><td>13</td><td>"Ek gym owner ka poora mahina — sirf ek phone se manage kiya."</td><td class="muted">Proof + aspiration</td></tr>
+        <tr><td>14</td><td>"Yeh app itna simple hai ki tera staff bhi use kar sakta hai."</td><td class="muted">Ease = desire</td></tr>
+        <tr><td>15</td><td>"Gym software ₹0 se banaya — aur ₹999 mein de raha hoon. Real story."</td><td class="muted">Authenticity + price shock</td></tr>
+        <tr><td>16</td><td>"Agar tera gym 50+ members hai aur tu Excel use kar raha hai — stop."</td><td class="muted">Direct intervention</td></tr>
+        <tr><td>17</td><td>"Tera member ka birthday aaj hai — tune wish kiya? GymSetu karta hai."</td><td class="muted">Emotional + feature demo</td></tr>
+        <tr><td>18</td><td>"Is month kitna revenue aaya? Gymsetu mein 1 tap — answer ready."</td><td class="muted">Speed + convenience</td></tr>
+        <tr><td>19</td><td>"Main tujhe 15 minutes mein poora gym digital kar dunga — free mein."</td><td class="muted">Time-bound offer = action</td></tr>
+        <tr><td>20</td><td>"Yeh reel sirf gym owners ke liye hai — baaki scroll kar sakte ho."</td><td class="muted">Exclusivity = gym owners stay</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ SECTION 3: CAPTION TEMPLATES ═══ -->
+  <div class="section">
+    <div class="section-title">03 — Caption Templates (Copy &amp; Use)</div>
+    <div class="info-box blue">
+      <strong>Caption strategy:</strong> First line must be a standalone hook (same as video hook). Instagram shows only 2 lines before "more" — make those 2 lines pull them in. Use emojis sparingly — 3 to 5 max.
+    </div>
+
+    <p style="font-size:12px; font-weight:800; color:#444; margin: 0 0 10px; letter-spacing:1px;">CAPTION 1 — For Problem-Solution Reel</p>
+    <div class="caption-box">
+      Tu abhi bhi register aur calculator se apna gym chala raha hai? 😬<br/><br/>
+      Main samajhta hoon — purani aadatein mushkil se jaati hain. But yeh 2025 hai aur teri gym deserve karti hai ek proper system.<br/><br/>
+      GymSetu ek gym management app hai jo banaya gaya sirf Indian gym owners ke liye:<br/>
+      ✅ Members, payments, attendance — sab ek jagah<br/>
+      ✅ Auto WhatsApp reminders — tu kuch nahi karta<br/>
+      ✅ Daily business summary — subah uthke pata chal<br/>
+      ✅ Sirf ₹999/month — koi hidden charge nahi<br/><br/>
+      Free demo chahiye? Link in bio pe ja. 15 minute — poori app dikha dunga personally.<br/><br/>
+      <span class="hashtags">#gymowner #gymsetu #gymmanagement #fitnessbusiness #gymIndia #smallbusiness #indiangyms #gymsoftware #fitnessentrepreneur #gymlife</span>
+    </div>
+
+    <p style="font-size:12px; font-weight:800; color:#444; margin: 20px 0 10px; letter-spacing:1px;">CAPTION 2 — For Feature Demo Reel</p>
+    <div class="caption-box">
+      Monday morning aur tera gym ka poora data already ready hai. 📊<br/><br/>
+      Yahi hota hai jab tu GymSetu use karta hai:<br/>
+      → Aaj kitne log aaye — already tracked<br/>
+      → Kiska dues pending hai — already shown<br/>
+      → Is week kaun expire ho raha hai — already alerted<br/>
+      → Is month kitna revenue — already calculated<br/><br/>
+      Tu sirf gym chalata hai. App sab handle karta hai.<br/><br/>
+      ₹999/month se start hota hai. Link in bio pe free trial le. 🔗<br/><br/>
+      <span class="hashtags">#gymsetu #gymapp #gymmanagement #automate #gymowner #fitnessbusiness #gymtech #indianstartup #gymsoftware</span>
+    </div>
+
+    <p style="font-size:12px; font-weight:800; color:#444; margin: 20px 0 10px; letter-spacing:1px;">CAPTION 3 — For the "Behind the Build" Reel</p>
+    <div class="caption-box">
+      Maine ek problem notice ki aur usse solve karna shuru kar diya. 🏗️<br/><br/>
+      Mere sheher ke gym owners abhi bhi registers aur WhatsApp groups se gym manage kar rahe the. Koi proper software nahi — ya jo tha woh itna mahanga tha ki chhote gyms afford nahi kar sakte.<br/><br/>
+      To maine GymSetu banaya. Sirf gym owners ke liye. Sirf India ke liye.<br/><br/>
+      Abhi beta version chal raha hai. Pehle 20 gym owners ko free trial + personal onboarding milegi.<br/><br/>
+      Agar tu interested hai — DM kar "DEMO" aur main seedha baat karunga. 💬<br/><br/>
+      <span class="hashtags">#buildinpublic #indianstartup #gymsetu #gymmanagement #solofounder #saas #gymowner #startupindia #techforindia</span>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 4: HASHTAG STRATEGY ═══ -->
+  <div class="section">
+    <div class="section-title">04 — Hashtag Strategy</div>
+    <div class="info-box">
+      <strong>Instagram 2025 rule:</strong> Use 5–10 highly relevant hashtags. Avoid generic ones like #fitness #gym (too broad, you'll get buried). Mix: 3 niche hashtags + 3 medium hashtags + 2–3 brand hashtags.
+    </div>
+
+    <p style="font-size:12px; font-weight:800; color:#444; margin: 0 0 8px; letter-spacing:1px;">🔥 NICHE HASHTAGS (use always)</p>
+    <div class="hashtag-grid">
+      <div class="hashtag fire">#gymowner</div>
+      <div class="hashtag fire">#gymsetu</div>
+      <div class="hashtag fire">#gymmanagement</div>
+      <div class="hashtag fire">#indiangyms</div>
+      <div class="hashtag fire">#gymsoftware</div>
+      <div class="hashtag fire">#fitnessbusiness</div>
+      <div class="hashtag fire">#gymtech</div>
+      <div class="hashtag fire">#gymIndia</div>
+    </div>
+
+    <p style="font-size:12px; font-weight:800; color:#444; margin: 16px 0 8px; letter-spacing:1px;">🔵 MEDIUM HASHTAGS (rotate these)</p>
+    <div class="hashtag-grid">
+      <div class="hashtag">#fitnessentrepreneur</div>
+      <div class="hashtag">#smallbusiness</div>
+      <div class="hashtag">#indianstartup</div>
+      <div class="hashtag">#startupindia</div>
+      <div class="hashtag">#buildinpublic</div>
+      <div class="hashtag">#gymlife</div>
+      <div class="hashtag">#fitnessapp</div>
+      <div class="hashtag">#saas</div>
+      <div class="hashtag">#techforindia</div>
+      <div class="hashtag">#gymowner</div>
+    </div>
+
+    <p style="font-size:12px; font-weight:800; color:#444; margin: 16px 0 8px; letter-spacing:1px;">✅ GREEN HASHTAGS (occasionally add)</p>
+    <div class="hashtag-grid">
+      <div class="hashtag green">#membershiptracking</div>
+      <div class="hashtag green">#gymautomation</div>
+      <div class="hashtag green">#whatsappbusiness</div>
+      <div class="hashtag green">#gymrevenue</div>
+      <div class="hashtag green">#solofounder</div>
+      <div class="hashtag green">#madeinindia</div>
+      <div class="hashtag green">#fitnesssoftware</div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 5: POSTING SCHEDULE ═══ -->
+  <div class="section">
+    <div class="section-title">05 — Weekly Posting Schedule</div>
+    <div class="info-box green">
+      <strong>Target posting time:</strong> 7:00 AM – 9:00 AM or 7:00 PM – 9:00 PM IST. Gym owners check their phones early morning and evening. Avoid 12PM–3PM (gym peak hours, they're busy). Post at least 4 times/week for first 3 months.
+    </div>
+
+    <div class="schedule-grid">
+      <div class="day-card post-day">
+        <div class="day-name">MON</div>
+        <div class="day-content">Problem-Solution Reel + Run as Ad</div>
+      </div>
+      <div class="day-card">
+        <div class="day-name">TUE</div>
+        <div class="day-content">Story: Poll — "How do you track dues?"</div>
+      </div>
+      <div class="day-card post-day">
+        <div class="day-name">WED</div>
+        <div class="day-content">Feature Demo Reel (screen record)</div>
+      </div>
+      <div class="day-card">
+        <div class="day-name">THU</div>
+        <div class="day-content">Carousel: "5 things your gym software must have"</div>
+      </div>
+      <div class="day-card post-day">
+        <div class="day-name">FRI</div>
+        <div class="day-content">Numbers/Results Reel</div>
+      </div>
+      <div class="day-card">
+        <div class="day-name">SAT</div>
+        <div class="day-content">Story: Behind the scenes or DM Q&amp;A</div>
+      </div>
+      <div class="day-card post-day">
+        <div class="day-name">SUN</div>
+        <div class="day-content">Behind the Build or Curiosity Reel</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 6: META AD TARGETING ═══ -->
+  <div class="section">
+    <div class="section-title">06 — Meta Ads Targeting Settings</div>
+    <div class="info-box">
+      <strong>When to run paid ads:</strong> Boost only your best-performing organic reel (one that already got 500+ organic views). Don't boost a reel with low organic performance — Meta's algorithm will confirm it's bad content. Budget: ₹200–300/day per ad.
+    </div>
+
+    <div class="target-grid">
+      <div class="target-card">
+        <h4>LOCATION</h4>
+        <ul>
+          <li>Your city first (Tier 2/3 cities — less competition)</li>
+          <li>Nearby cities within 100km radius</li>
+          <li>Expand to Maharashtra, UP, Gujarat (high gym density states)</li>
+        </ul>
+      </div>
+      <div class="target-card">
+        <h4>AGE &amp; GENDER</h4>
+        <ul>
+          <li>Age: 25–50 (gym owners age range)</li>
+          <li>Gender: All (many female gym owners)</li>
+          <li>Exclude under 22 (likely members, not owners)</li>
+        </ul>
+      </div>
+      <div class="target-card">
+        <h4>INTERESTS TO TARGET</h4>
+        <ul>
+          <li>Gym · Fitness Center · Health Club</li>
+          <li>Small business · Entrepreneurship</li>
+          <li>Fitness industry · Sports management</li>
+          <li>Business software · Management tools</li>
+          <li>WhatsApp Business · Point of Sale</li>
+        </ul>
+      </div>
+      <div class="target-card">
+        <h4>DETAILED BEHAVIORS</h4>
+        <ul>
+          <li>Small business owners</li>
+          <li>Engaged shoppers (business purchases)</li>
+          <li>Admins of Facebook business pages</li>
+          <li>Android users (our primary platform)</li>
+        </ul>
+      </div>
+    </div>
+
+    <table>
+      <thead><tr><th>Ad Objective</th><th>Use When</th><th>Budget</th><th>Expected CPC</th></tr></thead>
+      <tbody>
+        <tr><td>Reach / Brand Awareness</td><td class="muted">First 2 weeks — just getting your name out</td><td>₹100–150/day</td><td class="muted">₹0.50–₹1.50</td></tr>
+        <tr><td>Video Views</td><td class="muted">For demo reels — get maximum watch time</td><td>₹150–200/day</td><td class="muted">₹0.30–₹0.80 per view</td></tr>
+        <tr><td>Engagement</td><td class="muted">To drive comments and DMs</td><td>₹200/day</td><td class="muted">₹1–₹3 per engagement</td></tr>
+        <tr><td>Lead Generation</td><td class="muted">After you have a landing page / form</td><td>₹300–500/day</td><td class="muted">₹50–₹150 per lead</td></tr>
+        <tr class="total-row"><td colspan="4">Start with Video Views objective. Shift to Lead Generation once you have 5+ demo bookings/month organically.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ SECTION 7: TOOLS ═══ -->
+  <div class="section">
+    <div class="section-title">07 — Tools You Need (All Free)</div>
+    <table>
+      <thead><tr><th>Tool</th><th>Use For</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td><strong>CapCut</strong></td><td class="muted">Edit reels — text overlays, transitions, auto-captions, trending templates</td><td class="green-text">Free</td></tr>
+        <tr><td><strong>Android Screen Recorder</strong></td><td class="muted">Built into your phone. Record GymSetu app flows for demo reels</td><td class="green-text">Free</td></tr>
+        <tr><td><strong>Canva</strong></td><td class="muted">Thumbnail images, story graphics, carousel posts</td><td class="green-text">Free</td></tr>
+        <tr><td><strong>InShot</strong></td><td class="muted">Quick video trimming and aspect ratio adjustment for reels</td><td class="green-text">Free</td></tr>
+        <tr><td><strong>Meta Business Suite</strong></td><td class="muted">Schedule posts, run ads, check analytics — all from phone</td><td class="green-text">Free</td></tr>
+        <tr><td><strong>Notion</strong></td><td class="muted">Plan your content calendar — which reel goes on which day</td><td class="green-text">Free</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ SECTION 8: DO'S AND DON'TS ═══ -->
+  <div class="section">
+    <div class="section-title">08 — Do's &amp; Don'ts</div>
+    <div class="dont-list">
+      <div class="dont-item bad">
+        <div class="dont-icon">❌</div>
+        <div class="dont-text"><strong>Don't start with "Hi guys, today I'm going to show you..."</strong><span>You've already lost them. Jump straight into the hook with energy.</span></div>
+      </div>
+      <div class="dont-item bad">
+        <div class="dont-icon">❌</div>
+        <div class="dont-text"><strong>Don't use bad lighting or shaky camera</strong><span>Film near a window in daylight. Use your phone stabilizer or just prop it against something. Bad quality = low trust.</span></div>
+      </div>
+      <div class="dont-item bad">
+        <div class="dont-icon">❌</div>
+        <div class="dont-text"><strong>Don't post without captions / subtitles</strong><span>70% of Instagram is watched without sound. If you don't have text on screen, they don't understand your reel. Add subtitles in CapCut always.</span></div>
+      </div>
+      <div class="dont-item bad">
+        <div class="dont-icon">❌</div>
+        <div class="dont-text"><strong>Don't use 30+ hashtags</strong><span>Old strategy, actually hurts reach in 2025. Use 5–10 super relevant ones only.</span></div>
+      </div>
+      <div class="dont-item bad">
+        <div class="dont-icon">❌</div>
+        <div class="dont-text"><strong>Don't boost a reel with under 300 organic views</strong><span>Meta's AI will see that real people didn't engage and will show it to low-quality audiences. Only boost winners.</span></div>
+      </div>
+      <div class="dont-item good">
+        <div class="dont-icon">✅</div>
+        <div class="dont-text"><strong>Reply to EVERY comment within the first 2 hours</strong><span>Instagram's algorithm rewards engagement velocity. Reply fast = more distribution = more views. Even just a "thanks!" counts.</span></div>
+      </div>
+      <div class="dont-item good">
+        <div class="dont-icon">✅</div>
+        <div class="dont-text"><strong>Ask a question in your caption to drive comments</strong><span>"Teri gym mein kitne members hain? Comment mein bata" — comments boost reach dramatically. The algorithm loves it.</span></div>
+      </div>
+      <div class="dont-item good">
+        <div class="dont-icon">✅</div>
+        <div class="dont-text"><strong>Use trending audio in the background (even at low volume)</strong><span>Trending audio gets algorithmic boost. Pick a song from Instagram's Trending section. Keep at 10–15% volume so voice stays clear.</span></div>
+      </div>
+      <div class="dont-item good">
+        <div class="dont-icon">✅</div>
+        <div class="dont-text"><strong>Save your best scripts and hooks — repeat them with variations</strong><span>If a hook worked once, test the same hook with different visuals. Don't reinvent the wheel every time.</span></div>
+      </div>
+      <div class="dont-item good">
+        <div class="dont-icon">✅</div>
+        <div class="dont-text"><strong>DM everyone who comments or saves your reel</strong><span>"Hey bhai, dekha tune reel — tera gym hai kya? Demo dikhana chahiye?" — 40% conversion rate from comment to DM conversation.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    GYMSETU · REEL &amp; AD CREATION GUIDE · 2026
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GymSetu — Growth Plan</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; color: #1a1a1a; }
+    .page { max-width: 920px; margin: 40px auto; background: #fff; padding: 60px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); border-radius: 8px; }
+
+    .doc-header { text-align: center; border-bottom: 3px solid #22C55E; padding-bottom: 24px; margin-bottom: 36px; }
+    .doc-header h1 { font-size: 30px; color: #15803d; letter-spacing: 3px; font-weight: 800; }
+    .doc-header .sub { font-size: 13px; color: #888; margin-top: 6px; letter-spacing: 1px; }
+    .doc-header .badge { display: inline-block; background: #22C55E; color: #fff; font-size: 11px; font-weight: 700; padding: 4px 14px; border-radius: 20px; margin-top: 10px; letter-spacing: 1px; }
+
+    .section { margin-bottom: 44px; }
+    .section-title { font-size: 13px; font-weight: 800; color: #15803d; letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: #22C55E40; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
+    thead tr { background: #15803d; color: #fff; }
+    thead th { padding: 10px 14px; text-align: left; font-weight: 700; letter-spacing: 0.5px; }
+    tbody tr:nth-child(even) { background: #fafafa; }
+    tbody tr:hover { background: #f0fdf4; }
+    tbody td { padding: 10px 14px; border-bottom: 1px solid #eee; vertical-align: top; }
+    .total-row td { font-weight: 800; background: #f0fdf4 !important; color: #15803d; }
+
+    /* Info boxes */
+    .info-box { background: #f0fdf4; border-left: 4px solid #22C55E; padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 13px; color: #444; line-height: 1.7; }
+    .info-box strong { color: #15803d; }
+    .info-box.orange { background: #fff7ed; border-left-color: #F97316; }
+    .info-box.orange strong { color: #c2410c; }
+    .info-box.red { background: #fef2f2; border-left-color: #EF4444; }
+    .info-box.red strong { color: #b91c1c; }
+    .info-box.blue { background: #eff6ff; border-left-color: #3B82F6; }
+    .info-box.blue strong { color: #1d4ed8; }
+    .info-box.dark { background: #1a1a1a; border-left-color: #22C55E; color: #ccc; }
+    .info-box.dark strong { color: #4ade80; }
+    .info-box.purple { background: #faf5ff; border-left-color: #A78BFA; }
+    .info-box.purple strong { color: #7e22ce; }
+
+    /* Phase cards */
+    .phase-card { border: 1px solid #eee; border-radius: 14px; padding: 24px; margin-bottom: 20px; position: relative; overflow: hidden; }
+    .phase-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+    .phase-card.p1::before { background: #E8501A; }
+    .phase-card.p2::before { background: #F59E0B; }
+    .phase-card.p3::before { background: #22C55E; }
+    .phase-card.p4::before { background: #3B82F6; }
+    .phase-card.p5::before { background: #A78BFA; }
+    .phase-label { font-size: 9px; font-weight: 800; letter-spacing: 2px; color: #888; margin-bottom: 4px; }
+    .phase-title { font-size: 18px; font-weight: 800; color: #1a1a1a; margin-bottom: 4px; }
+    .phase-target { font-size: 12px; color: #888; margin-bottom: 16px; }
+    .phase-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .phase-col h4 { font-size: 10px; font-weight: 800; color: #888; letter-spacing: 1.5px; margin-bottom: 10px; }
+    .phase-col ul { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+    .phase-col ul li { font-size: 12px; color: #444; padding: 7px 10px; background: #f9f9f9; border-radius: 7px; line-height: 1.4; }
+    .phase-col ul li::before { content: '→ '; color: #22C55E; font-weight: 700; }
+    .phase-col ul li.warning::before { color: #F97316; }
+    .phase-col ul li.red::before { color: #EF4444; }
+
+    /* KPI cards */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 12px 0; }
+    .kpi-card { border: 1px solid #eee; border-radius: 10px; padding: 14px; text-align: center; }
+    .kpi-label { font-size: 9px; font-weight: 800; color: #888; letter-spacing: 1.5px; margin-bottom: 6px; }
+    .kpi-value { font-size: 20px; font-weight: 900; color: #15803d; }
+    .kpi-target { font-size: 10px; color: #888; margin-top: 4px; }
+
+    /* Script blocks */
+    .script-box { background: #1a1a1a; color: #fff; border-radius: 10px; padding: 18px; font-size: 13px; line-height: 1.8; margin: 12px 0; }
+    .script-box .tag { color: #4ade80; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; display: block; margin-bottom: 8px; }
+    .script-box .line { color: #f0f0f0; display: block; margin-bottom: 4px; }
+    .script-box .response { color: #60a5fa; display: block; margin-bottom: 4px; }
+    .script-box .tip { color: #fbbf24; font-size: 11px; display: block; margin-top: 8px; }
+
+    /* Referral program */
+    .referral-flow { display: flex; align-items: center; gap: 0; margin: 16px 0; flex-wrap: wrap; }
+    .flow-step { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px 16px; flex: 1; text-align: center; min-width: 120px; }
+    .flow-step .step-icon { font-size: 22px; display: block; margin-bottom: 6px; }
+    .flow-step .step-text { font-size: 11px; color: #444; font-weight: 600; line-height: 1.4; }
+    .flow-arrow { font-size: 20px; color: #22C55E; font-weight: 800; padding: 0 8px; flex-shrink: 0; }
+
+    /* Weekly plan */
+    .week-grid { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+    .week-item { display: flex; gap: 0; border: 1px solid #eee; border-radius: 10px; overflow: hidden; }
+    .week-day { background: #15803d; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 1px; padding: 12px 10px; display: flex; align-items: center; justify-content: center; width: 80px; flex-shrink: 0; text-align: center; }
+    .week-tasks { padding: 10px 14px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .week-task { font-size: 12px; color: #444; display: flex; gap: 8px; align-items: flex-start; }
+    .week-task::before { content: '●'; color: #22C55E; font-size: 8px; margin-top: 4px; flex-shrink: 0; }
+
+    /* Competitors */
+    .comp-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 12px 0; }
+    .comp-card { border: 1px solid #eee; border-radius: 10px; padding: 14px; }
+    .comp-name { font-size: 13px; font-weight: 800; color: #1a1a1a; margin-bottom: 4px; }
+    .comp-price { font-size: 12px; color: #E8501A; font-weight: 700; margin-bottom: 8px; }
+    .comp-weak { font-size: 11px; color: #EF4444; line-height: 1.5; }
+    .comp-weak::before { content: 'Weakness: '; font-weight: 700; }
+    .comp-our { font-size: 11px; color: #15803d; line-height: 1.5; margin-top: 6px; }
+    .comp-our::before { content: 'Our edge: '; font-weight: 700; }
+
+    .highlight { color: #15803d; font-weight: 700; }
+    .orange { color: #F97316; font-weight: 700; }
+    .red-text { color: #EF4444; font-weight: 700; }
+    .muted { color: #888; font-size: 11px; }
+
+    .doc-footer { text-align: center; margin-top: 48px; padding-top: 24px; border-top: 1px solid #eee; font-size: 11px; color: #aaa; letter-spacing: 1px; }
+
+    @media print {
+      body { background: #fff; }
+      .page { box-shadow: none; margin: 0; padding: 40px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="doc-header">
+    <h1>GYMSETU — GROWTH PLAN</h1>
+    <div class="sub">OFFLINE SALES · ONLINE STRATEGY · REFERRAL PROGRAM · KPIs · CITY EXPANSION</div>
+    <div class="badge">0 TO 100 GYMS ROADMAP</div>
+  </div>
+
+  <!-- ═══ NORTH STAR ═══ -->
+  <div class="section">
+    <div class="section-title">00 — The North Star Metric</div>
+    <div class="info-box dark">
+      <strong>One number drives everything:</strong> Number of Active Paying Gyms. Not followers. Not downloads. Not signups. A gym is "active" only when they have paid their monthly subscription and logged in within the last 7 days. Every decision — what to build, where to market, who to hire — is judged by: does this increase active paying gyms?
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">MONTH 2 TARGET</div>
+        <div class="kpi-value">5</div>
+        <div class="kpi-target">paying gyms</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">MONTH 4 TARGET</div>
+        <div class="kpi-value">20</div>
+        <div class="kpi-target">paying gyms</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">MONTH 6 TARGET</div>
+        <div class="kpi-value">42</div>
+        <div class="kpi-target">paying gyms</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">MONTH 12 TARGET</div>
+        <div class="kpi-value">100</div>
+        <div class="kpi-target">paying gyms</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 1: GROWTH PHASES ═══ -->
+  <div class="section">
+    <div class="section-title">01 — Growth Phases (Month by Month)</div>
+
+    <div class="phase-card p1">
+      <div class="phase-label">PHASE 1 — MONTH 1–2</div>
+      <div class="phase-title">Hustle &amp; Validate</div>
+      <div class="phase-target">Target: 0 → 5 paying gyms · Focus: offline only</div>
+      <div class="phase-cols">
+        <div class="phase-col">
+          <h4>WHAT TO DO</h4>
+          <ul>
+            <li>Visit 10 gyms in your city. Walk in. Ask to speak to owner.</li>
+            <li>Give a 10-minute live demo on your phone</li>
+            <li>Offer first month FREE or at ₹499 to get foot in door</li>
+            <li>Ask for harsh feedback — what's missing, what's confusing</li>
+            <li>Fix everything they complain about immediately</li>
+            <li>Get 1 testimonial (video or WhatsApp screenshot) from first gym</li>
+          </ul>
+        </div>
+        <div class="phase-col">
+          <h4>WHAT NOT TO DO</h4>
+          <ul>
+            <li class="warning">Don't run paid ads yet — waste of money</li>
+            <li class="warning">Don't build new features — fix what exists</li>
+            <li class="red">Don't spend on Instagram ads before 5 paying gyms</li>
+            <li class="warning">Don't skip feedback — these first 5 gyms shape everything</li>
+            <li class="red">Don't over-promise features you haven't built</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase-card p2">
+      <div class="phase-label">PHASE 2 — MONTH 3–4</div>
+      <div class="phase-title">Launch &amp; Campaign</div>
+      <div class="phase-target">Target: 5 → 20 gyms · Focus: offline + first Instagram reels</div>
+      <div class="phase-cols">
+        <div class="phase-col">
+          <h4>WHAT TO DO</h4>
+          <ul>
+            <li>Post 4 reels/week — Problem-Solution + Demo + Behind Build</li>
+            <li>Start ₹5,000/month Instagram ads (Video Views objective)</li>
+            <li>Your team does offline gym visits in parallel with content</li>
+            <li>Send WhatsApp cold outreach to gym owners (200+ DMs/week)</li>
+            <li>Offer 7-day free trial — no card required</li>
+            <li>Reply to every comment and DM within 1 hour</li>
+          </ul>
+        </div>
+        <div class="phase-col">
+          <h4>METRICS TO TRACK</h4>
+          <ul>
+            <li>Reel views per post (target: 1K+ per reel)</li>
+            <li>DM conversations started per week</li>
+            <li>Demo calls booked vs showed up</li>
+            <li>Trial to paid conversion rate (target: 40%+)</li>
+            <li>Cost per lead from Instagram ads</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase-card p3">
+      <div class="phase-label">PHASE 3 — MONTH 5–6</div>
+      <div class="phase-title">Scale &amp; Systematize</div>
+      <div class="phase-target">Target: 20 → 42 gyms · Focus: referrals + Tier 2 launch</div>
+      <div class="phase-cols">
+        <div class="phase-col">
+          <h4>WHAT TO DO</h4>
+          <ul>
+            <li>Launch referral program — ₹300 credit per gym they refer</li>
+            <li>Launch Tier 2 features, upsell existing gyms</li>
+            <li>Build partnerships with fitness equipment dealers</li>
+            <li>Create a landing page with booking form for demos</li>
+            <li>Increase ads to ₹8K/month with Lead Gen objective</li>
+            <li>Start expanding to 1 or 2 nearby cities</li>
+          </ul>
+        </div>
+        <div class="phase-col">
+          <h4>WHAT TO BUILD</h4>
+          <ul>
+            <li>WhatsApp automation (reminder messages)</li>
+            <li>PDF receipt generation</li>
+            <li>Expense tracker + break-even dashboard</li>
+            <li>Onboarding flow for new gym owners</li>
+            <li>Basic landing page with demo booking</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase-card p4">
+      <div class="phase-label">PHASE 4 — MONTH 7–9</div>
+      <div class="phase-title">Multi-City &amp; Automation</div>
+      <div class="phase-target">Target: 42 → 70 gyms · Focus: new cities + online inbound</div>
+      <div class="phase-cols">
+        <div class="phase-col">
+          <h4>WHAT TO DO</h4>
+          <ul>
+            <li>Assign your offline team to dedicated cities</li>
+            <li>Create city-specific Instagram content ("Mumbai gym owners...")</li>
+            <li>Build a simple landing page (gymsetu.in) with video demo</li>
+            <li>Start collecting Google Reviews from happy gym owners</li>
+            <li>Partner with personal trainer communities and networks</li>
+            <li>Set up automated email drip for trial users who don't convert</li>
+          </ul>
+        </div>
+        <div class="phase-col">
+          <h4>KPIs AT THIS STAGE</h4>
+          <ul>
+            <li>Monthly churn rate must be under 5%</li>
+            <li>NPS (Net Promoter Score) — ask gyms monthly</li>
+            <li>Revenue per gym (push Tier 2 upsells)</li>
+            <li>Referrals per month — target 5+ from existing gyms</li>
+            <li>Cost per acquisition going down over time</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase-card p5">
+      <div class="phase-label">PHASE 5 — MONTH 10–12</div>
+      <div class="phase-title">100 Gyms &amp; Premium</div>
+      <div class="phase-target">Target: 70 → 100 gyms · Focus: brand authority + Phase 4 features</div>
+      <div class="phase-cols">
+        <div class="phase-col">
+          <h4>WHAT TO DO</h4>
+          <ul>
+            <li>Launch Phase 4 premium features (QR attendance, AI health score)</li>
+            <li>Create a "GymSetu Partner" program for top gym owners</li>
+            <li>Get featured in Indian fitness/startup media</li>
+            <li>Build case study content: "How [Gym Name] grew 30% with GymSetu"</li>
+            <li>Consider hiring 1 full-time sales person for offline expansion</li>
+          </ul>
+        </div>
+        <div class="phase-col">
+          <h4>REVENUE GOAL</h4>
+          <ul>
+            <li>100 gyms @ avg ₹1,200/gym = ₹1,20,000 MRR</li>
+            <li>After all costs: ₹90,000+ net profit/month</li>
+            <li>Annual run rate: ₹14,40,000+</li>
+            <li>Begin planning for 500 gym milestone</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 2: OFFLINE SALES STRATEGY ═══ -->
+  <div class="section">
+    <div class="section-title">02 — Offline Sales Strategy (Your #1 Weapon)</div>
+    <div class="info-box">
+      <strong>Why offline first?</strong> Indian gym owners trust people they've met in person. A 15-minute in-person demo converts at 40–60%. An Instagram ad converts at 1–3%. Your offline visits will generate 10x the ROI of any digital campaign in the first 3 months.
+    </div>
+
+    <p style="font-size:12px; font-weight:800; color:#333; margin: 16px 0 10px; letter-spacing:1px;">HOW TO RUN A GYM VISIT</p>
+    <table>
+      <thead><tr><th>Step</th><th>What to Do</th><th>Time</th></tr></thead>
+      <tbody>
+        <tr><td><strong>1. Scout</strong></td><td class="muted">Google Maps → "gym near me" → list gyms within 10km. Check if they have website or social — if not, they're your prime target.</td><td class="muted">30 min (do at home)</td></tr>
+        <tr><td><strong>2. Timing</strong></td><td class="muted">Visit between 10am–12pm or 3pm–5pm. Avoid 6am–9am (morning rush) and 6pm–9pm (evening rush). Owner will be free.</td><td class="muted">Travel</td></tr>
+        <tr><td><strong>3. Entry</strong></td><td class="muted">"Bhai, tumhara hi gym hai? Main ek app banaya hai sirf gym owners ke liye — 5 minute mein ek cheez dikhana tha, acha lagega." Don't say "software" — say "app".</td><td class="muted">1 min</td></tr>
+        <tr><td><strong>4. Demo</strong></td><td class="muted">Open GymSetu on YOUR phone. Show dashboard → member list → dues screen → expiry alert → WhatsApp reminder. Don't explain everything — show the pain points they feel.</td><td class="muted">8–10 min</td></tr>
+        <tr><td><strong>5. Ask</strong></td><td class="muted">"Abhi aap kitne members ko track karte ho? Kaise? Register mein? Excel mein?" Let them feel their own pain. Then say "yeh sab GymSetu mein automatic ho jaata hai."</td><td class="muted">3 min</td></tr>
+        <tr><td><strong>6. Close</strong></td><td class="muted">"7 din free trial chahiye? Abhi install karte hain, main setup kar deta hoon live — 10 minute lagenge." Install GymSetu on their phone right there. Don't let them "think about it".</td><td class="muted">5 min</td></tr>
+        <tr><td><strong>7. Follow-up</strong></td><td class="muted">Day 3: "Bhai, kuch issue aaya kya?" Day 7: "Kaisa laga? Ek cheez bataao jo acha laga." Day 10: "Trial khatam hone wala hai — ₹999 mein continue karein?"</td><td class="muted">WhatsApp</td></tr>
+      </tbody>
+    </table>
+
+    <p style="font-size:12px; font-weight:800; color:#333; margin: 20px 0 10px; letter-spacing:1px;">DEMO SALES SCRIPT — WORD FOR WORD</p>
+    <div class="script-box">
+      <span class="tag">OPENING — When you walk in</span>
+      <span class="line">"Bhai, namaskar — main Nikhil hoon. Aapka hi gym hai? Main ek app banaya hai sirf gym owners ke liye. Kya main 5 minute mein ek cheez dikhata hoon? Achha lagega pakka."</span>
+      <br/>
+      <span class="tag">PAIN OPENER — Create the itch</span>
+      <span class="line">"Aap abhi members ko kaise track karte ho? Register mein? WhatsApp pe? Excel?"</span>
+      <span class="response">[Wait for answer — they'll say register or WhatsApp]</span>
+      <span class="line">"Haan, yahi problem hai — jab 50-100 members ho jaate hain, manually sab track karna mushkil ho jaata hai. Dues pata nahi, expiry pata nahi, month end pe pata nahi kitna aaya. Sahi hai na?"</span>
+      <br/>
+      <span class="tag">DEMO — Show, don't tell</span>
+      <span class="line">"Dekhiye — yeh GymSetu hai. [Open app — show dashboard] Yeh hai aapka poora gym ek screen pe. Yeh dekho — 6 memberships is hafte expire ho rahi hain. Automatic alert aa jaata hai. Yeh dekho — dues section — har member ka pending amount. Yeh dekho — WhatsApp reminder — member ko khud jaata hai bina aap kuch kiye."</span>
+      <br/>
+      <span class="tag">CLOSE — The trial offer</span>
+      <span class="line">"7 din bilkul free trial hai — koi card nahi chahiye. Abhi install karte hain — main live setup kar deta hoon, 10 minute lagenge. Aapke pehle 5 members main khud daal deta hoon system mein. Phir aap khud dekh lena."</span>
+      <br/>
+      <span class="tag">OBJECTION: "Baad mein dekhenge"</span>
+      <span class="line">"Bilkul bhai — meri ek request hai — sirf pehle 3 members daal lete hain abhi, 2 minute mein. Phir aap khud decide karo. App delete bhi kar sakte ho — koi binding nahi."</span>
+      <span class="tip">Tip: If they let you install → 70% convert to paid. The "later" objection disappears once they see their own data in the app.</span>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 3: ONLINE GROWTH ═══ -->
+  <div class="section">
+    <div class="section-title">03 — Online Growth Strategy</div>
+
+    <p style="font-size:12px; font-weight:800; color:#333; margin: 0 0 10px; letter-spacing:1px;">CHANNEL PRIORITY (Month 1–6)</p>
+    <table>
+      <thead><tr><th>Channel</th><th>Priority</th><th>Monthly Effort</th><th>Expected Outcome</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Instagram Reels (Organic)</strong></td><td class="highlight">⭐⭐⭐⭐⭐</td><td class="muted">4 reels/week = 16 reels/month</td><td class="muted">10–30 DMs/month from interested gym owners</td></tr>
+        <tr><td><strong>Instagram DM Outreach</strong></td><td class="highlight">⭐⭐⭐⭐⭐</td><td class="muted">50 DMs/day to gym owner accounts</td><td class="muted">5–10 demo bookings/week</td></tr>
+        <tr><td><strong>WhatsApp Cold Outreach</strong></td><td class="highlight">⭐⭐⭐⭐</td><td class="muted">50 messages/day to gym numbers from Maps</td><td class="muted">3–8 replies/day, 1–2 demos/day</td></tr>
+        <tr><td><strong>Instagram Paid Ads</strong></td><td class="orange">⭐⭐⭐</td><td class="muted">₹5K–₹8K/month from Month 3</td><td class="muted">20–50 leads/month at ₹100–150/lead</td></tr>
+        <tr><td><strong>Instagram Stories</strong></td><td class="orange">⭐⭐⭐</td><td class="muted">1–2 stories/day — polls, Q&amp;A, behind scenes</td><td class="muted">Builds trust, warms cold audience</td></tr>
+        <tr><td><strong>Google My Business</strong></td><td class="orange">⭐⭐</td><td class="muted">15 min setup once + review requests monthly</td><td class="muted">Organic search traffic over 6+ months</td></tr>
+        <tr><td><strong>YouTube Shorts</strong></td><td class="muted">⭐⭐</td><td class="muted">Cross-post reels as Shorts (5 min extra work)</td><td class="muted">Extra discovery — same content, more reach</td></tr>
+      </tbody>
+    </table>
+
+    <p style="font-size:12px; font-weight:800; color:#333; margin: 20px 0 10px; letter-spacing:1px;">INSTAGRAM DM OUTREACH — EXACT TEMPLATE</p>
+    <div class="script-box">
+      <span class="tag">HOW TO FIND TARGETS</span>
+      <span class="line">Search Instagram: "gym [your city]" → Go to accounts with 200–5,000 followers (real gyms, not chains). Also check their bios — many say "DM for membership". These are your people.</span>
+      <br/>
+      <span class="tag">DM TEMPLATE 1 — Cold intro</span>
+      <span class="line">"Bhai, aapka gym dekha — kaafi achha hai! Ek sawal — aap members ko kaise track karte ho abhi? Register mein ya app pe?"</span>
+      <span class="response">[Wait for reply — if they engage, continue]</span>
+      <br/>
+      <span class="tag">DM TEMPLATE 2 — After they respond</span>
+      <span class="line">"Main ek gym management app bana raha hoon — GymSetu — sirf Indian gym owners ke liye. Members, payments, dues, attendance, WhatsApp reminders — sab automatic. ₹999/month. 7 din free try kar sakte ho. 15 minute ka demo dunga personally — interested ho?"</span>
+      <br/>
+      <span class="tag">DM TEMPLATE 3 — Pure cold (if they don't reply to first)</span>
+      <span class="line">"[Gym name] bhai — ek gym management app banaya hai, sirf ₹999/month. Automatic WhatsApp reminders, dues tracking, revenue reports. 7 din free. Screenshot dekha chahoge?"</span>
+      <span class="tip">Tip: Send template 1 to 50 gyms/day. You'll get 5–10 replies. From 10 replies → 3–5 demos. From 5 demos → 2 trials. From 2 trials → 1 paid customer. It's a numbers game — be consistent.</span>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 4: FIRST WEEK ACTION PLAN ═══ -->
+  <div class="section">
+    <div class="section-title">04 — First Week Action Plan (Day-by-Day)</div>
+    <div class="info-box orange">
+      <strong>Most founders waste Week 1</strong> tweaking the app or planning endlessly. Week 1 goal is simple: talk to 15 gym owners in person. That's it. Nothing else matters more than real human feedback this week.
+    </div>
+
+    <div class="week-grid">
+      <div class="week-item">
+        <div class="week-day">MON</div>
+        <div class="week-tasks">
+          <div class="week-task">Make a list of 30 gyms within 15km using Google Maps</div>
+          <div class="week-task">Print 50 visiting cards with your name + "gymsetu.in" + "Free Demo"</div>
+          <div class="week-task">Install GymSetu on your phone + practice the demo 5x until it's smooth</div>
+        </div>
+      </div>
+      <div class="week-item">
+        <div class="week-day">TUE</div>
+        <div class="week-tasks">
+          <div class="week-task">Visit 5 gyms in person — give live demo to each owner</div>
+          <div class="week-task">Goal: install app on at least 2 owners' phones before leaving</div>
+          <div class="week-task">Post your first reel: "Problem-Solution" type. Film it tonight.</div>
+        </div>
+      </div>
+      <div class="week-item">
+        <div class="week-day">WED</div>
+        <div class="week-tasks">
+          <div class="week-task">Send WhatsApp follow-up to Tuesday's gym owners</div>
+          <div class="week-task">Start Instagram DM outreach — 30 gyms messaged with Template 1</div>
+          <div class="week-task">Visit 5 more gyms. Take notes on their objections.</div>
+        </div>
+      </div>
+      <div class="week-item">
+        <div class="week-day">THU</div>
+        <div class="week-tasks">
+          <div class="week-task">Post reel 2: Screen recording demo type (no speaking needed)</div>
+          <div class="week-task">Reply to all DMs from Tuesday's outreach</div>
+          <div class="week-task">Fix any bugs or UX issues the visited gyms complained about</div>
+        </div>
+      </div>
+      <div class="week-item">
+        <div class="week-day">FRI</div>
+        <div class="week-tasks">
+          <div class="week-task">Visit 5 more gyms — total 15 by end of week</div>
+          <div class="week-task">Continue DM outreach — 30 more DMs sent</div>
+          <div class="week-task">Check analytics on reel from Tuesday — note what performed</div>
+        </div>
+      </div>
+      <div class="week-item">
+        <div class="week-day">SAT</div>
+        <div class="week-tasks">
+          <div class="week-task">Post reel 3: Curiosity/Question type</div>
+          <div class="week-task">Do a WhatsApp Story showing behind-the-scenes of building GymSetu</div>
+          <div class="week-task">Count: How many gyms installed? How many are using it? What's the feedback?</div>
+        </div>
+      </div>
+      <div class="week-item">
+        <div class="week-day">SUN</div>
+        <div class="week-tasks">
+          <div class="week-task">Weekly review: What worked? What didn't? Which gym type responded best?</div>
+          <div class="week-task">Plan next week's reel content + gym visit targets</div>
+          <div class="week-task">Rest — but DM the 5 most interested gyms a check-in message</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 5: REFERRAL PROGRAM ═══ -->
+  <div class="section">
+    <div class="section-title">05 — Referral Program Design</div>
+    <div class="info-box">
+      <strong>Why referrals are your #1 long-term growth lever:</strong> A gym owner who loves GymSetu talks to other gym owners CONSTANTLY — at equipment dealers, area gyms, fitness competitions. One happy customer can bring 5 more. This is how you grow from 20 to 100 without spending on ads.
+    </div>
+
+    <div class="referral-flow">
+      <div class="flow-step">
+        <span class="step-icon">💬</span>
+        <div class="step-text">Gym Owner A is happy with GymSetu</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <span class="step-icon">🔗</span>
+        <div class="step-text">Shares their unique referral code with Gym B</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <span class="step-icon">📲</span>
+        <div class="step-text">Gym B signs up using that code</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <span class="step-icon">💰</span>
+        <div class="step-text">Gym A gets ₹300 credit. Gym B gets 1st month at ₹699.</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <span class="step-icon">🔁</span>
+        <div class="step-text">Gym B refers Gym C. Cycle continues.</div>
+      </div>
+    </div>
+
+    <table>
+      <thead><tr><th>Program Detail</th><th>Value</th><th>Why This Works</th></tr></thead>
+      <tbody>
+        <tr><td>Referrer reward (Gym A)</td><td class="highlight">₹300 account credit</td><td class="muted">Applied to next month's bill — saves them real money</td></tr>
+        <tr><td>Referred reward (Gym B)</td><td class="highlight">First month at ₹699 (₹300 off)</td><td class="muted">Lower barrier to try. ₹300 off feels significant for gym owners</td></tr>
+        <tr><td>Reward trigger</td><td class="muted">Gym B pays their first month</td><td class="muted">Prevents abuse — only rewards when real revenue comes in</td></tr>
+        <tr><td>Max referral reward</td><td class="muted">Unlimited</td><td class="muted">Let top referrers earn their subscription for free — they'll sell for you</td></tr>
+        <tr><td>How to share</td><td class="muted">Unique referral code in app settings + WhatsApp share button</td><td class="muted">One tap to share = frictionless for the referrer</td></tr>
+        <tr class="total-row"><td>Cost to you per referral</td><td>₹300 + ₹300 = ₹600</td><td class="muted">But you acquire a gym worth ₹999–₹1599/month for ₹600 total. Payback in Week 1.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box">
+      <strong>How to activate the referral program:</strong> In Month 3, message every existing gym owner: "Bhai, ek kaam hai — agar tum kisi doosre gym owner ko GymSetu refer karo, tumhe ₹300 credit milega aur unhe pehle mahine mein ₹300 off. Tumhara unique code hai: GYMXYZ. WhatsApp pe share karo." — this single message will generate 2–5 referrals per active gym.
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 6: RETENTION STRATEGY ═══ -->
+  <div class="section">
+    <div class="section-title">06 — Retention Strategy (Keep Gyms from Leaving)</div>
+    <div class="info-box red">
+      <strong>The leaky bucket problem:</strong> If you add 10 gyms/month but lose 4, you only net 6. Churn is the silent killer of SaaS businesses. Your goal: keep monthly churn under 5% (less than 1 gym lost per 20 gyms). A gym that stays for 12 months gives you ₹11,988–₹19,188 in lifetime value.
+    </div>
+
+    <table>
+      <thead><tr><th>Retention Action</th><th>When</th><th>Method</th><th>Goal</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Onboarding Call</strong></td>
+          <td class="muted">Day 1 of trial</td>
+          <td class="muted">Personal WhatsApp call — 20 min</td>
+          <td class="muted">Get them to add 10+ members before Day 3. Activated users almost never churn.</td>
+        </tr>
+        <tr>
+          <td><strong>Day 3 Check-in</strong></td>
+          <td class="muted">Day 3 of trial</td>
+          <td class="muted">WhatsApp message</td>
+          <td class="muted">"Kuch issue aaya? Ek feature batao jo miss ho raha hai." Fix it within 48 hours if possible.</td>
+        </tr>
+        <tr>
+          <td><strong>Week 1 Feature Tip</strong></td>
+          <td class="muted">Day 7</td>
+          <td class="muted">WhatsApp + in-app notification</td>
+          <td class="muted">Show one "wow" feature they may have missed — e.g., WhatsApp reminder or revenue chart.</td>
+        </tr>
+        <tr>
+          <td><strong>Monthly Success Check</strong></td>
+          <td class="muted">Day 30 (monthly)</td>
+          <td class="muted">WhatsApp message</td>
+          <td class="muted">"Bhai, is month kitna collect hua GymSetu se? Kuch naya chahiye kya?" This keeps them engaged.</td>
+        </tr>
+        <tr>
+          <td><strong>Renewal Reminder</strong></td>
+          <td class="muted">5 days before renewal</td>
+          <td class="muted">WhatsApp + in-app banner</td>
+          <td class="muted">Never let a gym churn by accident because they forgot. Remind proactively.</td>
+        </tr>
+        <tr>
+          <td><strong>Win-back Campaign</strong></td>
+          <td class="muted">3 days after churn</td>
+          <td class="muted">Personal WhatsApp call</td>
+          <td class="muted">"Kya hua bhai? Koi problem thi? Batao — main fix kar deta hoon." 30% of churned users come back if you call within a week.</td>
+        </tr>
+        <tr>
+          <td><strong>Feature Announcement</strong></td>
+          <td class="muted">When new feature launches</td>
+          <td class="muted">WhatsApp broadcast + reel</td>
+          <td class="muted">Keeps gyms excited. Every new feature they use = harder to leave.</td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="4">TARGET CHURN RATE: Under 5%/month (no more than 1 gym lost per 20 active). Average gym lifetime: 12+ months.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ SECTION 7: PARTNERSHIP STRATEGY ═══ -->
+  <div class="section">
+    <div class="section-title">07 — Partnership Strategy</div>
+    <div class="info-box blue">
+      <strong>Partnerships = free customers.</strong> If someone who gym owners already trust recommends GymSetu, you skip the entire trust-building process. These partners become your sales force without being on your payroll.
+    </div>
+    <table>
+      <thead><tr><th>Partner Type</th><th>Who They Are</th><th>How to Approach</th><th>Mutual Benefit</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Fitness Equipment Dealers</strong></td>
+          <td class="muted">Shops selling treadmills, dumbbells, gym equipment locally</td>
+          <td class="muted">Walk in. Say: "Har naya gym owner jo tumse equipment kharide, unhe GymSetu recommend karo — free 1st month denge unhe."</td>
+          <td class="muted">They add value to their customers. You get warm leads who just opened a gym.</td>
+        </tr>
+        <tr>
+          <td><strong>Protein Supplement Shops</strong></td>
+          <td class="muted">MuscleBlaze, MyProtein, local supplement retailers</td>
+          <td class="muted">Same approach — co-marketing. They have gym owner customers daily.</td>
+          <td class="muted">High frequency touchpoint — gym owners visit monthly.</td>
+        </tr>
+        <tr>
+          <td><strong>Gym Interior / Renovation Contractors</strong></td>
+          <td class="muted">People who set up new gym spaces</td>
+          <td class="muted">They know about new gyms opening before anyone. Perfect timing to recommend GymSetu.</td>
+          <td class="muted">You catch gyms right when they're setting up — highest intent moment.</td>
+        </tr>
+        <tr>
+          <td><strong>Personal Trainers / Freelancers</strong></td>
+          <td class="muted">Trainers who work across multiple gyms</td>
+          <td class="muted">Offer them 20% recurring commission on any gym they refer that pays. They become salespeople.</td>
+          <td class="muted">They have trust with gym owners + want extra income. Win-win.</td>
+        </tr>
+        <tr>
+          <td><strong>CA / Accountants</strong></td>
+          <td class="muted">Chartered accountants who handle small businesses</td>
+          <td class="muted">Many gym owners use CAs for GST. CAs can recommend GymSetu for billing/expense tracking.</td>
+          <td class="muted">CAs earn referral credit. Gym owners get structured accounts. You get customer.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ SECTION 8: KPI DASHBOARD ═══ -->
+  <div class="section">
+    <div class="section-title">08 — KPI Dashboard (Track Every Week)</div>
+    <div class="info-box">
+      <strong>Track these numbers every Monday morning.</strong> If a number is going in the wrong direction for 2 weeks straight, something is broken and needs immediate attention.
+    </div>
+    <table>
+      <thead><tr><th>KPI</th><th>How to Measure</th><th>Target</th><th>Warning Sign</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Active Paying Gyms</strong></td>
+          <td class="muted">Supabase — count of gyms with active subscription + login in last 7 days</td>
+          <td class="highlight">+5–10/month growth</td>
+          <td class="red-text">Flat for 2+ weeks</td>
+        </tr>
+        <tr>
+          <td><strong>Monthly Recurring Revenue (MRR)</strong></td>
+          <td class="muted">Active gyms × avg subscription price</td>
+          <td class="highlight">+₹5,000–₹10,000/month</td>
+          <td class="red-text">Less than previous month</td>
+        </tr>
+        <tr>
+          <td><strong>Churn Rate</strong></td>
+          <td class="muted">Gyms lost this month ÷ Total gyms start of month × 100</td>
+          <td class="highlight">Under 5%</td>
+          <td class="red-text">Above 8% — panic mode</td>
+        </tr>
+        <tr>
+          <td><strong>Trial to Paid Conversion</strong></td>
+          <td class="muted">Paid conversions ÷ trials started × 100</td>
+          <td class="highlight">40%+</td>
+          <td class="red-text">Below 25% — demo needs fixing</td>
+        </tr>
+        <tr>
+          <td><strong>Demo to Trial Rate</strong></td>
+          <td class="muted">Trials started ÷ demos given × 100</td>
+          <td class="highlight">60%+</td>
+          <td class="red-text">Below 40% — demo script needs work</td>
+        </tr>
+        <tr>
+          <td><strong>Reel Reach / Week</strong></td>
+          <td class="muted">Instagram Insights → Total accounts reached this week</td>
+          <td class="highlight">5,000+ by Month 3</td>
+          <td class="red-text">Less than 500 — content is weak</td>
+        </tr>
+        <tr>
+          <td><strong>DMs/Leads per Week</strong></td>
+          <td class="muted">Count of gym owners who replied/messaged you this week</td>
+          <td class="highlight">20+ leads/week by Month 3</td>
+          <td class="red-text">Under 5 — increase outreach volume</td>
+        </tr>
+        <tr>
+          <td><strong>Net Promoter Score (NPS)</strong></td>
+          <td class="muted">Ask monthly: "How likely 1–10 to recommend GymSetu?"</td>
+          <td class="highlight">7+ average score</td>
+          <td class="red-text">Under 5 — product has serious problems</td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="4">WEEKLY REVIEW: Every Monday — 30 minutes to go through these 8 numbers. Write them in a simple Notion doc. Trends matter more than any single week.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ SECTION 9: COMPETITION ═══ -->
+  <div class="section">
+    <div class="section-title">09 — Competition &amp; Your Positioning</div>
+    <div class="comp-grid">
+      <div class="comp-card">
+        <div class="comp-name">Zenoti</div>
+        <div class="comp-price">₹5,000–₹20,000/month</div>
+        <div class="comp-weak">Too expensive for small gyms. Complex. Designed for chains, spas, salons — not pure gyms.</div>
+        <div class="comp-our">We're 5x–20x cheaper. Built ONLY for gyms. Hindi-first interface. WhatsApp native.</div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-name">Gymsales / FitBudd</div>
+        <div class="comp-price">₹2,000–₹8,000/month</div>
+        <div class="comp-weak">Still expensive. Focused on big gym chains. Minimal WhatsApp automation. No AI.</div>
+        <div class="comp-our">Half the price. Better automation. Indian-built. We respond directly — they don't.</div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-name">Excel / Google Sheets</div>
+        <div class="comp-price">₹0</div>
+        <div class="comp-weak">Manual. No reminders. No automation. Breaks at scale. No revenue reports. Owner must do everything.</div>
+        <div class="comp-our">Our best target market. These gym owners feel the pain most acutely. Easiest to convert.</div>
+      </div>
+    </div>
+
+    <div class="info-box purple" style="margin-top: 16px;">
+      <strong>Your positioning statement (use this in all marketing):</strong> "GymSetu ek gym management app hai jo sirf Indian gym owners ke liye banaya gaya hai — ₹999/month mein. Automatic WhatsApp reminders, dues tracking, revenue reports, aur AI-powered insights — sab ek jagah. Koi register nahi, koi Excel nahi, koi tension nahi."
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 10: CITY EXPANSION ═══ -->
+  <div class="section">
+    <div class="section-title">10 — City Expansion Roadmap</div>
+    <div class="info-box">
+      <strong>Strategy:</strong> Dominate your city first — get 20–30 gyms in your hometown before expanding. A concentrated base of happy customers is your proof of concept and reference pool for the next city.
+    </div>
+    <table>
+      <thead><tr><th>Phase</th><th>Cities</th><th>Timing</th><th>Strategy</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Home City</strong></td>
+          <td class="muted">Your current city — 100% focus</td>
+          <td class="muted">Month 1–4</td>
+          <td class="muted">In-person demos only. Build reference gyms. Get 1 video testimonial you can show everywhere.</td>
+        </tr>
+        <tr>
+          <td><strong>Tier 2 Nearby Cities</strong></td>
+          <td class="muted">Cities within 200km with gym density</td>
+          <td class="muted">Month 5–6</td>
+          <td class="muted">Your offline team travels. Instagram geo-targeted content ("UP ke gym owners..."). WhatsApp outreach to Maps listings in those cities.</td>
+        </tr>
+        <tr>
+          <td><strong>State Expansion</strong></td>
+          <td class="muted">Full state coverage — 10–20 cities</td>
+          <td class="muted">Month 7–9</td>
+          <td class="muted">Local Instagram ads targeting each city. Referrals from existing gyms spread naturally. Partner with state-level gym associations.</td>
+        </tr>
+        <tr>
+          <td><strong>Multi-State</strong></td>
+          <td class="muted">Maharashtra, UP, Gujarat, Delhi NCR, Karnataka</td>
+          <td class="muted">Month 10–12</td>
+          <td class="muted">National Instagram campaigns. Inbound leads from organic content. Hire 1 city lead for each major state. Consider regional language content.</td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="4">India has 3,00,000+ gyms. Even 0.1% market share = 300 gyms = ₹30L+ MRR. The opportunity is enormous — stay focused and execute city by city.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ SECTION 11: 90-DAY SPRINT CHECKLIST ═══ -->
+  <div class="section">
+    <div class="section-title">11 — 90-Day Sprint Checklist</div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+
+      <div style="font-size:11px; font-weight:800; color:#E8501A; letter-spacing:1.5px; margin-bottom:4px;">🔴 MONTH 1 — BUILD THE FOUNDATION</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Complete all Phase 1 app features</strong><span style="font-size:11px;color:#888;">Members, payments, attendance, dashboard, reports, auth — all working</span></div></div>
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Visit 15 gyms in person — give demos</strong><span style="font-size:11px;color:#888;">Talk to real gym owners. Get 3 to install the app.</span></div></div>
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Post first 8 reels (2/week)</strong><span style="font-size:11px;color:#888;">Problem-Solution + Demo types first</span></div></div>
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Set up Google My Business + Instagram Business</strong><span style="font-size:11px;color:#888;">Profile complete, link in bio, demo booking set up</span></div></div>
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Get first 3 paying gyms</strong><span style="font-size:11px;color:#888;">Even at ₹499 intro price — just get real paying customers</span></div></div>
+      </div>
+
+      <div style="font-size:11px; font-weight:800; color:#F97316; letter-spacing:1.5px; margin: 16px 0 4px;">🟡 MONTH 2 — LAUNCH MARKETING</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Start Instagram paid ads — ₹5,000 budget</strong><span style="font-size:11px;color:#888;">Boost best performing reel. Video Views objective.</span></div></div>
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Launch WhatsApp DM outreach — 50 gyms/day</strong><span style="font-size:11px;color:#888;">Your team sends Template 1 to 50 gym numbers daily from Google Maps</span></div></div>
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Get 1 video testimonial from happy gym owner</strong><span style="font-size:11px;color:#888;">Even 30 seconds on their phone saying what they like. This is gold.</span></div></div>
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Reach 10 paying gyms</strong><span style="font-size:11px;color:#888;">At ₹999/month = ₹9,990/month revenue. Costs covered.</span></div></div>
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Build simple landing page (gymsetu.in)</strong><span style="font-size:11px;color:#888;">Screen recording demo video + pricing + "Book Free Demo" button</span></div></div>
+      </div>
+
+      <div style="font-size:11px; font-weight:800; color:#3B82F6; letter-spacing:1.5px; margin: 16px 0 4px;">🔵 MONTH 3 — SCALE &amp; REFERRALS</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Launch referral program (₹300 credit system)</strong><span style="font-size:11px;color:#888;">Message all existing gyms with their unique code</span></div></div>
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Build &amp; launch WhatsApp automation features</strong><span style="font-size:11px;color:#888;">Auto renewal reminders + due follow-ups live</span></div></div>
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Visit equipment dealers and protein shops — set up partnerships</strong><span style="font-size:11px;color:#888;">3 partner businesses = 3 referral streams that run automatically</span></div></div>
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Reach 20 paying gyms = ₹20,000+/month revenue</strong><span style="font-size:11px;color:#888;">Officially profitable. Reinvest in more marketing.</span></div></div>
+        <div style="display:flex; gap:12px; padding:10px 14px; border:1px solid #eee; border-radius:8px; align-items:flex-start;"><input type="checkbox" style="width:16px;height:16px;accent-color:#22C55E;margin-top:1px;flex-shrink:0;"/><div><strong style="font-size:12px;display:block;">Begin expansion to 1 nearby city</strong><span style="font-size:11px;color:#888;">Send your team there for gym visits. Geo-target Instagram ads.</span></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    GYMSETU · GROWTH PLAN · CONFIDENTIAL · 2026
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,181 +1,156 @@
- import { useState } from 'react';                                                    import { View, Text, ScrollView, StyleSheet } from 'react-native';                   import { Stack } from 'expo-router';                                                 import { MaterialCommunityIcons } from '@expo/vector-icons';                       
-  import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                         
+ import { useState, useCallback } from 'react';                                       import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from                'react-native';                                                                      import { Stack, useFocusEffect } from 'expo-router';                                 import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                           import { supabase } from '@/lib/supabase';                                           import { useAuthStore } from '@/store/authStore';                                  
   import FadeInView from '@/components/FadeInView';                                    import BarChart from '@/components/reports/BarChart';                              
-  import HorizontalBar from '@/components/reports/HorizontalBar';                    
-  import PeriodSelector from '@/components/reports/PeriodSelector';                  
-  import {
-    revenueMonthly,
-    revenueDailyThisWeek,
-    revenueByMethod,
-    formatINR,
-  } from '@/components/reports/mockData';
+  import HorizontalBar from '@/components/reports/HorizontalBar';                      import StatCard from '@/components/reports/StatCard';                              
+                                                                                     
+  const METHOD_COLORS: Record<string, string> = {                                    
+    cash:          Colors.green,
+    upi:           '#4F6EF7',
+    card:          Colors.orange,
+    bank_transfer: Colors.accent,
+    other:         Colors.textMuted,
+  };
 
-  type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];       
+  const MONTH_NAMES =
+  ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  export default function RevenueReport() {
-    const [period, setPeriod] = useState('Month');
+  interface RevenueData {
+    monthlyBars:     { label: string; value: number }[];
+    methodBreakdown: { label: string; value: number; color: string }[];
+    totalCollected:  number;
+    txCount:         number;
+    avgTx:           number;
+  }
 
-    const chartData = period === 'Week'
-      ? revenueDailyThisWeek.map(d => ({ label: d.day,   value: d.amount }))
-      : revenueMonthly.map(d      => ({ label: d.month,  value: d.amount }));        
+  export default function ReportsRevenueScreen() {
+    const { profile } = useAuthStore();
+    const [data, setData]       = useState<RevenueData | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    const totalThisMonth = revenueMonthly[revenueMonthly.length - 1].amount;
-    const totalLastMonth = revenueMonthly[revenueMonthly.length - 2].amount;
-    const growth = ((totalThisMonth - totalLastMonth) / totalLastMonth) * 100;       
-    const totalYear = revenueMonthly.reduce((s, d) => s + d.amount, 0);
-    const avgMonthly = Math.round(totalYear / revenueMonthly.length);
+    const fetchData = useCallback(async () => {
+      if (!profile?.gym_id) return;
+      setLoading(true);
 
-    const topMethod = [...revenueByMethod].sort((a, b) => b.percent - a.percent)[0]; 
+      const now         = new Date();
+      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)        
+        .toISOString().split('T')[0];
 
-    const summaryStats: { label: string; value: string; icon: IconName; color:       
-  string; sub: string }[] = [
-      { label: 'THIS MONTH',  value: formatINR(totalThisMonth), icon:
-  'calendar-month-outline', color: Colors.green,  sub: `+${growth.toFixed(1)}% vs    
-  last month` },
-      { label: 'LAST MONTH',  value: formatINR(totalLastMonth), icon:
-  'calendar-outline',       color: Colors.accent, sub: 'previous period'
-            },
-      { label: 'YEARLY TOTAL',value: formatINR(totalYear),      icon: 'trending-up', 
-             color: '#3B82F6',     sub: `${revenueMonthly.length} months`        },  
-      { label: 'AVG / MONTH', value: formatINR(avgMonthly),     icon: 'chart-line',  
-             color: '#A78BFA',     sub: 'rolling average'                        },  
-    ];
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('amount, payment_date, payment_method')
+        .eq('gym_id', profile.gym_id)
+        .gte('payment_date', sixMonthsAgo)
+        .order('payment_date');
+
+      if (!payments) { setLoading(false); return; }
+
+      // Build monthly bars (last 6 months)
+      const monthMap: Record<string, number> = {};
+      for (let i = 5; i >= 0; i--) {
+        const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,       
+  '0')}`;
+        monthMap[key] = 0;
+      }
+      payments.forEach(p => {
+        const key = p.payment_date.slice(0, 7);
+        if (key in monthMap) monthMap[key] += p.amount;
+      });
+      const monthlyBars = Object.entries(monthMap).map(([key, val]) => ({
+        label: MONTH_NAMES[parseInt(key.split('-')[1]) - 1],
+        value: Math.round(val),
+      }));
+
+      // Payment method breakdown
+      const methodMap: Record<string, number> = {};
+      payments.forEach(p => {
+        methodMap[p.payment_method] = (methodMap[p.payment_method] || 0) + p.amount; 
+      });
+      const methodBreakdown = Object.entries(methodMap)
+        .map(([method, total]) => ({
+          label: method.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()),    
+          value: Math.round(total),
+          color: METHOD_COLORS[method] || Colors.accent,
+        }))
+        .sort((a, b) => b.value - a.value);
+
+      const totalCollected = payments.reduce((s, p) => s + p.amount, 0);
+
+      setData({
+        monthlyBars,
+        methodBreakdown,
+        totalCollected,
+        txCount: payments.length,
+        avgTx:   payments.length > 0 ? Math.round(totalCollected / payments.length) :
+   0,
+      });
+      setLoading(false);
+    }, [profile?.gym_id]);
+
+    useFocusEffect(useCallback(() => { fetchData(); }, [fetchData]));
+
+    const fmt = (n: number) =>
+      n >= 100000 ? `₹${(n / 100000).toFixed(1)}L`
+      : n >= 1000  ? `₹${(n / 1000).toFixed(1)}K`
+      : `₹${n}`;
+
+    if (loading) return (
+      <>
+        <Stack.Screen options={{ title: 'Revenue Analytics' }} />
+        <View style={styles.center}><ActivityIndicator color={Colors.accent}
+  size="large" /></View>
+      </>
+    );
+
+    const methodTotal = data?.methodBreakdown.reduce((s, m) => s + m.value, 0) || 1; 
 
     return (
       <>
         <Stack.Screen options={{ title: 'Revenue Analytics' }} />
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}  
+        <ScrollView style={styles.container} contentContainerStyle={styles.scroll}   
   showsVerticalScrollIndicator={false}>
 
-          {/* ── Hero ─────────────────────────────────────────── */}
           <FadeInView delay={0}>
-            <View style={styles.hero}>
-              <View style={styles.heroGlow} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.heroMicro}>FINANCIAL REPORT</Text>
-                <Text style={styles.heroTitle}>{formatINR(totalThisMonth)}</Text>    
-                <Text style={styles.heroSub}>Revenue this month</Text>
-              </View>
-              <View style={[styles.growthBadge, { backgroundColor: growth >= 0 ?     
-  Colors.green + '18' : Colors.red + '18' }]}>
-                <MaterialCommunityIcons
-                  name={growth >= 0 ? 'trending-up' : 'trending-down'}
-                  size={14}
-                  color={growth >= 0 ? Colors.green : Colors.red}
+            <View style={styles.statRow}>
+              <StatCard emoji="💰" label="TOTAL (6 MO)"
+  value={fmt(data?.totalCollected ?? 0)} color={Colors.green}  />
+              <StatCard emoji="🔁" label="TRANSACTIONS"   value={(data?.txCount ??   
+  0).toString()} color={Colors.accent} />
+              <StatCard emoji="📈" label="AVG / TXN"      value={fmt(data?.avgTx ??  
+  0)}           color="#4F6EF7"       />
+            </View>
+          </FadeInView>
+
+          <FadeInView delay={100}>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>MONTHLY REVENUE</Text>
+              <Text style={styles.cardSub}>Last 6 months</Text>
+              {data?.monthlyBars && (
+                <BarChart
+                  data={data.monthlyBars.map(b => ({ ...b, color: Colors.green }))}  
+                  maxHeight={110}
+                  barColor={Colors.green}
+                  formatValue={v => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : `${v}`}
                 />
-                <Text style={[styles.growthText, { color: growth >= 0 ? Colors.green 
-  : Colors.red }]}>
-                  {growth >= 0 ? '+' : ''}{growth.toFixed(1)}%
-                </Text>
-              </View>
+              )}
             </View>
           </FadeInView>
 
-          {/* ── Summary Stats Grid ────────────────────────────── */}
-          <FadeInView delay={60}>
-            <View style={styles.statsGrid}>
-              {summaryStats.map(s => (
-                <View key={s.label} style={styles.statCard}>
-                  <View style={[styles.statBar, { backgroundColor: s.color }]} />    
-                  <View style={styles.statInner}>
-                    <View style={[styles.statIcon, { backgroundColor: s.color + '18' 
-  }]}>
-                      <MaterialCommunityIcons name={s.icon} size={14} color={s.color}
-   />
-                    </View>
-                    <Text style={styles.statVal}>{s.value}</Text>
-                    <Text style={styles.statLabel}>{s.label}</Text>
-                    <Text style={styles.statSub}>{s.sub}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </FadeInView>
-
-          {/* ── Period Selector ───────────────────────────────── */}
-          <FadeInView delay={120}>
-            <PeriodSelector options={['Week', 'Month']} selected={period}
-  onSelect={setPeriod} />
-          </FadeInView>
-
-          {/* ── Bar Chart ─────────────────────────────────────── */}
           <FadeInView delay={200}>
             <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={[styles.cardHeaderDot, { backgroundColor: Colors.green  
-  }]} />
-                <Text style={styles.cardTitle}>
-                  {period === 'Week' ? 'DAILY COLLECTION' : 'MONTHLY REVENUE'}       
-                </Text>
+              <Text style={styles.cardTitle}>PAYMENT METHODS</Text>
+              <Text style={styles.cardSub}>By collection amount</Text>
+              <View style={styles.barsGap}>
+                {data?.methodBreakdown.map(m => (
+                  <HorizontalBar
+                    key={m.label}
+                    label={m.label}
+                    value={m.value}
+                    total={methodTotal}
+                    color={m.color}
+                    formatValue={fmt}
+                  />
+                ))}
               </View>
-              <BarChart
-                data={chartData}
-                color={Colors.green}
-                formatValue={v => formatINR(v)}
-              />
-            </View>
-          </FadeInView>
-
-          {/* ── Payment Method Breakdown ──────────────────────── */}
-          <FadeInView delay={320}>
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={[styles.cardHeaderDot, { backgroundColor: Colors.accent 
-  }]} />
-                <Text style={styles.cardTitle}>PAYMENT METHOD BREAKDOWN</Text>       
-              </View>
-              <View style={styles.topMethodRow}>
-                <MaterialCommunityIcons name="star-circle-outline" size={14}
-  color={Colors.accent} />
-                <Text style={styles.topMethodText}>
-                  Top method: <Text style={{ color: Colors.accent
-  }}>{topMethod.method}</Text> ({topMethod.percent}%)
-                </Text>
-              </View>
-              <HorizontalBar
-                data={revenueByMethod.map(r => ({ label: r.method, percent:
-  r.percent, color: r.color }))}
-              />
-            </View>
-          </FadeInView>
-
-          {/* ── Daily This Week ───────────────────────────────── */}
-          <FadeInView delay={440}>
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={[styles.cardHeaderDot, { backgroundColor: Colors.accent 
-  }]} />
-                <Text style={styles.cardTitle}>THIS WEEK — DAILY BREAKDOWN</Text>    
-              </View>
-              <BarChart
-                data={revenueDailyThisWeek.map(d => ({ label: d.day, value: d.amount 
-  }))}
-                color={Colors.accent}
-                height={120}
-                formatValue={v => formatINR(v)}
-              />
-            </View>
-          </FadeInView>
-
-          {/* ── Method Detail Rows ────────────────────────────── */}
-          <FadeInView delay={520}>
-            <Text style={styles.sectionLabel}>COLLECTION BY METHOD</Text>
-            <View style={styles.methodCard}>
-              {revenueByMethod.map((m, i) => (
-                <View key={m.method} style={[styles.methodRow, i <
-  revenueByMethod.length - 1 && styles.rowBorder]}>
-                  <View style={[styles.methodDot, { backgroundColor: m.color }]} />  
-                  <Text style={styles.methodName}>{m.method}</Text>
-                  <View style={styles.methodRight}>
-                    <Text style={[styles.methodPct, { color: m.color
-  }]}>{m.percent}%</Text>
-                    <View style={styles.methodBar}>
-                      <View style={[styles.methodBarFill, { width: `${m.percent}%` as
-   any, backgroundColor: m.color }]} />
-                    </View>
-                  </View>
-                </View>
-              ))}
             </View>
           </FadeInView>
 
@@ -187,80 +162,16 @@
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
-    content:   { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 12 },
+    scroll:    { paddingHorizontal: 16, paddingTop: 16 },
+    center:    { flex: 1, justifyContent: 'center', alignItems: 'center',
+  backgroundColor: Colors.bg },
 
-    // Hero
-    hero: {
-      backgroundColor: Colors.bgCard, borderRadius: 20, padding: 20,
-      flexDirection: 'row', alignItems: 'center', gap: 14,
-      borderWidth: 1, borderColor: Colors.green + '30',
-      overflow: 'hidden',
-    },
-    heroGlow: {
-      position: 'absolute', top: -30, left: -20,
-      width: 100, height: 100, borderRadius: 50,
-      backgroundColor: Colors.accentGlow,
-    },
-    heroMicro:   { fontFamily: Fonts.medium, fontSize: 9, color: Colors.green,       
+    statRow:   { flexDirection: 'row', gap: 8, marginBottom: 14 },
+    card:      { backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1,   
+  borderColor: Colors.border, padding: 18, marginBottom: 14 },
+    cardTitle: { fontFamily: Fonts.bold, fontSize: 10, color: Colors.textMuted,      
   letterSpacing: 1.5 },
-    heroTitle:   { fontFamily: Fonts.condensedBold, fontSize: 28, color: Colors.text,
-   letterSpacing: 0.3 },
-    heroSub:     { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, 
-  marginTop: 2 },
-    growthBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 
-  10, paddingHorizontal: 10, paddingVertical: 7 },
-    growthText:  { fontFamily: Fonts.condensedBold, fontSize: 16, letterSpacing: 0.3 
-  },
-
-    // Stats grid
-    statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    statCard: {
-      width: '48%', flexDirection: 'row',
-      backgroundColor: Colors.bgCard, borderRadius: 14,
-      borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
-    },
-    statBar:   { width: 3 },
-    statInner: { flex: 1, padding: 12, gap: 2 },
-    statIcon:  { width: 28, height: 28, borderRadius: 8, justifyContent: 'center',   
-  alignItems: 'center', marginBottom: 5 },
-    statVal:   { fontFamily: Fonts.condensedBold, fontSize: 17, color: Colors.text },
-    statLabel: { fontFamily: Fonts.bold, fontSize: 8, color: Colors.textMuted,       
-  letterSpacing: 1 },
-    statSub:   { fontFamily: Fonts.regular, fontSize: 9, color: Colors.textMuted,    
-  marginTop: 1 },
-
-    sectionLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted,    
-  letterSpacing: 1.8, marginTop: 4 },
-
-    // Card
-    card: {
-      backgroundColor: Colors.bgCard, borderRadius: 16,
-      padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 14,
-    },
-    cardHeader:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    cardHeaderDot: { width: 8, height: 8, borderRadius: 4 },
-    cardTitle:     { fontFamily: Fonts.bold, fontSize: 11, color: Colors.text,       
-  letterSpacing: 0.8 },
-
-    topMethodRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -6
-   },
-    topMethodText: { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted
-   },
-
-    // Method rows
-    methodCard: {
-      backgroundColor: Colors.bgCard, borderRadius: 14,
-      borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
-    },
-    methodRow:  { flexDirection: 'row', alignItems: 'center', gap: 12,
-  paddingHorizontal: 14, paddingVertical: 12 },
-    rowBorder:  { borderBottomWidth: 1, borderBottomColor: Colors.border },
-    methodDot:  { width: 8, height: 8, borderRadius: 4 },
-    methodName: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.text, flex: 1  
-  },
-    methodRight:{ alignItems: 'flex-end', gap: 4 },
-    methodPct:  { fontFamily: Fonts.condensedBold, fontSize: 15 },
-    methodBar:  { width: 80, height: 4, backgroundColor: Colors.border, borderRadius:
-   2, overflow: 'hidden' },
-    methodBarFill: { height: 4, borderRadius: 2 },
+    cardSub:   { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted,   
+  marginTop: 2, marginBottom: 14 },
+    barsGap:   { gap: 14 },
   });

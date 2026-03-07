@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GymSetu — Pre-Launch Checklist</title>
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f0; color: #1a1a1a; margin: 0; padding: 30px 20px; }
+    .page { max-width: 860px; margin: 0 auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 16px rgba(0,0,0,0.09); overflow: hidden; }
+
+    /* Header */
+    .header { background: #1a1a1a; padding: 28px 32px; display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { color: #fff; font-size: 20px; font-weight: 800; letter-spacing: 2px; }
+    .header .subtitle { color: #888; font-size: 12px; margin-top: 3px; letter-spacing: 1px; }
+    .progress-wrap { text-align: right; }
+    .progress-label { font-size: 11px; color: #888; letter-spacing: 1px; margin-bottom: 6px; }
+    .progress-bar-bg { width: 180px; height: 6px; background: #333; border-radius: 3px; }
+    .progress-bar { height: 6px; background: #22C55E; border-radius: 3px; width: 0%; transition: width 0.4s; }
+    .progress-count { font-size: 12px; color: #22C55E; font-weight: 700; margin-top: 5px; }
+
+    /* Body */
+    .body { padding: 24px 32px 32px; }
+
+    /* Category label */
+    .cat-label { font-size: 10px; font-weight: 800; letter-spacing: 2px; color: #888; padding: 18px 0 8px; border-top: 1px solid #eee; margin-top: 10px; }
+    .cat-label:first-of-type { border-top: none; margin-top: 0; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; }
+    thead th { font-size: 10px; font-weight: 800; color: #aaa; letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 12px; text-align: left; border-bottom: 2px solid #eee; }
+    tbody tr { border-bottom: 1px solid #f0f0f0; transition: background 0.15s; }
+    tbody tr:hover { background: #fafafa; }
+    tbody tr.done-row { background: #f0fdf4; }
+    tbody tr.done-row td { opacity: 0.6; }
+    tbody td { padding: 11px 12px; font-size: 13px; vertical-align: middle; }
+
+    /* Checkbox */
+    input[type=checkbox] { width: 17px; height: 17px; accent-color: #22C55E; cursor: pointer; }
+
+    /* Item name */
+    .item-name { font-weight: 600; color: #1a1a1a; display: block; line-height: 1.3; }
+    .item-note { font-size: 11px; color: #999; margin-top: 2px; display: block; }
+
+    /* Priority badge */
+    .badge { display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 1px; padding: 3px 9px; border-radius: 20px; }
+    .badge.must  { background: #fef2f2; color: #b91c1c; }
+    .badge.high  { background: #fff7ed; color: #c2410c; }
+    .badge.med   { background: #fefce8; color: #854d0e; }
+    .badge.low   { background: #f0fdf4; color: #15803d; }
+
+    /* Status */
+    .status { font-size: 11px; font-weight: 700; color: #aaa; }
+    .status.pending { color: #aaa; }
+    .status.done    { color: #22C55E; }
+
+    /* Footer */
+    .footer { background: #fafafa; border-top: 1px solid #eee; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+    .footer-note { font-size: 11px; color: #aaa; letter-spacing: 0.5px; }
+    .launch-btn { background: #22C55E; color: #fff; font-size: 12px; font-weight: 800; padding: 9px 22px; border-radius: 8px; border: none; cursor: pointer; letter-spacing: 1px; opacity: 0.4; transition: opacity 0.3s; }
+    .launch-btn.ready { opacity: 1; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>GYMSETU — PRE-LAUNCH CHECKLIST</h1>
+      <div class="subtitle">COMPLETE EVERYTHING BEFORE GOING LIVE</div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label">OVERALL PROGRESS</div>
+      <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="progress-count" id="progressCount">0 / 0 done</div>
+    </div>
+  </div>
+
+  <div class="body">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:36px;"></th>
+          <th>Task</th>
+          <th style="width:80px;">Priority</th>
+          <th style="width:70px;">Status</th>
+        </tr>
+      </thead>
+      <tbody id="checklist">
+
+        <!-- ── APP & BACKEND ── -->
+        <tr><td colspan="4"><div class="cat-label">📱 APP &amp; BACKEND INTEGRATION</div></td></tr>
+
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Connect Member Management to Supabase</span><span class="item-note">Add / edit / delete members must save to real database — no more mock data</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Connect Payment Tracking to Supabase</span><span class="item-note">Every payment recorded must persist — dues calculation must be real-time</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Connect Attendance System to Supabase</span><span class="item-note">Daily check-ins must save and be queryable for reports</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Connect Membership Plans to Supabase</span><span class="item-note">Plans created by owner must be assignable to members with real expiry dates</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Replace all mock/dummy data in Reports screens</span><span class="item-note">Revenue, attendance, member growth charts must pull from real Supabase queries</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Replace dashboard stats with real data</span><span class="item-note">TODAY IN, DUES, EXPIRING, THIS MONTH — all must show live numbers from DB</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Gym Profile setup flow for new owners</span><span class="item-note">When a new owner signs up, they must be able to enter gym name, address, timings</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Expiry alert logic working with real dates</span><span class="item-note">App must auto-flag members expiring in next 7 days from real membership end dates</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+
+        <!-- ── TESTING ── -->
+        <tr><td colspan="4"><div class="cat-label">🧪 TESTING</div></td></tr>
+
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Full end-to-end test on a real Android device</span><span class="item-note">Add member → assign plan → mark attendance → record payment → check reports. Everything flows.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Test auth — sign up, log in, log out, password reset</span><span class="item-note">Auth is the front door. Any bug here = customer lost forever at first step</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Test on a slow / 4G internet connection</span><span class="item-note">Most gyms are in areas with weak signal. App must handle slow loads without crashing</span></td>
+          <td><span class="badge high">HIGH</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Give app to 1 non-technical person to test (your team / family)</span><span class="item-note">If they get confused anywhere — that screen needs to be simpler. Fresh eyes catch what you miss.</span></td>
+          <td><span class="badge high">HIGH</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Check all navigation — no broken routes or blank screens</span><span class="item-note">Tap every button in the app. Make sure nothing leads to a crash or empty screen.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+
+        <!-- ── BUILD & DEPLOYMENT ── -->
+        <tr><td colspan="4"><div class="cat-label">🚀 BUILD &amp; DEPLOYMENT</div></td></tr>
+
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Build release APK using Expo EAS</span><span class="item-note">Run: eas build --platform android --profile production. Download the signed APK.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Create Google Play Store developer account</span><span class="item-note">Pay ₹2,100 one-time at play.google.com/console. Takes 1–2 days to verify.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Create Play Store listing — title, description, screenshots</span><span class="item-note">App name: GymSetu. Short desc: "Gym management app for Indian gym owners". 4–6 screenshots of key screens.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Upload APK and submit for Play Store review</span><span class="item-note">First review usually takes 3–7 days. Submit at least a week before your demo dates.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Design app icon (1024×1024px)</span><span class="item-note">Use Canva. Clean, simple icon with GymSetu logo. No text — just the icon mark.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+
+        <!-- ── PAYMENTS ── -->
+        <tr><td colspan="4"><div class="cat-label">💳 PAYMENTS SETUP</div></td></tr>
+
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Create Razorpay account and complete KYC</span><span class="item-note">Go to razorpay.com → Sign up → Submit PAN + bank account. Takes 1–3 days to activate.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Integrate Razorpay in-app for subscription collection</span><span class="item-note">Gym owners pay their ₹999/₹1599 monthly subscription through Razorpay inside the app or via link</span></td>
+          <td><span class="badge high">HIGH</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Test a real ₹1 Razorpay transaction end-to-end</span><span class="item-note">Make sure money actually reaches your bank account. Don't discover settlement issues after launch.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+
+        <!-- ── WHATSAPP ── -->
+        <tr><td colspan="4"><div class="cat-label">💬 WHATSAPP AUTOMATION</div></td></tr>
+
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Sign up on AiSensy and complete WhatsApp Business API onboarding</span><span class="item-note">Go to aisensy.com → Create account → Connect Facebook Business → Verify phone number</span></td>
+          <td><span class="badge high">HIGH</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Create and get approved: Renewal Reminder template</span><span class="item-note">"Hi [Name], your membership at [Gym] expires on [Date]. Renew now to continue." — submit to Meta for approval (takes 24–48hrs)</span></td>
+          <td><span class="badge high">HIGH</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Create and get approved: Payment Receipt template</span><span class="item-note">"Hi [Name], payment of ₹[Amount] received at [Gym]. Thanks! Your plan is active till [Date]."</span></td>
+          <td><span class="badge high">HIGH</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Test: Send a WhatsApp message from the app to your own number</span><span class="item-note">Confirm the full flow works: trigger in app → AiSensy API → WhatsApp delivered. Don't skip this.</span></td>
+          <td><span class="badge high">HIGH</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+
+        <!-- ── LEGAL & LEGAL-ADJACENT ── -->
+        <tr><td colspan="4"><div class="cat-label">📋 LEGAL &amp; BASIC COMPLIANCE</div></td></tr>
+
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Write a Privacy Policy page</span><span class="item-note">Google Play requires it. Use a free generator: app-privacy-policy.com. Host it at gymsetu.in/privacy</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Write Terms of Service page</span><span class="item-note">Covers payment terms, refund policy, cancellation. Host at gymsetu.in/terms</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Define your refund policy clearly</span><span class="item-note">Recommendation: no refund after 3 days of billing. Free 7-day trial before first charge. State this clearly.</span></td>
+          <td><span class="badge high">HIGH</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+
+        <!-- ── MARKETING READINESS ── -->
+        <tr><td colspan="4"><div class="cat-label">📢 MARKETING READINESS</div></td></tr>
+
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Set up Instagram Business account (@gymsetu or similar)</span><span class="item-note">Profile photo = logo. Bio = "Gym management app for Indian gym owners · ₹999/mo · Link below". Add website link.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Film and post your first 3 reels before launch day</span><span class="item-note">Problem-Solution + Demo + Behind the Build. Don't wait for perfect — post and learn.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Print visiting cards (100 pcs minimum)</span><span class="item-note">Name · GymSetu · "Gym Management App" · Phone · @instagram · gymsetu.in · QR code to download</span></td>
+          <td><span class="badge high">HIGH</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Make a list of 30 gyms to visit on launch week</span><span class="item-note">Google Maps → "gyms near [your city]" → save names, addresses, and phone numbers in a spreadsheet</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Practise your demo script 10 times out loud</span><span class="item-note">Time yourself. The demo must be smooth and under 12 minutes. Stumbling on your own app kills trust.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Set up Meta Business Suite and connect Instagram</span><span class="item-note">Needed to run paid ads and schedule posts from desktop later</span></td>
+          <td><span class="badge med">MEDIUM</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+
+        <!-- ── DOMAIN & WEB ── -->
+        <tr><td colspan="4"><div class="cat-label">🌐 DOMAIN &amp; WEB</div></td></tr>
+
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Register gymsetu.in domain</span><span class="item-note">GoDaddy or Namecheap. ~₹800/year. Do it now before someone else takes it.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Build a basic landing page at gymsetu.in</span><span class="item-note">App demo video + 3 key features + pricing (₹999/₹1599) + "Book Free Demo" button linking to WhatsApp</span></td>
+          <td><span class="badge high">HIGH</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Set up Google My Business listing for GymSetu</span><span class="item-note">Free. Helps gym owners find you when they Google "gym management software India"</span></td>
+          <td><span class="badge med">MEDIUM</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+
+        <!-- ── FINAL PRE-LAUNCH ── -->
+        <tr><td colspan="4"><div class="cat-label">✅ FINAL PRE-LAUNCH CHECKS</div></td></tr>
+
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Do a full dry-run demo with a friend playing the role of gym owner</span><span class="item-note">They sign up → add members → record payment → view reports. Catch every rough edge before real customers do.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Confirm Supabase Pro plan is active and billing set up</span><span class="item-note">Free tier has row limits and rate limits that will break under real usage. Upgrade before first real user.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Set up a support WhatsApp number for gym owners to contact you</span><span class="item-note">A dedicated number (can be your number) that gym owners can message if they have issues. Put it in the app's Help screen.</span></td>
+          <td><span class="badge high">HIGH</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Have ₹42,000 ready as starting capital</span><span class="item-note">Cover: stores, domain, BSP setup, first 2 months infra, marketing, buffer. Don't launch with less.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td><span class="item-name">Set a hard launch date and commit to it</span><span class="item-note">Pick a date 4–6 weeks from now. Write it down. Tell your team. Deadlines create action. "When it's ready" is never.</span></td>
+          <td><span class="badge must">MUST</span></td>
+          <td><span class="status pending">Pending</span></td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-note" id="footerNote">Complete all MUST items to unlock launch.</div>
+    <button class="launch-btn" id="launchBtn">🚀 READY TO LAUNCH</button>
+  </div>
+
+</div>
+
+<script>
+  const rows = document.querySelectorAll('#checklist tr');
+  const boxes = document.querySelectorAll('input[type=checkbox]');
+  const bar = document.getElementById('progressBar');
+  const count = document.getElementById('progressCount');
+  const footerNote = document.getElementById('footerNote');
+  const launchBtn = document.getElementById('launchBtn');
+
+  function update() {
+    const total = boxes.length;
+    const done = [...boxes].filter(b => b.checked).length;
+    const pct = Math.round((done / total) * 100);
+    bar.style.width = pct + '%';
+    count.textContent = done + ' / ' + total + ' done';
+
+    boxes.forEach(b => {
+      const row = b.closest('tr');
+      const statusCell = row.querySelector('.status');
+      if (b.checked) {
+        row.classList.add('done-row');
+        if (statusCell) { statusCell.textContent = '✓ Done'; statusCell.className = 'status done'; }
+      } else {
+        row.classList.remove('done-row');
+        if (statusCell) { statusCell.textContent = 'Pending'; statusCell.className = 'status pending'; }
+      }
+    });
+
+    if (done === total) {
+      footerNote.textContent = '🎉 All done — you are ready to launch GymSetu!';
+      launchBtn.classList.add('ready');
+    } else {
+      const mustLeft = [...document.querySelectorAll('.badge.must')].filter(b => {
+        return !b.closest('tr').querySelector('input').checked;
+      }).length;
+      footerNote.textContent = mustLeft > 0 ? mustLeft + ' MUST item(s) still remaining.' : 'All MUST items done — almost there!';
+      launchBtn.classList.toggle('ready', mustLeft === 0);
+    }
+  }
+
+  boxes.forEach(b => b.addEventListener('change', update));
+  update();
+</script>
+</body>
+</html>

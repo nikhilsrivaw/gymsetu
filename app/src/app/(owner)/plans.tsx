@@ -1,40 +1,25 @@
- import { useState } from 'react';
-  import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';   import { FAB, Portal, Modal, TextInput } from 'react-native-paper';                  import { Stack } from 'expo-router';                                                 import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                         
-  import AnimatedPressable from '@/components/AnimatedPressable';                      import FadeInView from '@/components/FadeInView';                                  
-  import type { MembershipPlan } from '@/types/database';                                                                                                                 
+ import { useState, useEffect, useCallback } from 'react';                            import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert,                  ActivityIndicator } from 'react-native';                                             import { FAB, Portal, Modal, TextInput } from 'react-native-paper';                  import { Stack } from 'expo-router';                                                 import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                           import AnimatedPressable from '@/components/AnimatedPressable';                    
+  import FadeInView from '@/components/FadeInView';                                    import { supabase } from '@/lib/supabase';                                         
+  import { useAuthStore } from '@/store/authStore';                                    import type { MembershipPlan } from '@/types/database';                            
+                                                                                     
   const planColors = [Colors.accent, Colors.green, '#4F6EF7', Colors.orange,         
   '#EC4899'];
-
-  const mockPlans: (MembershipPlan & { member_count?: number })[] = [
-    { id: '1', gym_id: 'g1', name: '1 Month Basic',     duration_days: 30,  price:   
-  1500,  description: 'Access to gym floor and basic equipment',
-  is_active: true, created_at: '2025-09-01', member_count: 28 },
-    { id: '2', gym_id: 'g1', name: '3 Month Standard',  duration_days: 90,  price:   
-  3500,  description: 'Full gym access with locker facility',
-  is_active: true, created_at: '2025-09-01', member_count: 45 },
-    { id: '3', gym_id: 'g1', name: '6 Month Premium',   duration_days: 180, price:   
-  6000,  description: 'Full access + personal trainer 2×/week',
-  is_active: true, created_at: '2025-09-01', member_count: 32 },
-    { id: '4', gym_id: 'g1', name: '1 Year Ultimate',   duration_days: 365, price:   
-  10000, description: 'All-inclusive: gym, trainer, supplements, steam',
-  is_active: true, created_at: '2025-09-01', member_count: 18 },
-    { id: '5', gym_id: 'g1', name: 'Day Pass',          duration_days: 1,   price:   
-  200,   description: 'Single day access for walk-ins',
-  is_active: true, created_at: '2025-10-15', member_count: 5  },
-  ];
 
   const fmtDur = (d: number) =>
     d >= 365 ? `${Math.round(d / 365)} yr` : d >= 30 ? `${Math.round(d / 30)} mo` :  
   `${d} day`;
 
   export default function PlansScreen() {
-    const [plans]             = useState(mockPlans);
-    const [show, setShow]     = useState(false);
-    const [name, setName]     = useState('');
-    const [dur, setDur]       = useState('');
-    const [price, setPrice]   = useState('');
-    const [desc, setDesc]     = useState('');
-    const [saving, setSaving] = useState(false);
+    const { profile } = useAuthStore();
+    const [plans, setPlans]     = useState<(MembershipPlan & { member_count?: number 
+  })[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [show, setShow]       = useState(false);
+    const [name, setName]       = useState('');
+    const [dur, setDur]         = useState('');
+    const [price, setPrice]     = useState('');
+    const [desc, setDesc]       = useState('');
+    const [saving, setSaving]   = useState(false);
 
     const ip = {
       mode: 'outlined' as const, style: styles.input,
@@ -43,13 +28,52 @@
    },
     };
 
-    const handleSave = () => {
+    const fetchPlans = useCallback(async () => {
+      if (!profile?.gym_id) return;
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('membership_plans')
+        .select('*, member_plans(count)')
+        .eq('gym_id', profile.gym_id)
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        const mapped = data.map((p: any) => ({
+          ...p,
+          member_count: p.member_plans?.[0]?.count ?? 0,
+        }));
+        setPlans(mapped);
+      }
+      setLoading(false);
+    }, [profile?.gym_id]);
+
+    useEffect(() => { fetchPlans(); }, [fetchPlans]);
+
+    const handleSave = async () => {
       if (!name.trim() || !dur.trim() || !price.trim()) return;
+      if (!profile?.gym_id) return;
       setSaving(true);
-      setTimeout(() => {
-        setSaving(false); setShow(false);
-        setName(''); setDur(''); setPrice(''); setDesc('');
-      }, 400);
+      const { error } = await supabase.from('membership_plans').insert({
+        gym_id:        profile.gym_id,
+        name:          name.trim(),
+        duration_days: parseInt(dur, 10),
+        price:         parseFloat(price),
+        description:   desc.trim() || null,
+        is_active:     true,
+      });
+      setSaving(false);
+      if (error) { Alert.alert('Error', error.message); return; }
+      setShow(false);
+      setName(''); setDur(''); setPrice(''); setDesc('');
+      fetchPlans();
+    };
+
+    const toggleActive = async (plan: MembershipPlan) => {
+      await supabase
+        .from('membership_plans')
+        .update({ is_active: !plan.is_active })
+        .eq('id', plan.id);
+      fetchPlans();
     };
 
     return (
@@ -57,7 +81,6 @@
         <Stack.Screen options={{ title: 'Plans' }} />
         <View style={styles.container}>
 
-          {/* Summary strip */}
           <FadeInView delay={0}>
             <View style={styles.strip}>
               <View style={styles.stripItem}>
@@ -68,7 +91,7 @@
               <View style={styles.stripItem}>
                 <Text style={styles.stripVal}>{plans.reduce((s, p) => s +
   (p.member_count || 0), 0)}</Text>
-                <Text style={styles.stripLabel}>MEMBERS</Text>
+                <Text style={styles.stripLabel}>ASSIGNED</Text>
               </View>
               <View style={styles.stripDivider} />
               <View style={styles.stripItem}>
@@ -79,7 +102,11 @@
             </View>
           </FadeInView>
 
-          {plans.length === 0 ? (
+          {loading ? (
+            <View style={styles.center}>
+              <ActivityIndicator color={Colors.accent} size="large" />
+            </View>
+          ) : plans.length === 0 ? (
             <FadeInView delay={100} style={styles.empty}>
               <Text style={styles.emptyEmoji}>📋</Text>
               <Text style={styles.emptyTitle}>No plans yet</Text>
@@ -96,34 +123,43 @@
                 const color = planColors[index % planColors.length];
                 return (
                   <FadeInView delay={index * 55}>
-                    <AnimatedPressable style={styles.planCard} scaleDown={0.97}>     
-                      {/* left accent bar */}
+                    <TouchableOpacity
+                      style={styles.planCard}
+                      activeOpacity={0.85}
+                      onLongPress={() =>
+                        Alert.alert(
+                          item.is_active ? 'Deactivate Plan?' : 'Activate Plan?',    
+                          `"${item.name}" will be ${item.is_active ? 'hidden from new assignments' : 'available again'}.`,
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: item.is_active ? 'Deactivate' : 'Activate',      
+  onPress: () => toggleActive(item) },
+                          ]
+                        )
+                      }
+                    >
                       <View style={[styles.planBar, { backgroundColor: color }]} />  
-
                       <View style={styles.planInner}>
-                        {/* Top row */}
                         <View style={styles.planTop}>
                           <Text style={styles.planName}>{item.name}</Text>
                           <Text style={[styles.planPrice, { color }]}>
                             ₹{item.price.toLocaleString('en-IN')}
                           </Text>
                         </View>
-
-                        {/* Desc */}
-                        <Text style={styles.planDesc}
+                        {item.description ? (
+                          <Text style={styles.planDesc}
   numberOfLines={1}>{item.description}</Text>
-
-                        {/* Bottom chips */}
+                        ) : null}
                         <View style={styles.planChips}>
                           <View style={[styles.chip, { backgroundColor: color + '18' 
   }]}>
                             <Text style={[styles.chipText, { color }]}>⏱
   {fmtDur(item.duration_days)}</Text>
                           </View>
-                          {item.member_count !== undefined && (
+                          {(item.member_count ?? 0) > 0 && (
                             <View style={styles.chip}>
                               <Text style={styles.chipText}>👥 {item.member_count}   
-  members</Text>
+  assigned</Text>
                             </View>
                           )}
                           <View style={[styles.chip, { backgroundColor:
@@ -137,7 +173,7 @@
                           </View>
                         </View>
                       </View>
-                    </AnimatedPressable>
+                    </TouchableOpacity>
                   </FadeInView>
                 );
               }}
@@ -189,8 +225,8 @@
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
+    center:    { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-    // Strip
     strip: {
       flexDirection: 'row', margin: 16,
       backgroundColor: Colors.bgCard, borderRadius: 14,
@@ -203,8 +239,7 @@
   letterSpacing: 1.2 },
     stripDivider: { width: 1, backgroundColor: Colors.border, marginHorizontal: 8 }, 
 
-    // List
-    list: { paddingHorizontal: 16, gap: 8, paddingBottom: 80 },
+    list:      { paddingHorizontal: 16, gap: 8, paddingBottom: 80 },
     planCard: {
       flexDirection: 'row',
       backgroundColor: Colors.bgCard, borderRadius: 14,
@@ -227,33 +262,27 @@
     chipText: { fontFamily: Fonts.bold, fontSize: 8, color: Colors.textMuted,        
   letterSpacing: 0.5 },
 
-    // Empty
     empty:      { flex: 1, justifyContent: 'center', alignItems: 'center',
   paddingBottom: 60 },
     emptyEmoji: { fontSize: 44, marginBottom: 12 },
-    emptyTitle: { fontFamily: Fonts.bold,    fontSize: 16, color: Colors.text      },
+    emptyTitle: { fontFamily: Fonts.bold,    fontSize: 16, color: Colors.text },     
     emptyDesc:  { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted,  
   marginTop: 6 },
 
     fab: { position: 'absolute', right: 20, bottom: 20, backgroundColor:
   Colors.accent, borderRadius: 16 },
 
-    // Modal
     modal: {
       backgroundColor: Colors.bgCard, margin: 24, borderRadius: 20,
       padding: 24, borderWidth: 1, borderColor: Colors.border,
     },
-    modalTitle: {
-      fontFamily: Fonts.condensedBold,
-      fontSize: 22, color: Colors.text, letterSpacing: 1, marginBottom: 20,
-    },
-    modalForm:  { gap: 14 },
-    input:      { backgroundColor: Colors.bgElevated },
-    row:        { flexDirection: 'row', gap: 12 },
-    modalActions: {
-      flexDirection: 'row', justifyContent: 'flex-end',
-      alignItems: 'center', gap: 16, marginTop: 24,
-    },
+    modalTitle:   { fontFamily: Fonts.condensedBold, fontSize: 22, color:
+  Colors.text, letterSpacing: 1, marginBottom: 20 },
+    modalForm:    { gap: 14 },
+    input:        { backgroundColor: Colors.bgElevated },
+    row:          { flexDirection: 'row', gap: 12 },
+    modalActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems:    
+  'center', gap: 16, marginTop: 24 },
     cancelText:    { fontFamily: Fonts.medium, fontSize: 14, color: Colors.textMuted 
   },
     createBtn:     { backgroundColor: Colors.accent, paddingHorizontal: 24,

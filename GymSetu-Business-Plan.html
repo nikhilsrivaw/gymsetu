@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GymSetu — Business & Cost Plan</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; color: #1a1a1a; }
+    .page { max-width: 900px; margin: 40px auto; background: #fff; padding: 60px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); border-radius: 8px; }
+
+    /* Header */
+    .doc-header { text-align: center; border-bottom: 3px solid #E8501A; padding-bottom: 24px; margin-bottom: 36px; }
+    .doc-header h1 { font-size: 32px; color: #E8501A; letter-spacing: 3px; font-weight: 800; }
+    .doc-header p { font-size: 13px; color: #888; margin-top: 6px; letter-spacing: 1px; }
+    .doc-header .badge { display: inline-block; background: #E8501A; color: #fff; font-size: 11px; font-weight: 700; padding: 4px 14px; border-radius: 20px; margin-top: 10px; letter-spacing: 1px; }
+
+    /* Section */
+    .section { margin-bottom: 40px; }
+    .section-title { font-size: 13px; font-weight: 800; color: #E8501A; letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: #E8501A30; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead tr { background: #E8501A; color: #fff; }
+    thead th { padding: 10px 14px; text-align: left; font-weight: 700; letter-spacing: 0.5px; }
+    tbody tr:nth-child(even) { background: #fafafa; }
+    tbody tr:hover { background: #fff4f0; }
+    tbody td { padding: 10px 14px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    .total-row td { font-weight: 800; background: #fff4f0 !important; color: #E8501A; font-size: 14px; }
+    .highlight { color: #E8501A; font-weight: 700; }
+    .green { color: #22C55E; font-weight: 700; }
+    .orange { color: #F97316; font-weight: 700; }
+    .blue { color: #3B82F6; font-weight: 700; }
+    .red { color: #EF4444; font-weight: 700; }
+    .muted { color: #888; font-size: 11px; }
+    .warning-row td { background: #fff7ed !important; }
+    .positive-row td { background: #f0fdf4 !important; }
+
+    /* Tier cards */
+    .tier-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .tier-card { border: 2px solid #eee; border-radius: 12px; padding: 22px; position: relative; overflow: hidden; }
+    .tier-card.popular { border-color: #E8501A; }
+    .tier-card .popular-badge { position: absolute; top: 12px; right: 12px; background: #E8501A; color: #fff; font-size: 9px; font-weight: 800; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px; }
+    .tier-name { font-size: 11px; font-weight: 800; color: #888; letter-spacing: 2px; }
+    .tier-price { font-size: 32px; font-weight: 900; color: #1a1a1a; margin: 6px 0 2px; }
+    .tier-price span { font-size: 14px; color: #888; font-weight: 400; }
+    .tier-price-net { font-size: 11px; color: #22C55E; font-weight: 700; margin-bottom: 4px; }
+    .tier-desc { font-size: 12px; color: #888; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #eee; }
+    .tier-feat { font-size: 12px; color: #444; padding: 5px 0; display: flex; align-items: flex-start; gap: 8px; }
+    .tier-feat::before { content: '✓'; color: #22C55E; font-weight: 800; flex-shrink: 0; }
+    .tier-feat.extra::before { content: '★'; color: #E8501A; }
+
+    /* Checklist */
+    .checklist { display: flex; flex-direction: column; gap: 10px; }
+    .check-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border: 1px solid #eee; border-radius: 8px; transition: background 0.2s; }
+    .check-item:hover { background: #fff4f0; }
+    .check-item input[type=checkbox] { width: 17px; height: 17px; accent-color: #E8501A; margin-top: 1px; flex-shrink: 0; cursor: pointer; }
+    .check-label { font-size: 13px; color: #333; line-height: 1.5; }
+    .check-label strong { color: #1a1a1a; display: block; font-size: 13px; }
+    .check-label .sub { font-size: 11px; color: #888; }
+    .check-item.done { background: #f0fdf4; border-color: #bbf7d0; }
+    .check-item.done .check-label strong { color: #15803d; }
+
+    /* Profit table */
+    .profit-positive { color: #22C55E; font-weight: 800; }
+    .profit-warning { color: #F97316; font-weight: 700; }
+    .profit-negative { color: #EF4444; font-weight: 700; }
+
+    /* Info box */
+    .info-box { background: #fff4f0; border-left: 4px solid #E8501A; padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 13px; color: #444; line-height: 1.7; }
+    .info-box strong { color: #E8501A; }
+    .info-box.green-box { background: #f0fdf4; border-left-color: #22C55E; }
+    .info-box.green-box strong { color: #15803d; }
+    .info-box.blue-box { background: #eff6ff; border-left-color: #3B82F6; }
+    .info-box.blue-box strong { color: #1d4ed8; }
+    .info-box.orange-box { background: #fff7ed; border-left-color: #F97316; }
+    .info-box.orange-box strong { color: #c2410c; }
+
+    /* Capital summary cards */
+    .capital-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 20px 0; }
+    .capital-card { border: 1px solid #eee; border-radius: 10px; padding: 16px; text-align: center; }
+    .capital-card .cap-label { font-size: 10px; font-weight: 800; color: #888; letter-spacing: 1.5px; margin-bottom: 8px; }
+    .capital-card .cap-value { font-size: 22px; font-weight: 900; color: #E8501A; }
+    .capital-card .cap-sub { font-size: 11px; color: #888; margin-top: 4px; }
+
+    /* Phase timeline */
+    .phases { display: flex; flex-direction: column; gap: 0; }
+    .phase { display: flex; gap: 20px; padding: 20px 0; border-bottom: 1px solid #eee; }
+    .phase:last-child { border-bottom: none; }
+    .phase-num { width: 44px; height: 44px; border-radius: 50%; background: #E8501A; color: #fff; font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .phase-content h3 { font-size: 14px; font-weight: 800; color: #1a1a1a; margin-bottom: 4px; }
+    .phase-content p { font-size: 12px; color: #666; line-height: 1.6; }
+    .phase-content .phase-tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 10px; border-radius: 20px; margin-bottom: 6px; letter-spacing: 1px; }
+
+    /* Footer */
+    .doc-footer { text-align: center; margin-top: 48px; padding-top: 24px; border-top: 1px solid #eee; font-size: 11px; color: #aaa; letter-spacing: 1px; }
+
+    @media print {
+      body { background: #fff; }
+      .page { box-shadow: none; margin: 0; padding: 40px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="doc-header">
+    <h1>GYMSETU</h1>
+    <p>BUSINESS PLAN · COST BREAKDOWN · PRICING STRATEGY</p>
+    <div class="badge">CONFIDENTIAL — INTERNAL DOCUMENT</div>
+  </div>
+
+  <!-- ═══ SECTION 1: ONE-TIME COSTS ═══ -->
+  <div class="section">
+    <div class="section-title">01 — One-Time Setup Costs</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Cost (INR)</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Google Play Store Developer Account</td>
+          <td class="highlight">₹2,100</td>
+          <td class="muted">One-time, lifetime access. $25 USD — never pay again</td>
+        </tr>
+        <tr>
+          <td>Apple App Store Developer Account</td>
+          <td class="highlight">₹8,300 / year</td>
+          <td class="muted">Annual renewal required. $99 USD/year — needed for iPhone users</td>
+        </tr>
+        <tr>
+          <td>Domain Name (gymsetu.in)</td>
+          <td class="highlight">₹800 / year</td>
+          <td class="muted">.in domain via GoDaddy / Namecheap. renews every year</td>
+        </tr>
+        <tr>
+          <td>Logo &amp; Brand Design</td>
+          <td class="highlight">₹0 – ₹5,000</td>
+          <td class="muted">DIY with Canva (₹0) or freelancer on Fiverr/Upwork</td>
+        </tr>
+        <tr>
+          <td>Marketing Materials (offline)</td>
+          <td class="highlight">₹2,000 – ₹5,000</td>
+          <td class="muted">Pamphlets (₹1K), visiting cards (₹500), standees (₹2K)</td>
+        </tr>
+        <tr>
+          <td>WhatsApp Business API Setup (BSP)</td>
+          <td class="highlight">₹1,000 – ₹3,000</td>
+          <td class="muted">One-time Facebook Business verification + BSP onboarding fee</td>
+        </tr>
+        <tr>
+          <td>Razorpay Account Registration</td>
+          <td class="green">₹0</td>
+          <td class="muted">Free to create — no setup fee, no monthly fee</td>
+        </tr>
+        <tr class="total-row">
+          <td>TOTAL ONE-TIME (Year 1)</td>
+          <td>≈ ₹19,200 – ₹24,200</td>
+          <td class="muted">Estimated with all items included</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ SECTION 2: MONTHLY INFRASTRUCTURE ═══ -->
+  <div class="section">
+    <div class="section-title">02 — Monthly Infrastructure Costs</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Plan</th>
+          <th>Cost / Month</th>
+          <th>What It Does</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Supabase</td>
+          <td class="muted">Pro Plan</td>
+          <td class="highlight">₹2,100</td>
+          <td class="muted">Database, Auth, Storage, Edge Functions ($25/mo). 8GB DB, 100GB storage, unlimited users</td>
+        </tr>
+        <tr>
+          <td>Cloudflare Workers</td>
+          <td class="muted">Free Tier</td>
+          <td class="green">₹0</td>
+          <td class="muted">Our Jio ISP proxy — 100K requests/day free forever. We'll never need paid tier</td>
+        </tr>
+        <tr>
+          <td>Expo EAS Builds</td>
+          <td class="muted">Free / Starter</td>
+          <td class="green">₹0 – ₹1,600</td>
+          <td class="muted">Free: 15 builds/month (enough for dev). Starter: $19/mo when we need more</td>
+        </tr>
+        <tr>
+          <td>Resend (Email)</td>
+          <td class="muted">Free Tier</td>
+          <td class="green">₹0</td>
+          <td class="muted">3,000 emails/month free. For receipts, OTPs, notifications</td>
+        </tr>
+        <tr>
+          <td>Domain Hosting</td>
+          <td class="muted">Annual ÷ 12</td>
+          <td class="highlight">₹67</td>
+          <td class="muted">₹800/year domain cost spread monthly</td>
+        </tr>
+        <tr>
+          <td>xAI Grok API (AI features)</td>
+          <td class="muted">Pay per use</td>
+          <td class="highlight">₹200 – ₹2,600</td>
+          <td class="muted">Scales with gym count. ₹12–₹26 per gym/month (details in Section 03)</td>
+        </tr>
+        <tr class="total-row">
+          <td>BASE MONTHLY (No WhatsApp, 10 gyms)</td>
+          <td></td>
+          <td>₹2,367 – ₹3,967</td>
+          <td class="muted">Minimum to keep all systems running</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ SECTION 3: AI COSTS (GROK) ═══ -->
+  <div class="section">
+    <div class="section-title">03 — AI Features Cost (xAI Grok API)</div>
+    <div class="info-box">
+      <strong>Why Grok?</strong> Grok 4.1 Fast costs $0.20/M input tokens &amp; $0.50/M output tokens — 25x cheaper than GPT-4o ($5/$15 per million tokens). More than enough for gym business insights, summaries, and predictions. At this rate, 1,000 AI calls cost less than ₹5.
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>AI Feature</th>
+          <th>Model Used</th>
+          <th>Tokens / Call</th>
+          <th>Est. Cost / Gym / Month</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Daily Business Summary (WhatsApp)</td>
+          <td class="muted">Grok 4.1 Fast</td>
+          <td class="muted">~800 tokens × 30 calls</td>
+          <td class="highlight">₹2 – ₹4</td>
+        </tr>
+        <tr>
+          <td>Churn Risk Prediction</td>
+          <td class="muted">Grok 4.1 Fast</td>
+          <td class="muted">~1,200 tokens × weekly</td>
+          <td class="highlight">₹2 – ₹5</td>
+        </tr>
+        <tr>
+          <td>Renewal Probability Score</td>
+          <td class="muted">Grok 4.1 Fast</td>
+          <td class="muted">~600 tokens × weekly</td>
+          <td class="highlight">₹1 – ₹3</td>
+        </tr>
+        <tr>
+          <td>Revenue Forecast &amp; Insights</td>
+          <td class="muted">Grok 4.1 Fast</td>
+          <td class="muted">~1,500 tokens × weekly</td>
+          <td class="highlight">₹3 – ₹6</td>
+        </tr>
+        <tr>
+          <td>Price Optimization Suggestion</td>
+          <td class="muted">Grok 4.1 Fast</td>
+          <td class="muted">~800 tokens × weekly</td>
+          <td class="highlight">₹2 – ₹4</td>
+        </tr>
+        <tr>
+          <td>Member Activity Insights</td>
+          <td class="muted">Grok 4.1 Fast</td>
+          <td class="muted">~1,000 tokens × weekly</td>
+          <td class="highlight">₹2 – ₹4</td>
+        </tr>
+        <tr class="total-row">
+          <td>TOTAL AI COST PER GYM / MONTH</td>
+          <td></td>
+          <td></td>
+          <td>₹12 – ₹26</td>
+        </tr>
+        <tr class="total-row">
+          <td>TOTAL AI COST AT 100 GYMS</td>
+          <td></td>
+          <td></td>
+          <td>₹1,200 – ₹2,600</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="info-box green-box" style="margin-top: 12px;">
+      <strong>Bottom line:</strong> Even at 100 gyms, AI costs ₹2,600/month total. You charge ₹999–₹1,599 per gym. AI is essentially free to you.
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 4: WHATSAPP AUTOMATION ═══ -->
+  <div class="section">
+    <div class="section-title">04 — WhatsApp Automation Costs (Meta Business API)</div>
+    <div class="info-box">
+      <strong>Important:</strong> From July 2025, Meta switched to per-message pricing in India. Marketing = ₹0.88/msg, Utility (reminders) = ₹0.13/msg. Service messages (replies within 24hr window) are FREE.
+    </div>
+
+    <p style="font-size:12px; font-weight:800; color:#444; margin: 16px 0 8px; letter-spacing:1px;">META DIRECT COSTS (per message)</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Message Type</th>
+          <th>Meta Cost / Message</th>
+          <th>Use Case</th>
+          <th>Est. Volume / Gym</th>
+          <th>Monthly Cost / Gym</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Utility Messages</td>
+          <td class="highlight">₹0.13</td>
+          <td class="muted">Renewal reminders, dues alerts, receipt delivery</td>
+          <td class="muted">~80 msgs/month</td>
+          <td class="highlight">₹10.40</td>
+        </tr>
+        <tr>
+          <td>Marketing Messages</td>
+          <td class="orange">₹0.88</td>
+          <td class="muted">Bulk campaigns, festive offers, re-engagement</td>
+          <td class="muted">~200 msgs/month</td>
+          <td class="orange">₹176</td>
+        </tr>
+        <tr>
+          <td>Daily Summary to Owner</td>
+          <td class="highlight">₹0.13</td>
+          <td class="muted">One nightly message to gym owner = 30/month</td>
+          <td class="muted">30 msgs/month</td>
+          <td class="highlight">₹3.90</td>
+        </tr>
+        <tr class="total-row">
+          <td>META FEES PER GYM / MONTH</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td>≈ ₹190 – ₹220</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="font-size:12px; font-weight:800; color:#444; margin: 22px 0 8px; letter-spacing:1px;">BSP PROVIDER COMPARISON (Business Solution Provider — you need one to access Meta API)</p>
+    <div class="info-box orange-box">
+      <strong>What is a BSP?</strong> You cannot connect to Meta WhatsApp API directly as an individual. You must go through an approved Business Solution Provider (BSP). They charge a platform fee ON TOP of Meta's message costs.
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>BSP Provider</th>
+          <th>Setup Fee</th>
+          <th>Monthly Platform Fee</th>
+          <th>Per-Message Markup</th>
+          <th>Recommendation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>AiSensy</strong></td>
+          <td class="green">₹0</td>
+          <td class="highlight">₹999 / month</td>
+          <td class="muted">None (pass-through Meta rates)</td>
+          <td class="green">✓ Best for us</td>
+        </tr>
+        <tr>
+          <td><strong>WATI</strong></td>
+          <td class="muted">₹0</td>
+          <td class="orange">₹1,999 / month</td>
+          <td class="muted">None (pass-through)</td>
+          <td class="muted">Too expensive early on</td>
+        </tr>
+        <tr>
+          <td><strong>Interakt</strong></td>
+          <td class="muted">₹0</td>
+          <td class="orange">₹2,199 / month</td>
+          <td class="muted">None (pass-through)</td>
+          <td class="muted">Too expensive early on</td>
+        </tr>
+        <tr>
+          <td><strong>Twilio WhatsApp</strong></td>
+          <td class="green">₹0</td>
+          <td class="green">₹0</td>
+          <td class="highlight">+₹0.42 per message</td>
+          <td class="muted">High per-msg cost at scale</td>
+        </tr>
+        <tr>
+          <td><strong>Direct Meta (Cloud API)</strong></td>
+          <td class="orange">₹2,000–₹5,000</td>
+          <td class="green">₹0</td>
+          <td class="green">₹0 markup</td>
+          <td class="blue">Best at scale (50+ gyms)</td>
+        </tr>
+        <tr class="total-row">
+          <td>OUR STRATEGY</td>
+          <td colspan="4">Start with AiSensy (₹999/mo) → Switch to Direct Meta API when 50+ gyms</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="font-size:12px; font-weight:800; color:#444; margin: 22px 0 8px; letter-spacing:1px;">TOTAL WHATSAPP COST (Meta + BSP combined)</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Scale</th>
+          <th>Meta Message Fees</th>
+          <th>BSP Platform Fee</th>
+          <th>Total WhatsApp Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1–10 gyms</td>
+          <td>₹1,500 – ₹2,000</td>
+          <td class="highlight">₹999 (AiSensy)</td>
+          <td class="highlight"><strong>₹2,499 – ₹2,999</strong></td>
+        </tr>
+        <tr>
+          <td>25 gyms</td>
+          <td>₹4,750 – ₹5,500</td>
+          <td class="highlight">₹999 (AiSensy)</td>
+          <td class="highlight"><strong>₹5,749 – ₹6,499</strong></td>
+        </tr>
+        <tr>
+          <td>50 gyms (switch to Direct Meta)</td>
+          <td>₹9,500 – ₹11,000</td>
+          <td class="green">₹0</td>
+          <td class="highlight"><strong>₹9,500 – ₹11,000</strong></td>
+        </tr>
+        <tr>
+          <td>100 gyms (Direct Meta)</td>
+          <td>₹19,000 – ₹22,000</td>
+          <td class="green">₹0</td>
+          <td class="highlight"><strong>₹19,000 – ₹22,000</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ SECTION 5: RECEIPT & REPORT GENERATION ═══ -->
+  <div class="section">
+    <div class="section-title">05 — Receipt &amp; Report Generation Costs</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Tool / Method</th>
+          <th>Cost</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>PDF Receipt Generation</td>
+          <td class="muted">react-native-html-to-pdf</td>
+          <td class="green">₹0</td>
+          <td class="muted">Generated directly on user's phone — zero server cost</td>
+        </tr>
+        <tr>
+          <td>PDF Analytics Reports</td>
+          <td class="muted">Same library</td>
+          <td class="green">₹0</td>
+          <td class="muted">Generated on device, exported to WhatsApp/Email instantly</td>
+        </tr>
+        <tr>
+          <td>Receipt Storage (Cloud)</td>
+          <td class="muted">Supabase Storage</td>
+          <td class="green">₹0</td>
+          <td class="muted">Included in Supabase Pro plan (100GB total storage)</td>
+        </tr>
+        <tr>
+          <td>Email Receipt Delivery</td>
+          <td class="muted">Resend.com</td>
+          <td class="green">₹0</td>
+          <td class="muted">3,000 free emails/month — enough for 100+ gyms combined</td>
+        </tr>
+        <tr>
+          <td>WhatsApp Receipt Sharing</td>
+          <td class="muted">Meta Utility Message</td>
+          <td class="highlight">₹0.13 / receipt</td>
+          <td class="muted">Counted in WhatsApp utility cost above</td>
+        </tr>
+        <tr class="total-row">
+          <td>TOTAL RECEIPT &amp; REPORTS COST</td>
+          <td></td>
+          <td>≈ ₹0</td>
+          <td class="muted">Entirely free — biggest margin advantage vs competitors</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ SECTION 6: RAZORPAY PAYMENT GATEWAY FEES ═══ -->
+  <div class="section">
+    <div class="section-title">06 — Razorpay Payment Gateway Fees</div>
+    <div class="info-box orange-box">
+      <strong>What you actually receive per subscription:</strong> Razorpay charges 2% per transaction + 18% GST on that fee = effective rate of <strong>2.36%</strong>. This comes out of every payment you collect from gym owners. This is the HIDDEN cost most founders forget.
+    </div>
+
+    <p style="font-size:12px; font-weight:800; color:#444; margin: 0 0 8px; letter-spacing:1px;">FEE IMPACT PER SUBSCRIPTION COLLECTED</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th>Billed Amount</th>
+          <th>Razorpay Fee (2%)</th>
+          <th>GST on Fee (18%)</th>
+          <th>Total Deducted</th>
+          <th>You Receive</th>
+          <th>Loss %</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Tier 1</strong></td>
+          <td>₹999</td>
+          <td>₹19.98</td>
+          <td>₹3.60</td>
+          <td class="red">₹23.58</td>
+          <td class="green">₹975.42</td>
+          <td class="muted">2.36%</td>
+        </tr>
+        <tr>
+          <td><strong>Tier 2</strong></td>
+          <td>₹1,599</td>
+          <td>₹31.98</td>
+          <td>₹5.76</td>
+          <td class="red">₹37.74</td>
+          <td class="green">₹1,561.26</td>
+          <td class="muted">2.36%</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="font-size:12px; font-weight:800; color:#444; margin: 20px 0 8px; letter-spacing:1px;">TOTAL RAZORPAY FEES BY GYM COUNT (per month)</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Scale</th>
+          <th>Gym Mix</th>
+          <th>Gross Revenue</th>
+          <th>Razorpay Fees</th>
+          <th>Net After Fees</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>10 gyms</td>
+          <td class="muted">10 × T1 (₹999)</td>
+          <td>₹9,990</td>
+          <td class="red">₹235.80</td>
+          <td class="green">₹9,754.20</td>
+        </tr>
+        <tr>
+          <td>25 gyms</td>
+          <td class="muted">18 × T1 + 7 × T2</td>
+          <td>₹29,169</td>
+          <td class="red">₹688.38</td>
+          <td class="green">₹28,480.62</td>
+        </tr>
+        <tr>
+          <td>50 gyms</td>
+          <td class="muted">30 × T1 + 20 × T2</td>
+          <td>₹61,950</td>
+          <td class="red">₹1,462.02</td>
+          <td class="green">₹60,487.98</td>
+        </tr>
+        <tr>
+          <td>100 gyms</td>
+          <td class="muted">60 × T1 + 40 × T2</td>
+          <td>₹1,23,540</td>
+          <td class="red">₹2,915.54</td>
+          <td class="green">₹1,20,624.46</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="font-size:12px; font-weight:800; color:#444; margin: 20px 0 8px; letter-spacing:1px;">PAYMENT METHOD BREAKDOWN — RAZORPAY RATES</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Payment Method</th>
+          <th>Razorpay Rate</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>UPI (GPay, PhonePe, Paytm)</td>
+          <td class="green">₹0 (up to ₹2K)</td>
+          <td class="muted">Free for transactions under ₹2,000. Our ₹999 plan qualifies — 0% fee!</td>
+        </tr>
+        <tr>
+          <td>UPI (above ₹2K)</td>
+          <td class="highlight">0.5% + GST</td>
+          <td class="muted">Only our ₹1,599 plan if paid via UPI. Fee = ₹9.43. Much cheaper!</td>
+        </tr>
+        <tr>
+          <td>Debit Card (Domestic)</td>
+          <td class="highlight">2% + GST</td>
+          <td class="muted">Standard rate. Full ₹23.58 / ₹37.74 deducted</td>
+        </tr>
+        <tr>
+          <td>Credit Card (Domestic)</td>
+          <td class="highlight">2% + GST</td>
+          <td class="muted">Same as debit card rate</td>
+        </tr>
+        <tr>
+          <td>Net Banking</td>
+          <td class="highlight">₹15 flat + GST</td>
+          <td class="muted">₹17.70 flat fee regardless of amount</td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="3">STRATEGY: Encourage UPI payments — saves ₹23–₹37 per transaction. Incentivize with discount or reminder in app.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box green-box" style="margin-top:12px;">
+      <strong>Smart move:</strong> If 80% of your gym owners pay via UPI, your effective Razorpay cost drops from ₹2,915/month (at 100 gyms) to under ₹600/month. <strong>Always show UPI as the default payment method.</strong>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 7: TOTAL CAPITAL REQUIRED ═══ -->
+  <div class="section">
+    <div class="section-title">07 — Total Capital Required Before First Rupee of Revenue</div>
+    <div class="info-box">
+      <strong>Why this matters:</strong> Before you onboard your first paying gym, you will have spent money on setup, tools, and marketing. This is the true amount of money you need to have ready — your starting capital requirement.
+    </div>
+
+    <div class="capital-grid">
+      <div class="capital-card" style="border-color: #E8501A50;">
+        <div class="cap-label">ONE-TIME SETUP</div>
+        <div class="cap-value">₹21,700</div>
+        <div class="cap-sub">Stores, domain, brand, BSP setup</div>
+      </div>
+      <div class="capital-card" style="border-color: #3B82F650;">
+        <div class="cap-label">FIRST 2 MONTHS INFRA</div>
+        <div class="cap-value">₹9,934</div>
+        <div class="cap-sub">Supabase + Grok + WhatsApp BSP × 2</div>
+      </div>
+      <div class="capital-card" style="border-color: #F9731650;">
+        <div class="cap-label">LAUNCH MARKETING</div>
+        <div class="cap-value">₹16,000</div>
+        <div class="cap-sub">Ads + offline demos × 2 months</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Expense Category</th>
+          <th>Amount</th>
+          <th>When</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Google Play Store Account</td>
+          <td class="highlight">₹2,100</td>
+          <td class="muted">Before launch</td>
+          <td class="muted">One-time, lifetime</td>
+        </tr>
+        <tr>
+          <td>Apple App Store Account</td>
+          <td class="highlight">₹8,300</td>
+          <td class="muted">Before launch (skip if Android only)</td>
+          <td class="muted">Can skip at start, add later</td>
+        </tr>
+        <tr>
+          <td>Domain Name</td>
+          <td class="highlight">₹800</td>
+          <td class="muted">Before launch</td>
+          <td class="muted">gymsetu.in</td>
+        </tr>
+        <tr>
+          <td>Brand / Logo (freelancer)</td>
+          <td class="highlight">₹2,000</td>
+          <td class="muted">Before launch</td>
+          <td class="muted">Can DIY with Canva = ₹0</td>
+        </tr>
+        <tr>
+          <td>WhatsApp BSP Setup (AiSensy)</td>
+          <td class="highlight">₹1,000</td>
+          <td class="muted">Before launch</td>
+          <td class="muted">One-time BSP onboarding</td>
+        </tr>
+        <tr>
+          <td>Marketing Materials (print)</td>
+          <td class="highlight">₹3,000</td>
+          <td class="muted">Week 1</td>
+          <td class="muted">Pamphlets, cards, standees for offline visits</td>
+        </tr>
+        <tr>
+          <td>Supabase Pro — Month 1</td>
+          <td class="highlight">₹2,100</td>
+          <td class="muted">Month 1</td>
+          <td class="muted">Database &amp; backend — non-negotiable</td>
+        </tr>
+        <tr>
+          <td>Supabase Pro — Month 2</td>
+          <td class="highlight">₹2,100</td>
+          <td class="muted">Month 2</td>
+          <td class="muted">Before revenue covers it</td>
+        </tr>
+        <tr>
+          <td>WhatsApp BSP (AiSensy) — Month 1 &amp; 2</td>
+          <td class="highlight">₹1,998</td>
+          <td class="muted">Month 1–2</td>
+          <td class="muted">₹999/mo platform fee × 2</td>
+        </tr>
+        <tr>
+          <td>Meta Message Fees — Month 1 &amp; 2</td>
+          <td class="highlight">₹1,000</td>
+          <td class="muted">Month 1–2</td>
+          <td class="muted">Testing + first few gyms</td>
+        </tr>
+        <tr>
+          <td>Instagram Ads — Month 1 &amp; 2</td>
+          <td class="highlight">₹10,000</td>
+          <td class="muted">Month 1–2</td>
+          <td class="muted">₹5K/month for 2 months to get first customers</td>
+        </tr>
+        <tr>
+          <td>Offline Demo Travel &amp; Misc</td>
+          <td class="highlight">₹3,000</td>
+          <td class="muted">Month 1–2</td>
+          <td class="muted">Fuel, food during gym visits, samples</td>
+        </tr>
+        <tr>
+          <td>Emergency Buffer</td>
+          <td class="highlight">₹5,000</td>
+          <td class="muted">Always</td>
+          <td class="muted">Unexpected costs, server downtime, etc.</td>
+        </tr>
+        <tr class="total-row">
+          <td>TOTAL CAPITAL REQUIRED (Android Only Launch)</td>
+          <td>≈ ₹42,398</td>
+          <td></td>
+          <td class="muted">Skip Apple = save ₹8,300</td>
+        </tr>
+        <tr class="total-row">
+          <td>TOTAL CAPITAL REQUIRED (Android + iOS)</td>
+          <td>≈ ₹50,698</td>
+          <td></td>
+          <td class="muted">With Apple App Store included</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box" style="margin-top: 14px;">
+      <strong>Minimum to start:</strong> If you skip iOS and DIY the logo, your startup cost drops to approximately <strong>₹32,000</strong>. That covers everything through Month 2 before any gym pays you. After just 4 gyms sign up, you're covering monthly costs.
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 8: 6-MONTH CASH FLOW ═══ -->
+  <div class="section">
+    <div class="section-title">08 — 6-Month Cash Flow Projection</div>
+    <div class="info-box blue-box">
+      <strong>Assumptions:</strong> Starting with Android only. Marketing spend of ₹5K–₹8K/month. Mix of 75% Tier 1 / 25% Tier 2 customers. Razorpay fees included (80% UPI assumed). WhatsApp via AiSensy until Month 5.
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Gyms (T1/T2)</th>
+          <th>Gross Revenue</th>
+          <th>Razorpay Fees</th>
+          <th>Infrastructure</th>
+          <th>WhatsApp Total</th>
+          <th>Marketing</th>
+          <th>Net Profit / Loss</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="warning-row">
+          <td><strong>Month 1</strong><br/><span class="muted">Building &amp; testing</span></td>
+          <td>0 gyms</td>
+          <td>₹0</td>
+          <td class="green">₹0</td>
+          <td>₹2,167</td>
+          <td>₹999</td>
+          <td>₹8,000</td>
+          <td class="profit-negative">−₹11,166</td>
+        </tr>
+        <tr class="warning-row">
+          <td><strong>Month 2</strong><br/><span class="muted">First demos</span></td>
+          <td>3 gyms<br/><span class="muted">3×T1</span></td>
+          <td>₹2,997</td>
+          <td class="red">₹71</td>
+          <td>₹2,167</td>
+          <td>₹1,200</td>
+          <td>₹8,000</td>
+          <td class="profit-negative">−₹8,441</td>
+        </tr>
+        <tr class="warning-row">
+          <td><strong>Month 3</strong><br/><span class="muted">Campaign starts</span></td>
+          <td>10 gyms<br/><span class="muted">8×T1 + 2×T2</span></td>
+          <td>₹11,190</td>
+          <td class="red">₹265</td>
+          <td>₹2,167</td>
+          <td>₹2,200</td>
+          <td>₹10,000</td>
+          <td class="profit-warning">−₹3,442</td>
+        </tr>
+        <tr>
+          <td><strong>Month 4</strong><br/><span class="muted">Growing word-of-mouth</span></td>
+          <td>18 gyms<br/><span class="muted">13×T1 + 5×T2</span></td>
+          <td>₹20,982</td>
+          <td class="red">₹496</td>
+          <td>₹2,167</td>
+          <td>₹3,700</td>
+          <td>₹8,000</td>
+          <td class="profit-warning">+₹6,619</td>
+        </tr>
+        <tr class="positive-row">
+          <td><strong>Month 5</strong><br/><span class="muted">Profitable 🎉</span></td>
+          <td>28 gyms<br/><span class="muted">20×T1 + 8×T2</span></td>
+          <td>₹32,772</td>
+          <td class="red">₹773</td>
+          <td>₹3,767</td>
+          <td>₹5,400</td>
+          <td>₹8,000</td>
+          <td class="profit-positive">+₹14,832</td>
+        </tr>
+        <tr class="positive-row">
+          <td><strong>Month 6</strong><br/><span class="muted">Scaling up</span></td>
+          <td>42 gyms<br/><span class="muted">30×T1 + 12×T2</span></td>
+          <td>₹49,158</td>
+          <td class="red">₹1,161</td>
+          <td>₹3,767</td>
+          <td>₹7,800</td>
+          <td>₹8,000</td>
+          <td class="profit-positive">+₹28,430</td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="7">CUMULATIVE POSITION AFTER 6 MONTHS</td>
+          <td class="profit-positive">+₹26,832 net</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box green-box" style="margin-top:14px;">
+      <strong>Key insight:</strong> You turn profitable in Month 4 with just 18 gyms. By Month 6 with 42 gyms, you're earning ₹28,000+ net per month. Initial capital of ~₹42,000 is fully recovered by end of Month 5.
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 9: FULL COST SUMMARY BY SCALE ═══ -->
+  <div class="section">
+    <div class="section-title">09 — Full Monthly Cost by Gym Count</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Scale</th>
+          <th>Infrastructure</th>
+          <th>AI (Grok)</th>
+          <th>WhatsApp (Meta + BSP)</th>
+          <th>Razorpay Fees*</th>
+          <th>Total Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Launch (1–10 gyms)</strong></td>
+          <td>₹2,167</td>
+          <td>₹200</td>
+          <td>₹2,499</td>
+          <td>₹236</td>
+          <td class="highlight"><strong>≈ ₹5,102</strong></td>
+        </tr>
+        <tr>
+          <td><strong>Growth (25 gyms)</strong></td>
+          <td>₹2,167</td>
+          <td>₹600</td>
+          <td>₹5,749</td>
+          <td>₹590</td>
+          <td class="highlight"><strong>≈ ₹9,106</strong></td>
+        </tr>
+        <tr>
+          <td><strong>Scale (50 gyms)</strong></td>
+          <td>₹3,767</td>
+          <td>₹1,100</td>
+          <td>₹9,500</td>
+          <td>₹1,180</td>
+          <td class="highlight"><strong>≈ ₹15,547</strong></td>
+        </tr>
+        <tr>
+          <td><strong>Strong (100 gyms)</strong></td>
+          <td>₹3,767</td>
+          <td>₹2,000</td>
+          <td>₹19,000</td>
+          <td>₹2,360</td>
+          <td class="highlight"><strong>≈ ₹27,127</strong></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="info-box" style="margin-top: 10px;">
+      <strong>* Razorpay fees</strong> here assume 80% UPI (near-zero fee) + 20% card payments. If all customers pay by card, multiply Razorpay column by 10x. <strong>Encourage UPI aggressively in the app.</strong>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 10: PRICING TIERS ═══ -->
+  <div class="section">
+    <div class="section-title">10 — Your Pricing Plan</div>
+    <div class="tier-grid">
+
+      <div class="tier-card popular">
+        <div class="popular-badge">RECOMMENDED</div>
+        <div class="tier-name">TIER 1 — STARTER</div>
+        <div class="tier-price">₹999 <span>/ month</span></div>
+        <div class="tier-price-net">You receive ₹975.42 after Razorpay (UPI = full ₹999)</div>
+        <div class="tier-desc">For single-branch gyms getting started with digital management</div>
+        <div class="tier-feat">Full member management</div>
+        <div class="tier-feat">Payments &amp; dues tracker</div>
+        <div class="tier-feat">Attendance marking</div>
+        <div class="tier-feat">Reports &amp; analytics</div>
+        <div class="tier-feat">Digital PDF receipts</div>
+        <div class="tier-feat">Expense &amp; break-even tracker</div>
+        <div class="tier-feat">Staff management (2 staff)</div>
+        <div class="tier-feat">WhatsApp reminders (100 msg/mo)</div>
+        <div class="tier-feat">Daily business summary</div>
+        <div class="tier-feat">Basic AI insights</div>
+        <div class="tier-feat">1 branch only</div>
+      </div>
+
+      <div class="tier-card">
+        <div class="tier-name">TIER 2 — GROWTH</div>
+        <div class="tier-price">₹1,599 <span>/ month</span></div>
+        <div class="tier-price-net">You receive ₹1,561.26 after Razorpay (UPI = ₹1,589.57)</div>
+        <div class="tier-desc">For serious gym owners who want automation and deep business intelligence</div>
+        <div class="tier-feat">Everything in Tier 1</div>
+        <div class="tier-feat extra">Unlimited WhatsApp messages</div>
+        <div class="tier-feat extra">Bulk marketing campaigns</div>
+        <div class="tier-feat extra">Advanced AI churn prediction</div>
+        <div class="tier-feat extra">Revenue forecast &amp; planning</div>
+        <div class="tier-feat extra">Member self-service portal</div>
+        <div class="tier-feat extra">Online payment collection link</div>
+        <div class="tier-feat extra">Leaderboard &amp; challenges</div>
+        <div class="tier-feat extra">Unlimited staff logins</div>
+        <div class="tier-feat extra">Up to 3 branches</div>
+        <div class="tier-feat extra">Priority support</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 11: PROFIT PROJECTIONS ═══ -->
+  <div class="section">
+    <div class="section-title">11 — Profit Projections (All Costs Included)</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Milestone</th>
+          <th>Gyms (T1/T2)</th>
+          <th>Gross Revenue</th>
+          <th>All Costs*</th>
+          <th>Net Profit</th>
+          <th>Margin</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Break-Even</strong></td>
+          <td>5 gyms on T1</td>
+          <td>₹4,995</td>
+          <td>₹5,102</td>
+          <td class="profit-warning">−₹107</td>
+          <td class="muted">−2%</td>
+        </tr>
+        <tr>
+          <td><strong>Early Profit</strong></td>
+          <td>8 × T1</td>
+          <td>₹7,992</td>
+          <td>₹5,102</td>
+          <td class="profit-positive">₹2,890</td>
+          <td class="green">36%</td>
+        </tr>
+        <tr>
+          <td><strong>10 Gyms</strong></td>
+          <td>10 × T1</td>
+          <td>₹9,990</td>
+          <td>₹5,102</td>
+          <td class="profit-positive">₹4,888</td>
+          <td class="green">49%</td>
+        </tr>
+        <tr>
+          <td><strong>25 Gyms</strong></td>
+          <td>18 × T1 + 7 × T2</td>
+          <td>₹29,169</td>
+          <td>₹9,106</td>
+          <td class="profit-positive">₹20,063</td>
+          <td class="green">69%</td>
+        </tr>
+        <tr>
+          <td><strong>50 Gyms</strong></td>
+          <td>30 × T1 + 20 × T2</td>
+          <td>₹61,770</td>
+          <td>₹15,547</td>
+          <td class="profit-positive">₹46,223</td>
+          <td class="green">75%</td>
+        </tr>
+        <tr>
+          <td><strong>100 Gyms</strong></td>
+          <td>60 × T1 + 40 × T2</td>
+          <td>₹1,23,540</td>
+          <td>₹27,127</td>
+          <td class="profit-positive">₹96,413</td>
+          <td class="green">78%</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="info-box" style="margin-top:16px;">
+      <strong>* All costs include:</strong> Infrastructure (Supabase, Grok, EAS), WhatsApp (Meta + BSP), Razorpay gateway fees, and domain. Does NOT include marketing — add ₹8K–₹16K/month for ads during growth phase.
+    </div>
+    <div class="info-box green-box" style="margin-top: 10px;">
+      <strong>Break-even: Just 5–6 gyms on Tier 1.</strong> That is achievable in the first week of marketing. At 25 gyms you're earning ₹20K+/month profit. At 100 gyms, ₹96K+ per month with 78% margins — exceptional for a SaaS.
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 12: MARKETING BUDGET ═══ -->
+  <div class="section">
+    <div class="section-title">12 — Marketing Budget Plan</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Channel</th>
+          <th>Monthly Budget</th>
+          <th>Expected Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Instagram Ads (Reels + Stories)</td>
+          <td class="highlight">₹5,000 – ₹10,000</td>
+          <td class="muted">5–15 gym owner inquiries/month. Targeting: gym owner, fitness business, small business India</td>
+        </tr>
+        <tr>
+          <td>Offline — Gym Visits &amp; Demos</td>
+          <td class="highlight">₹2,000 – ₹4,000</td>
+          <td class="muted">Highest conversion rate — 40–60% close rate on in-person demos</td>
+        </tr>
+        <tr>
+          <td>Pamphlets &amp; Visiting Cards</td>
+          <td class="highlight">₹1,000 – ₹2,000</td>
+          <td class="muted">Leave behind after every demo. Includes QR code to download app</td>
+        </tr>
+        <tr>
+          <td>WhatsApp Outreach to Gyms</td>
+          <td class="green">₹0</td>
+          <td class="muted">Direct message local gym owners on WhatsApp/Instagram DM. 100% free</td>
+        </tr>
+        <tr>
+          <td>Instagram Organic (Reels)</td>
+          <td class="green">₹0</td>
+          <td class="muted">Show app demo reels at real gyms — free reach, builds trust</td>
+        </tr>
+        <tr>
+          <td>Google My Business / SEO</td>
+          <td class="green">₹0</td>
+          <td class="muted">Gym management software searches — free long-term traffic</td>
+        </tr>
+        <tr class="total-row">
+          <td>TOTAL MARKETING / MONTH</td>
+          <td>₹8,000 – ₹16,000</td>
+          <td class="muted">Reduce paid ads as organic &amp; referral takes over after Month 4</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ SECTION 13: BUILD CHECKLIST ═══ -->
+  <div class="section">
+    <div class="section-title">13 — Features Build Checklist</div>
+
+    <p style="font-size:12px; color:#888; margin-bottom:16px;">Check off as you build each feature. Priority ordered.</p>
+
+    <div style="font-size:11px; font-weight:800; color:#E8501A; letter-spacing:1.5px; margin-bottom:10px;">🔴 PHASE 1 — CORE (Must have before launch)</div>
+    <div class="checklist">
+      <div class="check-item done">
+        <input type="checkbox" checked />
+        <div class="check-label"><strong>Member Management</strong><span class="sub">Add, edit, view, search members with full profiles</span></div>
+      </div>
+      <div class="check-item done">
+        <input type="checkbox" checked />
+        <div class="check-label"><strong>Membership Plans</strong><span class="sub">Create plans, assign to members, track status</span></div>
+      </div>
+      <div class="check-item done">
+        <input type="checkbox" checked />
+        <div class="check-label"><strong>Payments &amp; Dues Tracking</strong><span class="sub">Record payments, track pending dues, history</span></div>
+      </div>
+      <div class="check-item done">
+        <input type="checkbox" checked />
+        <div class="check-label"><strong>Attendance Marking</strong><span class="sub">Daily check-in system for members</span></div>
+      </div>
+      <div class="check-item done">
+        <input type="checkbox" checked />
+        <div class="check-label"><strong>Owner Dashboard</strong><span class="sub">Stats, insights, activity feed, quick actions</span></div>
+      </div>
+      <div class="check-item done">
+        <input type="checkbox" checked />
+        <div class="check-label"><strong>Authentication (Login/Signup)</strong><span class="sub">Supabase auth via Cloudflare proxy</span></div>
+      </div>
+      <div class="check-item done">
+        <input type="checkbox" checked />
+        <div class="check-label"><strong>Reports &amp; Analytics</strong><span class="sub">Revenue, members, attendance, expiry reports</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Digital PDF Receipts</strong><span class="sub">Auto-generate after every payment, shareable via WhatsApp &amp; email</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Expense Tracker</strong><span class="sub">Log rent, electricity, equipment costs monthly</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Break-Even Dashboard</strong><span class="sub">Revenue vs expenses, how many renewals needed this month</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Full Supabase Backend Integration</strong><span class="sub">Replace all mock data with real database queries across all screens</span></div>
+      </div>
+    </div>
+
+    <div style="font-size:11px; font-weight:800; color:#F97316; letter-spacing:1.5px; margin: 24px 0 10px;">🟡 PHASE 2 — AUTOMATION (Tier 1 differentiator)</div>
+    <div class="checklist">
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>WhatsApp Renewal Reminders</strong><span class="sub">Auto-send 7 days &amp; 3 days before expiry via Meta API + AiSensy BSP</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Daily Business Summary to Owner</strong><span class="sub">Nightly WhatsApp: check-ins, revenue, new members — powered by Grok AI</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Dues Follow-up Messages</strong><span class="sub">Auto-remind members with pending dues (3 days, 7 days overdue)</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Member Welcome Message</strong><span class="sub">Auto WhatsApp on joining with gym info, timings, and welcome PDF</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Birthday Alerts to Owner</strong><span class="sub">Daily alert: members with birthdays today/this week — improves retention</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Razorpay Integration (Online Payment)</strong><span class="sub">Owner sends payment link to member, auto-marks as paid on receipt</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Grok AI — Basic Insights</strong><span class="sub">Daily summary generation, renewal predictions, revenue commentary</span></div>
+      </div>
+    </div>
+
+    <div style="font-size:11px; font-weight:800; color:#3B82F6; letter-spacing:1.5px; margin: 24px 0 10px;">🔵 PHASE 3 — GROWTH (Tier 2 features)</div>
+    <div class="checklist">
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Bulk WhatsApp Campaigns</strong><span class="sub">Send offers, announcements to all active members in one tap</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>AI Churn Prediction</strong><span class="sub">Grok identifies who is likely to drop membership in the next 30 days</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Revenue Forecast</strong><span class="sub">Expected collections next 30/60/90 days based on renewal patterns</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Leaderboard &amp; Member Challenges</strong><span class="sub">Top attendees board, 30-day challenge system — boosts engagement</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>EMI / Installment Plans</strong><span class="sub">Split membership into 2-3 payments, auto-track each installment</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Re-engagement Campaign</strong><span class="sub">Auto-message members inactive for 14+ days with a comeback offer</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Multi-Branch Support</strong><span class="sub">Up to 3 gyms under one owner account, combined analytics</span></div>
+      </div>
+    </div>
+
+    <div style="font-size:11px; font-weight:800; color:#A78BFA; letter-spacing:1.5px; margin: 24px 0 10px;">🟣 PHASE 4 — PREMIUM (Future roadmap)</div>
+    <div class="checklist">
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Digital Membership QR Card</strong><span class="sub">Member's phone = entry pass, scan to mark attendance instantly</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Gym Health Score</strong><span class="sub">Single 0–100 score for overall gym business health — powered by AI</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Staff Attendance &amp; Salary Calc</strong><span class="sub">Track staff check-in, auto-calculate monthly pay including deductions</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Supplement / Product Sales</strong><span class="sub">Inventory tracking, sales recording, profit per item dashboard</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Investor PDF Report Export</strong><span class="sub">Professional financial report for bank loans or franchise pitches</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>UPI Autopay for Renewals</strong><span class="sub">Member sets up autopay mandate — zero collection effort for owner</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Peak Hours Heatmap</strong><span class="sub">Which hour/day has most traffic — helps with staff scheduling &amp; capacity</span></div>
+      </div>
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="check-label"><strong>Franchise Mode</strong><span class="sub">Gym owner manages multiple franchises, monitors all from single dashboard</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 14: LAUNCH PHASES ═══ -->
+  <div class="section">
+    <div class="section-title">14 — Go-To-Market Phases</div>
+    <div class="phases">
+      <div class="phase">
+        <div class="phase-num">1</div>
+        <div class="phase-content">
+          <div class="phase-tag" style="background:#fff4f0; color:#E8501A;">MONTH 1–2</div>
+          <h3>Build &amp; Validate</h3>
+          <p>Complete Phase 1 features. Do offline demos at 5–10 local gyms. Get feedback. Onboard first 5 paying gyms. Fix everything they complain about. Invest ₹42K capital upfront.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">2</div>
+        <div class="phase-content">
+          <div class="phase-tag" style="background:#f0fdf4; color:#15803d;">MONTH 3–4</div>
+          <h3>Launch Marketing Campaign</h3>
+          <p>Instagram Reels showing the app in action at real gyms. Offline gym visits in your city. Target: 25 paying gyms. Launch WhatsApp automation (Phase 2). Break even around Month 4.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">3</div>
+        <div class="phase-content">
+          <div class="phase-tag" style="background:#eff6ff; color:#1d4ed8;">MONTH 5–6</div>
+          <h3>Scale with Tier 2</h3>
+          <p>Launch Tier 2 features. Upsell existing gyms. Target 42+ gyms total. Revenue: ₹49K+/month, profit ₹28K+. Begin referral program — happy owners bring friends. Recover full ₹42K startup investment.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">4</div>
+        <div class="phase-content">
+          <div class="phase-tag" style="background:#faf5ff; color:#7e22ce;">MONTH 7–12</div>
+          <h3>100 Gyms &amp; Premium Features</h3>
+          <p>Launch Phase 4 premium features. Consider expanding to nearby cities. Target 100 gyms. Monthly profit: ₹80K–96K. Switch WhatsApp to Direct Meta API (saving ₹999 BSP fee). Start Phase 4 roadmap.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="doc-footer">
+    GYMSETU · INTERNAL BUSINESS PLAN · CONFIDENTIAL · 2026
+  </div>
+
+</div>
+</body>
+</html>

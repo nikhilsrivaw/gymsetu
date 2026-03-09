@@ -1,50 +1,49 @@
-import { useEffect, useRef } from 'react';                                           import { View, Text, StyleSheet, Animated } from 'react-native';                     import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                                                                                                                interface Props {                                                                      label: string;                                                                       value: number;                                                                   
-    total: number;                                                                       color: string;                                                                   
-    formatValue?: (v: number) => string;                                               }                                                                                  
-                                                                                     
-  export default function HorizontalBar({ label, value, total, color, formatValue }: 
+import React, { useEffect, useRef } from 'react';
+  import { View, Text, Animated, StyleSheet } from 'react-native';
+  import { Colors } from '@/constants/colors';
+
+  interface Props {
+    label: string;
+    value: number;
+    total: number;
+    color?: string;
+    formatValue?: (v: number) => string;
+    delay?: number;
+  }
+
+  export default function HorizontalBar({ label, value, total, color = Colors.accent, formatValue, delay = 0 }:      
   Props) {
-    const widthAnim = useRef(new Animated.Value(0)).current;
-    const pct = total > 0 ? (value / total) * 100 : 0;
+    const anim = useRef(new Animated.Value(0)).current;
+    const pct = total > 0 ? Math.round((value / total) * 100) : 0;
 
     useEffect(() => {
-      Animated.timing(widthAnim, {
-        toValue:  pct,
-        duration: 600,
-        useNativeDriver: false,
-      }).start();
-    }, [value, total]);
+      Animated.timing(anim, { toValue: pct, duration: 800, delay, useNativeDriver: false }).start();
+    }, []);
+
+    const widthInterp = anim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
 
     return (
-      <View style={styles.row}>
-        <Text style={styles.label} numberOfLines={1}>{label}</Text>
-        <View style={styles.track}>
-          <Animated.View
-            style={[
-              styles.fill,
-              {
-                backgroundColor: color,
-                width: widthAnim.interpolate({
-                  inputRange:  [0, 100],
-                  outputRange: ['0%', '100%'],
-                }),
-              },
-            ]}
-          />
+      <View style={styles.container}>
+        <View style={styles.row}>
+          <Text style={styles.label}>{label}</Text>
+          <Text style={styles.value}>
+            {formatValue ? formatValue(value) : value}{' '}
+            <Text style={styles.pct}>({pct}%)</Text>
+          </Text>
         </View>
-        <Text style={[styles.value, { color }]}>
-          {formatValue ? formatValue(value) : value}
-        </Text>
+        <View style={styles.track}>
+          <Animated.View style={[styles.fill, { width: widthInterp, backgroundColor: color }]} />
+        </View>
       </View>
     );
   }
 
   const styles = StyleSheet.create({
-    row:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    label: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.textMuted, width: 
-  72 },
-    track: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden',
-  backgroundColor: Colors.bgElevated },
-    fill:  { height: '100%', borderRadius: 4 },
-    value: { fontFamily: Fonts.bold, fontSize: 12, width: 50, textAlign: 'right' },  
+    container: { marginBottom: 14 },
+    row:       { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+    label:     { fontSize: 13, color: Colors.text, fontWeight: '500' },
+    value:     { fontSize: 13, color: Colors.text, fontWeight: '600' },
+    pct:       { color: Colors.textMuted, fontWeight: '400', fontSize: 12 },
+    track:     { height: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden' },
+    fill:      { height: '100%', borderRadius: 4 },
   });

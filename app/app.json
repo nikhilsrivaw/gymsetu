@@ -13,7 +13,12 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -27,14 +32,30 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      [
-        "expo-router",
-        {
-          "root": "./src/app"
-        }
-      ],
-      "expo-font"
-    ]
+    "plugins": [             
+    [                               
+      "expo-router",                             
+      {                           
+        "root": "./src/app"
+      }
+    ],                                                                                                              [
+      "expo-notifications",                                                                                     
+      {                                                                                                         
+        "icon": "./assets/icon.png",
+        "color": "#0A84FF",
+        "sounds": []
+      }
+    ],
+    "expo-font"
+  ],
+    "extra": {
+      "router": {
+        "root": "./src/app"
+      },
+      "eas": {
+        "projectId": "c3892d96-d06c-4e38-85f7-2c118007074d"
+      }
+    },
+    "owner": "saltyfox"
   }
 }

@@ -1,10 +1,18 @@
 import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Redirect } from 'expo-router';
+  import { useAuthStore } from '@/store/authStore';
+  import { View, ActivityIndicator } from 'react-native';
 import { Colors } from '@/constants/colors';
 
 export default function OwnerLayout() {
   const insets = useSafeAreaInsets();
+    const { profile, isLoading } = useAuthStore();
+  if (isLoading) return <View style={{ flex: 1, backgroundColor: Colors.bg, justifyContent: 'center',
+  alignItems: 'center' }}><ActivityIndicator color={Colors.accent} /></View>;
+  if (!profile || profile.role !== 'gym_owner') return <Redirect href="/" />;
+  
 
   return (
     <Tabs

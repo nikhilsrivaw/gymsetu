@@ -1,30 +1,17 @@
-
-  import { View, Text, StyleSheet, ScrollView, Pressable, Modal, TextInput } from    
-  'react-native';
-  import { SafeAreaView } from 'react-native-safe-area-context';
-  import { MaterialCommunityIcons } from '@expo/vector-icons';
-  import { useState } from 'react';
-  import { Colors } from '@/constants/colors';
-  import { Fonts } from '@/constants/fonts';
-  import FadeInView from '@/components/FadeInView';
+ import { useState, useCallback } from 'react'; 
+  import { View, Text, StyleSheet, ScrollView, Pressable, Modal, TextInput, Alert,     ActivityIndicator } from 'react-native';
+  import { SafeAreaView } from 'react-native-safe-area-context';                       import { MaterialCommunityIcons } from '@expo/vector-icons';                       
+  import { useFocusEffect } from 'expo-router';                                      
+  import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                         
+  import FadeInView from '@/components/FadeInView';                                  
   import AnimatedPressable from '@/components/AnimatedPressable';
+  import { supabase } from '@/lib/supabase';
+  import { useAuthStore } from '@/store/authStore';
+  import type { Gym } from '@/types/database';
 
   type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];       
 
-  const gymData = {
-    name:        'IronEdge Fitness',
-    tagline:     'No Pain, No Gain',
-    owner:       'Rajesh Kumar',
-    phone:       '9876543210',
-    email:       'ironedge@gmail.com',
-    address:     'Plot 14, Sector 18, Noida, UP — 201301',
-    established: '2019',
-    gstin:       '09ABCDE1234F1Z5',
-    capacity:    120,
-    currentLoad: 148,
-    rating:      4.7,
-    totalReviews:214,
-  };
+  const GYM_CAPACITY = 100;
 
   const timings = [
     { day: 'Mon – Fri', open: '5:30 AM', close: '10:00 PM' },
@@ -33,14 +20,14 @@
   ];
 
   const amenities: { label: string; icon: IconName; active: boolean }[] = [
-    { label: 'AC',             icon: 'air-conditioner',        active: true  },      
-    { label: 'Parking',        icon: 'car-outline',            active: true  },      
-    { label: 'Locker Room',    icon: 'lock-outline',           active: true  },      
-    { label: 'Steam Room',     icon: 'weather-fog',            active: true  },      
-    { label: 'Juice Bar',      icon: 'cup-outline',            active: false },      
-    { label: 'Personal Training',icon: 'account-supervisor-outline', active: true }, 
-    { label: 'Yoga Room',      icon: 'yoga',                   active: true  },      
-    { label: 'Cardio Zone',    icon: 'run-fast',               active: true  },      
+    { label: 'AC',               icon: 'air-conditioner',            active: true  },
+    { label: 'Parking',          icon: 'car-outline',                active: true  },
+    { label: 'Locker Room',      icon: 'lock-outline',               active: true  },
+    { label: 'Steam Room',       icon: 'weather-fog',                active: true  },
+    { label: 'Juice Bar',        icon: 'cup-outline',                active: false },
+    { label: 'Personal Training',icon: 'account-supervisor-outline', active: true  },
+    { label: 'Yoga Room',        icon: 'yoga',                       active: true  },
+    { label: 'Cardio Zone',      icon: 'run-fast',                   active: true  },
   ];
 
   const socialLinks = [
@@ -53,15 +40,92 @@
   ];
 
   export default function GymProfileScreen() {
-    const [editModal, setEditModal] = useState(false);
-    const [timingModal, setTimingModal] = useState(false);
-    const [name, setName]     = useState(gymData.name);
-    const [phone, setPhone]   = useState(gymData.phone);
-    const [email, setEmail]   = useState(gymData.email);
-    const [address, setAddress] = useState(gymData.address);
+    const { profile } = useAuthStore();
+    const [gym, setGym]                 = useState<Gym | null>(null);
+    const [ownerName, setOwnerName]     = useState('');
+    const [activeCount, setActiveCount] = useState(0);
+    const [loading, setLoading]         = useState(true);
 
-    const loadPct = Math.min(100, Math.round((gymData.currentLoad / gymData.capacity)
-   * 100));
+    const [editModal, setEditModal]     = useState(false);
+    const [timingModal, setTimingModal] = useState(false);
+    const [saving, setSaving]           = useState(false);
+
+    const [name, setName]       = useState('');
+    const [phone, setPhone]     = useState('');
+    const [email, setEmail]     = useState('');
+    const [address, setAddress] = useState('');
+
+    useFocusEffect(useCallback(() => {
+      let active = true;
+      async function load() {
+        if (!profile?.gym_id) { setLoading(false); return; }
+        setLoading(true);
+
+        const [gymRes, countRes] = await Promise.all([
+          supabase.from('gyms').select('*').eq('id', profile.gym_id).single(),       
+          supabase
+            .from('members')
+            .select('id', { count: 'exact', head: true })
+            .eq('gym_id', profile.gym_id)
+            .eq('status', 'active'),
+        ]);
+
+        if (!active) return;
+
+        if (gymRes.data) {
+          setGym(gymRes.data);
+          setName(gymRes.data.name ?? '');
+          setPhone(gymRes.data.phone ?? '');
+          setEmail(gymRes.data.email ?? '');
+          setAddress(gymRes.data.address ?? '');
+
+          if (gymRes.data.owner_id) {
+            const { data: ownerData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', gymRes.data.owner_id)
+              .single();
+            if (active && ownerData) setOwnerName(ownerData.full_name);
+          }
+        }
+
+        setActiveCount(countRes.count ?? 0);
+        setLoading(false);
+      }
+      load();
+      return () => { active = false; };
+    }, [profile?.gym_id]));
+
+    const handleSave = async () => {
+      if (!gym) return;
+      setSaving(true);
+      const { error } = await supabase
+        .from('gyms')
+        .update({
+          name:    name.trim(),
+          phone:   phone.trim()   || null,
+          email:   email.trim()   || null,
+          address: address.trim() || null,
+        })
+        .eq('id', gym.id);
+      setSaving(false);
+      if (error) { Alert.alert('Error', error.message); return; }
+      setGym(prev => prev ? { ...prev, name: name.trim(), phone: phone.trim() ||
+  null, email: email.trim() || null, address: address.trim() || null } : prev);      
+      setEditModal(false);
+    };
+
+    if (loading) {
+      return (
+        <SafeAreaView style={styles.safe} edges={['bottom']}>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}> 
+            <ActivityIndicator color={Colors.accent} size="large" />
+          </View>
+        </SafeAreaView>
+      );
+    }
+
+    const loadPct = Math.round((activeCount / GYM_CAPACITY) * 100);
 
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -72,7 +136,6 @@
           <FadeInView delay={0}>
             <View style={styles.hero}>
               <View style={styles.heroGlow} />
-              {/* Logo placeholder */}
               <View style={styles.logoWrap}>
                 <View style={styles.logoCircle}>
                   <MaterialCommunityIcons name="dumbbell" size={28}
@@ -81,14 +144,13 @@
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.heroMicro}>GYM PROFILE</Text>
-                <Text style={styles.heroTitle}>{gymData.name}</Text>
-                <Text style={styles.heroTagline}>"{gymData.tagline}"</Text>
+                <Text style={styles.heroTitle}>{gym?.name ?? ''}</Text>
+                <Text style={styles.heroTagline}>"No Pain, No Gain"</Text>
                 <View style={styles.ratingRow}>
-                  <MaterialCommunityIcons name="star" size={13} color={Colors.accent}
-   />
-                  <Text style={styles.ratingVal}>{gymData.rating}</Text>
-                  <Text style={styles.ratingCount}>({gymData.totalReviews}
-  reviews)</Text>
+                  <MaterialCommunityIcons name="account-group-outline" size={13}     
+  color={Colors.accent} />
+                  <Text style={styles.ratingVal}>{activeCount}</Text>
+                  <Text style={styles.ratingCount}>active members</Text>
                 </View>
               </View>
               <AnimatedPressable style={styles.editFab} scaleDown={0.9} onPress={()=> setEditModal(true)}>
@@ -104,15 +166,15 @@
               <View style={styles.cardAccentBar} />
               <View style={styles.capacityInner}>
                 <View style={styles.capacityTop}>
-                  <Text style={styles.capacityLabel}>GYM CAPACITY</Text>
+                  <Text style={styles.capacityLabel}>ACTIVE MEMBERS</Text>
                   <Text style={styles.capacityFraction}>
-                    <Text style={styles.capacityCurrent}>{gymData.currentLoad}</Text>
-                    <Text style={styles.capacityTotal}> / {gymData.capacity}</Text>  
+                    <Text style={styles.capacityCurrent}>{activeCount}</Text>        
+                    <Text style={styles.capacityTotal}> / {GYM_CAPACITY}</Text>      
                   </Text>
                 </View>
                 <View style={styles.trackBg}>
                   <View style={[styles.trackFill, {
-                    width: `${loadPct}%` as any,
+                    width: `${Math.min(100, loadPct)}%` as any,
                     backgroundColor: loadPct > 100 ? Colors.red : loadPct > 80 ?     
   Colors.orange : Colors.green,
                   }]} />
@@ -123,8 +185,10 @@
                   <Text style={[styles.capacityStatus, {
                     color: loadPct > 100 ? Colors.red : loadPct > 80 ? Colors.orange 
   : Colors.green,
-                  }]}>{loadPct > 100 ? 'OVER CAPACITY' : loadPct > 80 ? 'NEAR FULL' :
-   'HEALTHY'}</Text>
+                  }]}>
+                    {loadPct > 100 ? 'OVER CAPACITY' : loadPct > 80 ? 'NEAR FULL' :  
+  'HEALTHY'}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -135,18 +199,14 @@
             <Text style={styles.sectionLabel}>CONTACT DETAILS</Text>
             <View style={styles.infoCard}>
               {[
-                { icon: 'account-outline'    as IconName, label: 'OWNER',    val:    
-  gymData.owner      },
-                { icon: 'phone-outline'      as IconName, label: 'PHONE',    val:    
-  gymData.phone      },
-                { icon: 'email-outline'      as IconName, label: 'EMAIL',    val:    
-  gymData.email      },
-                { icon: 'map-marker-outline' as IconName, label: 'ADDRESS',  val:    
-  gymData.address    },
-                { icon: 'identifier'         as IconName, label: 'GSTIN',    val:    
-  gymData.gstin      },
-                { icon: 'calendar-outline'   as IconName, label: 'EST.',     val:    
-  gymData.established},
+                { icon: 'account-outline'    as IconName, label: 'OWNER',   val:     
+  ownerName || profile?.full_name || '—' },
+                { icon: 'phone-outline'      as IconName, label: 'PHONE',   val:     
+  gym?.phone   ?? '—' },
+                { icon: 'email-outline'      as IconName, label: 'EMAIL',   val:     
+  gym?.email   ?? '—' },
+                { icon: 'map-marker-outline' as IconName, label: 'ADDRESS', val:     
+  gym?.address ?? '—' },
               ].map((row, i, arr) => (
                 <View key={row.label} style={[styles.infoRow, i < arr.length - 1 &&  
   styles.infoRowBorder]}>
@@ -191,11 +251,8 @@
               {amenities.map(a => (
                 <View key={a.label} style={[styles.amenityChip, !a.active &&
   styles.amenityInactive]}>
-                  <MaterialCommunityIcons
-                    name={a.icon}
-                    size={15}
-                    color={a.active ? Colors.accent : Colors.textMuted}
-                  />
+                  <MaterialCommunityIcons name={a.icon} size={15} color={a.active ?  
+  Colors.accent : Colors.textMuted} />
                   <Text style={[styles.amenityLabel, !a.active &&
   styles.amenityLabelInactive]}>{a.label}</Text>
                   {!a.active && <Text style={styles.amenityNA}>N/A</Text>}
@@ -240,7 +297,6 @@
   color={Colors.textMuted} />
               </Pressable>
             </View>
-
             {[
               { label: 'GYM NAME', value: name,    setter: setName,    placeholder:  
   'Iron Edge Fitness' },
@@ -262,10 +318,9 @@
                 />
               </View>
             ))}
-
-            <AnimatedPressable style={styles.saveBtn} scaleDown={0.97} onPress={() =>
-   setEditModal(false)}>
-              <Text style={styles.saveBtnText}>SAVE CHANGES</Text>
+            <AnimatedPressable style={styles.saveBtn} scaleDown={0.97}
+  onPress={handleSave}>
+              <Text style={styles.saveBtnText}>{saving ? 'SAVING...' : 'SAVE CHANGES'}</Text>
             </AnimatedPressable>
           </View>
         </Modal>
@@ -300,25 +355,15 @@
     container: { flex: 1 },
     scroll:    { paddingHorizontal: 16, paddingBottom: 24, paddingTop: 16 },
 
-    // Hero
-    hero: {
-      backgroundColor: Colors.bgCard, borderRadius: 20, padding: 20,
-      flexDirection: 'row', alignItems: 'flex-start', gap: 14,
-      borderWidth: 1, borderColor: Colors.accent + '20',
-      overflow: 'hidden', marginBottom: 12,
-    },
-    heroGlow: {
-      position: 'absolute', top: -30, left: -20,
-      width: 100, height: 100, borderRadius: 50,
-      backgroundColor: Colors.accentGlow,
-    },
+    hero: { backgroundColor: Colors.bgCard, borderRadius: 20, padding: 20,
+  flexDirection: 'row', alignItems: 'flex-start', gap: 14, borderWidth: 1,
+  borderColor: Colors.accent + '20', overflow: 'hidden', marginBottom: 12 },
+    heroGlow:   { position: 'absolute', top: -30, left: -20, width: 100, height: 100,
+   borderRadius: 50, backgroundColor: Colors.accentGlow },
     logoWrap:   { alignItems: 'center' },
-    logoCircle: {
-      width: 56, height: 56, borderRadius: 28,
-      backgroundColor: Colors.accentMuted,
-      justifyContent: 'center', alignItems: 'center',
-      borderWidth: 2, borderColor: Colors.accent + '40',
-    },
+    logoCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor:
+  Colors.accentMuted, justifyContent: 'center', alignItems: 'center', borderWidth: 2,
+   borderColor: Colors.accent + '40' },
     heroMicro:   { fontFamily: Fonts.medium, fontSize: 9, color: Colors.accent,      
   letterSpacing: 1.5 },
     heroTitle:   { fontFamily: Fonts.condensedBold, fontSize: 22, color: Colors.text,
@@ -330,24 +375,18 @@
     ratingVal:   { fontFamily: Fonts.bold, fontSize: 12, color: Colors.accent },     
     ratingCount: { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted  
   },
-    editFab: {
-      width: 34, height: 34, borderRadius: 17,
-      backgroundColor: Colors.accentMuted,
-      justifyContent: 'center', alignItems: 'center',
-      borderWidth: 1, borderColor: Colors.accent + '30',
-    },
+    editFab:     { width: 34, height: 34, borderRadius: 17, backgroundColor:
+  Colors.accentMuted, justifyContent: 'center', alignItems: 'center', borderWidth: 1,
+   borderColor: Colors.accent + '30' },
 
-    // Capacity
-    capacityCard: {
-      flexDirection: 'row', backgroundColor: Colors.bgCard,
-      borderRadius: 14, borderWidth: 1, borderColor: Colors.border,
-      overflow: 'hidden', marginBottom: 20,
-    },
-    cardAccentBar:  { width: 3, backgroundColor: Colors.accent },
-    capacityInner:  { flex: 1, padding: 14, gap: 8 },
-    capacityTop:    { flexDirection: 'row', justifyContent: 'space-between',
+    capacityCard:    { flexDirection: 'row', backgroundColor: Colors.bgCard,
+  borderRadius: 14, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',  
+  marginBottom: 20 },
+    cardAccentBar:   { width: 3, backgroundColor: Colors.accent },
+    capacityInner:   { flex: 1, padding: 14, gap: 8 },
+    capacityTop:     { flexDirection: 'row', justifyContent: 'space-between',        
   alignItems: 'center' },
-    capacityLabel:  { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted,  
+    capacityLabel:   { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, 
   letterSpacing: 1.2 },
     capacityFraction:{ fontFamily: Fonts.regular, fontSize: 13, color:
   Colors.textMuted },
@@ -355,16 +394,15 @@
   Colors.text },
     capacityTotal:   { fontFamily: Fonts.regular, fontSize: 13, color:
   Colors.textMuted },
-    trackBg:   { height: 6, backgroundColor: Colors.border, borderRadius: 3,
+    trackBg:         { height: 6, backgroundColor: Colors.border, borderRadius: 3,   
   overflow: 'hidden' },
-    trackFill: { height: 6, borderRadius: 3 },
-    capacityBottom: { flexDirection: 'row', justifyContent: 'space-between',
+    trackFill:       { height: 6, borderRadius: 3 },
+    capacityBottom:  { flexDirection: 'row', justifyContent: 'space-between',        
   alignItems: 'center' },
-    capacitySub:    { fontFamily: Fonts.regular, fontSize: 10, color:
+    capacitySub:     { fontFamily: Fonts.regular, fontSize: 10, color:
   Colors.textMuted },
-    capacityStatus: { fontFamily: Fonts.bold, fontSize: 9, letterSpacing: 0.8 },
+    capacityStatus:  { fontFamily: Fonts.bold, fontSize: 9, letterSpacing: 0.8 },    
 
-    // Section
     sectionLabel:  { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted,   
   letterSpacing: 1.8, marginBottom: 10, marginTop: 4 },
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between',
@@ -372,7 +410,6 @@
     editLink:      { fontFamily: Fonts.bold, fontSize: 9, color: Colors.accent,      
   letterSpacing: 1 },
 
-    // Info card
     infoCard:     { backgroundColor: Colors.bgCard, borderRadius: 14, borderWidth: 1,
    borderColor: Colors.border, overflow: 'hidden', marginBottom: 20 },
     infoRow:      { flexDirection: 'row', alignItems: 'flex-start', gap: 12,
@@ -384,49 +421,38 @@
   letterSpacing: 1, marginBottom: 2 },
     infoVal:      { fontFamily: Fonts.medium, fontSize: 13, color: Colors.text },    
 
-    // Timings
-    timingRow: { flexDirection: 'row', alignItems: 'center', gap: 10,
+    timingRow:   { flexDirection: 'row', alignItems: 'center', gap: 10,
   paddingHorizontal: 14, paddingVertical: 12 },
-    timingDay: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.textMuted,    
+    timingDay:   { fontFamily: Fonts.medium, fontSize: 12, color: Colors.textMuted,  
   flex: 1 },
     timingHours: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.text },       
 
-    // Amenities
-    amenitiesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20
-   },
-    amenityChip: {
-      flexDirection: 'row', alignItems: 'center', gap: 6,
-      backgroundColor: Colors.bgCard, borderRadius: 20,
-      paddingHorizontal: 12, paddingVertical: 7,
-      borderWidth: 1, borderColor: Colors.accent + '30',
-    },
-    amenityInactive: { borderColor: Colors.border, opacity: 0.5 },
-    amenityLabel:    { fontFamily: Fonts.medium, fontSize: 11, color: Colors.text }, 
+    amenitiesGrid:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+  marginBottom: 20 },
+    amenityChip:          { flexDirection: 'row', alignItems: 'center', gap: 6,      
+  backgroundColor: Colors.bgCard, borderRadius: 20, paddingHorizontal: 12,
+  paddingVertical: 7, borderWidth: 1, borderColor: Colors.accent + '30' },
+    amenityInactive:      { borderColor: Colors.border, opacity: 0.5 },
+    amenityLabel:         { fontFamily: Fonts.medium, fontSize: 11, color:
+  Colors.text },
     amenityLabelInactive: { color: Colors.textMuted },
-    amenityNA:       { fontFamily: Fonts.bold, fontSize: 8, color: Colors.red,       
+    amenityNA:            { fontFamily: Fonts.bold, fontSize: 8, color: Colors.red,  
   letterSpacing: 0.5 },
 
-    // Social
-    socialRow: {
-      flexDirection: 'row', alignItems: 'center', gap: 12,
-      backgroundColor: Colors.bgCard, borderRadius: 12, padding: 12,
-      borderWidth: 1, borderColor: Colors.border,
-    },
-    socialIcon:     { width: 40, height: 40, borderRadius: 10, justifyContent:       
+    socialRow:     { flexDirection: 'row', alignItems: 'center', gap: 12,
+  backgroundColor: Colors.bgCard, borderRadius: 12, padding: 12, borderWidth: 1,     
+  borderColor: Colors.border },
+    socialIcon:    { width: 40, height: 40, borderRadius: 10, justifyContent:        
   'center', alignItems: 'center' },
-    socialPlatform: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.text },    
-    socialHandle:   { fontFamily: Fonts.regular, fontSize: 11, color:
+    socialPlatform:{ fontFamily: Fonts.bold, fontSize: 12, color: Colors.text },     
+    socialHandle:  { fontFamily: Fonts.regular, fontSize: 11, color:
   Colors.textMuted, marginTop: 1 },
 
-    // Modal
     backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' 
   },
-    sheet: {
-      position: 'absolute', bottom: 0, left: 0, right: 0,
-      backgroundColor: Colors.bgCard,
-      borderTopLeftRadius: 24, borderTopRightRadius: 24,
-      paddingHorizontal: 20, paddingBottom: 36, paddingTop: 12,
-    },
+    sheet:    { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 
+  Colors.bgCard, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+  paddingHorizontal: 20, paddingBottom: 36, paddingTop: 12 },
     handle:      { width: 36, height: 4, borderRadius: 2, backgroundColor:
   Colors.border, alignSelf: 'center', marginBottom: 20 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems:
@@ -437,17 +463,12 @@
   marginBottom: 20 },
     closeBtn:    { width: 32, height: 32, borderRadius: 16, backgroundColor:
   Colors.bgElevated, justifyContent: 'center', alignItems: 'center' },
-
-    fieldWrap:  { marginBottom: 14 },
-    fieldLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted,      
+    fieldWrap:   { marginBottom: 14 },
+    fieldLabel:  { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted,     
   letterSpacing: 1.2, marginBottom: 6 },
-    input: {
-      backgroundColor: Colors.bgElevated, borderRadius: 10,
-      borderWidth: 1, borderColor: Colors.border,
-      paddingHorizontal: 14, paddingVertical: 11,
-      fontFamily: Fonts.regular, fontSize: 14, color: Colors.text,
-    },
-
+    input:       { backgroundColor: Colors.bgElevated, borderRadius: 10, borderWidth:
+   1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 11,        
+  fontFamily: Fonts.regular, fontSize: 14, color: Colors.text },
     saveBtn:     { backgroundColor: Colors.accent, borderRadius: 12, paddingVertical:
    14, alignItems: 'center', marginTop: 8 },
     saveBtnText: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.bg,

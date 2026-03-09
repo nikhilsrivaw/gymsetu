@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vertical SaaS Empire — Market Map</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #080C14;
+      color: #E8EDF5;
+      min-height: 100vh;
+    }
+
+    /* HERO */
+    .hero {
+      background: linear-gradient(135deg, #0A84FF15 0%, #00000000 60%);
+      border-bottom: 1px solid #1A2030;
+      padding: 60px 40px 40px;
+      text-align: center;
+    }
+    .hero-tag {
+      display: inline-block;
+      background: #0A84FF15;
+      border: 1px solid #0A84FF40;
+      color: #0A84FF;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      padding: 6px 16px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff 40%, #0A84FF);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+    .hero p {
+      font-size: 16px;
+      color: #6B7A99;
+      max-width: 560px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+    .product-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 28px;
+      background: #1A2030;
+      border: 1px solid #2A3550;
+      border-radius: 12px;
+      padding: 10px 20px;
+      font-size: 13px;
+      color: #9BA8C0;
+    }
+    .product-badge span { color: #0A84FF; font-weight: 700; }
+
+    /* STATS BAR */
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      border-bottom: 1px solid #1A2030;
+      border-top: 1px solid #1A2030;
+    }
+    .stat-item {
+      flex: 1;
+      max-width: 200px;
+      text-align: center;
+      padding: 24px 16px;
+      border-right: 1px solid #1A2030;
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-val { font-size: 28px; font-weight: 800; color: #0A84FF; }
+    .stat-lbl { font-size: 10px; color: #6B7A99; letter-spacing: 1.5px; margin-top: 4px; }
+
+    /* SECTION */
+    .section { padding: 48px 40px; max-width: 1200px; margin: 0 auto; }
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: #0A84FF;
+      margin-bottom: 8px;
+    }
+    .section-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: #E8EDF5;
+      margin-bottom: 8px;
+    }
+    .section-sub {
+      font-size: 14px;
+      color: #6B7A99;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    /* MARKET GRID */
+    .market-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .market-card {
+      background: #0D1220;
+      border: 1px solid #1A2030;
+      border-radius: 16px;
+      padding: 22px;
+      transition: border-color 0.2s, transform 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .market-card:hover {
+      border-color: var(--color);
+      transform: translateY(-2px);
+    }
+    .market-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--color);
+      opacity: 0.6;
+    }
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .card-emoji { font-size: 28px; }
+    .saturation-pill {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--color-bg);
+      color: var(--color);
+      border: 1px solid var(--color-border);
+    }
+    .card-title { font-size: 16px; font-weight: 700; color: #E8EDF5; margin-bottom: 6px; }
+    .card-desc { font-size: 12px; color: #6B7A99; line-height: 1.6; margin-bottom: 14px; }
+    .card-features { display: flex; flex-direction: column; gap: 4px; }
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: #9BA8C0;
+    }
+    .feature-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--color);
+      flex-shrink: 0;
+    }
+    .card-opportunity {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid #1A2030;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .opp-label { font-size: 9px; color: #6B7A99; letter-spacing: 1px; }
+    .opp-value { font-size: 12px; font-weight: 700; color: var(--color); }
+
+    /* CATEGORY HEADER */
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 40px 0 20px;
+    }
+    .category-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #fff;
+      background: var(--cat-color);
+      padding: 5px 14px;
+      border-radius: 20px;
+    }
+    .category-line { flex: 1; height: 1px; background: #1A2030; }
+    .category-count { font-size: 11px; color: #6B7A99; }
+
+    /* STRATEGY SECTION */
+    .strategy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+    }
+    .strategy-card {
+      background: #0D1220;
+      border: 1px solid #1A2030;
+      border-radius: 16px;
+      padding: 24px;
+    }
+    .strategy-num {
+      font-size: 40px;
+      font-weight: 900;
+      color: #0A84FF15;
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+    .strategy-title { font-size: 16px; font-weight: 700; color: #E8EDF5; margin-bottom: 8px; }
+    .strategy-desc { font-size: 13px; color: #6B7A99; line-height: 1.7; }
+    .strategy-tip {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #0A84FF08;
+      border-left: 3px solid #0A84FF;
+      border-radius: 0 8px 8px 0;
+      font-size: 12px;
+      color: #9BA8C0;
+      line-height: 1.6;
+    }
+
+    /* ROADMAP */
+    .roadmap { position: relative; padding-left: 32px; }
+    .roadmap::before {
+      content: '';
+      position: absolute;
+      left: 8px; top: 8px; bottom: 8px;
+      width: 2px;
+      background: linear-gradient(to bottom, #0A84FF, #30D158, #FF9F0A, #5E5CE6, #FF453A);
+    }
+    .roadmap-item { position: relative; margin-bottom: 32px; }
+    .roadmap-dot {
+      position: absolute;
+      left: -28px; top: 4px;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      border: 2px solid var(--dot-color);
+      background: #080C14;
+    }
+    .roadmap-dot.active { background: var(--dot-color); }
+    .roadmap-phase {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--dot-color);
+      margin-bottom: 4px;
+    }
+    .roadmap-title { font-size: 17px; font-weight: 700; color: #E8EDF5; margin-bottom: 6px; }
+    .roadmap-desc { font-size: 13px; color: #6B7A99; line-height: 1.7; }
+    .roadmap-products {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+    }
+    .roadmap-tag {
+      font-size: 10px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--dot-color-bg);
+      color: var(--dot-color);
+      border: 1px solid var(--dot-color-border);
+      font-weight: 600;
+    }
+
+    /* PRINCIPLES */
+    .principles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .principle-card {
+      background: #0D1220;
+      border: 1px solid #1A2030;
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+    }
+    .principle-emoji { font-size: 26px; margin-bottom: 10px; }
+    .principle-title { font-size: 13px; font-weight: 700; color: #E8EDF5; margin-bottom: 6px; }
+    .principle-desc { font-size: 11px; color: #6B7A99; line-height: 1.6; }
+
+    /* FOOTER */
+    .footer {
+      border-top: 1px solid #1A2030;
+      padding: 32px 40px;
+      text-align: center;
+    }
+    .footer-title { font-size: 22px; font-weight: 800; color: #E8EDF5; margin-bottom: 8px; }
+    .footer-sub { font-size: 13px; color: #6B7A99; }
+    .footer-accent { color: #0A84FF; font-weight: 700; }
+
+    @media (max-width: 600px) {
+      .hero { padding: 40px 20px 30px; }
+      .hero h1 { font-size: 32px; }
+      .section { padding: 32px 20px; }
+      .stats-bar { flex-wrap: wrap; }
+      .stat-item { border-right: none; border-bottom: 1px solid #1A2030; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">VERTICAL SAAS EMPIRE</div>
+  <h1>Every Industry.<br/>One Company.</h1>
+  <p>A strategic map of the most underserved markets in India ready for vertical SaaS disruption — and the blueprint to dominate them one by one.</p>
+  <div class="product-badge">
+    <span>Product 01</span> — GymSetu (Fitness & Gym Management) · Live
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-val">63M+</div>
+    <div class="stat-lbl">SMBs IN INDIA</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val">&lt;5%</div>
+    <div class="stat-lbl">SAAS PENETRATION</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val">$50B+</div>
+    <div class="stat-lbl">TOTAL ADDRESSABLE MARKET</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val">27</div>
+    <div class="stat-lbl">UNTAPPED VERTICALS MAPPED</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val">&#8734;</div>
+    <div class="stat-lbl">CEILING</div>
+  </div>
+</div>
+
+<!-- MARKETS -->
+<div class="section">
+  <div class="section-label">MARKET INTELLIGENCE</div>
+  <div class="section-title">Untapped Verticals</div>
+  <div class="section-sub">Industries with massive SMB density, zero or weak SaaS competition, and high willingness to pay when shown ROI.</div>
+
+  <!-- HEALTH & WELLNESS -->
+  <div class="category-header" style="--cat-color: #30D158;">
+    <div class="category-badge" style="--cat-color: #30D158;">HEALTH & WELLNESS</div>
+    <div class="category-line"></div>
+    <div class="category-count">5 markets</div>
+  </div>
+  <div class="market-grid">
+
+    <div class="market-card" style="--color:#0A84FF; --color-bg:#0A84FF12; --color-border:#0A84FF30;">
+      <div class="card-top">
+        <div class="card-emoji">🏋️</div>
+        <div class="saturation-pill">LIVE — GYMSETU</div>
+      </div>
+      <div class="card-title">Gyms & Fitness Centers</div>
+      <div class="card-desc">Member management, attendance, billing, trainer scheduling. Your current product.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>200,000+ gyms in India</div>
+        <div class="feature-item"><div class="feature-dot"></div>90% still use pen & paper</div>
+        <div class="feature-item"><div class="feature-dot"></div>₹500–2000/mo pricing sweet spot</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">SATURATION</div>
+        <div class="opp-value">LOW–MED</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#30D158; --color-bg:#30D15812; --color-border:#30D15830;">
+      <div class="card-top">
+        <div class="card-emoji">💆</div>
+        <div class="saturation-pill">VERY LOW</div>
+      </div>
+      <div class="card-title">Salons & Spas</div>
+      <div class="card-desc">Appointment booking, stylist management, loyalty, product inventory. India has 7M+ salons.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>7M+ salons, 98% undigitized</div>
+        <div class="feature-item"><div class="feature-dot"></div>Repeat customer model = high LTV</div>
+        <div class="feature-item"><div class="feature-dot"></div>WhatsApp booking is the only tool</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">OPPORTUNITY</div>
+        <div class="opp-value">MASSIVE</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#FF9F0A; --color-bg:#FF9F0A12; --color-border:#FF9F0A30;">
+      <div class="card-top">
+        <div class="card-emoji">🧘</div>
+        <div class="saturation-pill">VERY LOW</div>
+      </div>
+      <div class="card-title">Yoga & Dance Studios</div>
+      <div class="card-desc">Batch management, attendance, fee collection, online class links. Massive post-COVID boom.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>300K+ yoga/dance studios</div>
+        <div class="feature-item"><div class="feature-dot"></div>Run entirely on WhatsApp groups</div>
+        <div class="feature-item"><div class="feature-dot"></div>Easy upsell from GymSetu base</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">BUILD EFFORT</div>
+        <div class="opp-value">VERY LOW</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#5E5CE6; --color-bg:#5E5CE612; --color-border:#5E5CE630;">
+      <div class="card-top">
+        <div class="card-emoji">🏊</div>
+        <div class="saturation-pill">NEAR ZERO</div>
+      </div>
+      <div class="card-title">Swimming Academies</div>
+      <div class="card-desc">Batch timings, coach assignment, seasonal billing, certifications. Almost zero SaaS exists.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>40K+ swimming pools in India</div>
+        <div class="feature-item"><div class="feature-dot"></div>Seasonal revenue spikes</div>
+        <div class="feature-item"><div class="feature-dot"></div>No dedicated software exists at all</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">COMPETITION</div>
+        <div class="opp-value">NONE</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#FF453A; --color-bg:#FF453A12; --color-border:#FF453A30;">
+      <div class="card-top">
+        <div class="card-emoji">🥋</div>
+        <div class="saturation-pill">NEAR ZERO</div>
+      </div>
+      <div class="card-title">Martial Arts & Sports Academies</div>
+      <div class="card-desc">Belt/level tracking, tournament management, student progress, fee collection.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Karate, MMA, Cricket, Football</div>
+        <div class="feature-item"><div class="feature-dot"></div>Growing sports culture in India</div>
+        <div class="feature-item"><div class="feature-dot"></div>Parents pay premium for progress tracking</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">GROWTH RATE</div>
+        <div class="opp-value">30%+ YOY</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- EDUCATION -->
+  <div class="category-header" style="--cat-color: #0A84FF;">
+    <div class="category-badge" style="--cat-color: #0A84FF;">EDUCATION & COACHING</div>
+    <div class="category-line"></div>
+    <div class="category-count">5 markets</div>
+  </div>
+  <div class="market-grid">
+
+    <div class="market-card" style="--color:#0A84FF; --color-bg:#0A84FF12; --color-border:#0A84FF30;">
+      <div class="card-top">
+        <div class="card-emoji">📚</div>
+        <div class="saturation-pill">LOW</div>
+      </div>
+      <div class="card-title">Coaching Institutes & Tuition Centers</div>
+      <div class="card-desc">Student batches, attendance, fee tracking, result management, parent notifications.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>1M+ coaching centers in India</div>
+        <div class="feature-item"><div class="feature-dot"></div>Tier 2/3 cities massively underserved</div>
+        <div class="feature-item"><div class="feature-dot"></div>Parents demand digital receipts</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">MARKET SIZE</div>
+        <div class="opp-value">₹58,000 CR</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#30D158; --color-bg:#30D15812; --color-border:#30D15830;">
+      <div class="card-top">
+        <div class="card-emoji">🎵</div>
+        <div class="saturation-pill">NEAR ZERO</div>
+      </div>
+      <div class="card-title">Music & Art Academies</div>
+      <div class="card-desc">Student progress per instrument, batch management, recital scheduling, fee collection.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>500K+ music teachers in India</div>
+        <div class="feature-item"><div class="feature-dot"></div>High parent engagement = upsell</div>
+        <div class="feature-item"><div class="feature-dot"></div>Zero dedicated apps exist</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">SATURATION</div>
+        <div class="opp-value">ZERO</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#FF9F0A; --color-bg:#FF9F0A12; --color-border:#FF9F0A30;">
+      <div class="card-top">
+        <div class="card-emoji">🏫</div>
+        <div class="saturation-pill">LOW</div>
+      </div>
+      <div class="card-title">Playschools & Daycares</div>
+      <div class="card-desc">Child attendance, daily activity logs, parent communication, fee management.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Parents want real-time updates</div>
+        <div class="feature-item"><div class="feature-dot"></div>High emotional value = high retention</div>
+        <div class="feature-item"><div class="feature-dot"></div>2M+ preschools in India</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">CHURN RISK</div>
+        <div class="opp-value">VERY LOW</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#5E5CE6; --color-bg:#5E5CE612; --color-border:#5E5CE630;">
+      <div class="card-top">
+        <div class="card-emoji">🚗</div>
+        <div class="saturation-pill">VERY LOW</div>
+      </div>
+      <div class="card-title">Driving Schools</div>
+      <div class="card-desc">Lesson scheduling, vehicle assignment, student progress, RTO test tracking, license reminders.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>100K+ driving schools in India</div>
+        <div class="feature-item"><div class="feature-dot"></div>Mandatory market — always in demand</div>
+        <div class="feature-item"><div class="feature-dot"></div>No good software exists today</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">COMPETITION</div>
+        <div class="opp-value">MINIMAL</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#FF453A; --color-bg:#FF453A12; --color-border:#FF453A30;">
+      <div class="card-top">
+        <div class="card-emoji">🌐</div>
+        <div class="saturation-pill">LOW</div>
+      </div>
+      <div class="card-title">Language Learning Centers</div>
+      <div class="card-desc">Spoken English, IELTS, foreign language academies. Level tracking, mock tests, batch management.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Booming in tier 2/3 cities</div>
+        <div class="feature-item"><div class="feature-dot"></div>High per-student revenue</div>
+        <div class="feature-item"><div class="feature-dot"></div>Certification tracking is key pain</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">GROWTH</div>
+        <div class="opp-value">25%+ YOY</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- LOCAL SERVICES -->
+  <div class="category-header" style="--cat-color: #FF9F0A;">
+    <div class="category-badge" style="--cat-color: #FF9F0A;">LOCAL SERVICES</div>
+    <div class="category-line"></div>
+    <div class="category-count">7 markets</div>
+  </div>
+  <div class="market-grid">
+
+    <div class="market-card" style="--color:#30D158; --color-bg:#30D15812; --color-border:#30D15830;">
+      <div class="card-top">
+        <div class="card-emoji">👗</div>
+        <div class="saturation-pill">NEAR ZERO</div>
+      </div>
+      <div class="card-title">Tailoring & Boutiques</div>
+      <div class="card-desc">Order tracking, customer measurements stored digitally, delivery reminders, billing.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>5M+ tailors in India</div>
+        <div class="feature-item"><div class="feature-dot"></div>All work done in notebooks today</div>
+        <div class="feature-item"><div class="feature-dot"></div>₹299/mo pricing — easy sell</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">COMPETITION</div>
+        <div class="opp-value">ZERO</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#0A84FF; --color-bg:#0A84FF12; --color-border:#0A84FF30;">
+      <div class="card-top">
+        <div class="card-emoji">🧺</div>
+        <div class="saturation-pill">NEAR ZERO</div>
+      </div>
+      <div class="card-title">Laundry & Dry Cleaning</div>
+      <div class="card-desc">Order intake, garment tagging, delivery scheduling, subscription plans, customer notifications.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Growing pickup/delivery model</div>
+        <div class="feature-item"><div class="feature-dot"></div>Subscription revenue = predictable MRR</div>
+        <div class="feature-item"><div class="feature-dot"></div>Urban India completely untapped</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">MODEL FIT</div>
+        <div class="opp-value">SUBSCRIPTION</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#FF9F0A; --color-bg:#FF9F0A12; --color-border:#FF9F0A30;">
+      <div class="card-top">
+        <div class="card-emoji">🍱</div>
+        <div class="saturation-pill">LOW</div>
+      </div>
+      <div class="card-title">Tiffin & Meal Delivery</div>
+      <div class="card-desc">Subscription management, daily menu, delivery tracking, customer payments, cook management.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>2M+ tiffin services in India</div>
+        <div class="feature-item"><div class="feature-dot"></div>Monthly subscription model built-in</div>
+        <div class="feature-item"><div class="feature-dot"></div>WhatsApp is the only tool used now</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">STICKINESS</div>
+        <div class="opp-value">VERY HIGH</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#5E5CE6; --color-bg:#5E5CE612; --color-border:#5E5CE630;">
+      <div class="card-top">
+        <div class="card-emoji">🚘</div>
+        <div class="saturation-pill">LOW</div>
+      </div>
+      <div class="card-title">Car Wash & Auto Detailing</div>
+      <div class="card-desc">Appointment booking, subscription plans, service history, employee tracking, upsell.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Growing premium car wash segment</div>
+        <div class="feature-item"><div class="feature-dot"></div>Monthly plan model (just like gym)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Easy build on top of GymSetu core</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">BUILD EFFORT</div>
+        <div class="opp-value">VERY LOW</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#FF453A; --color-bg:#FF453A12; --color-border:#FF453A30;">
+      <div class="card-top">
+        <div class="card-emoji">🐾</div>
+        <div class="saturation-pill">VERY LOW</div>
+      </div>
+      <div class="card-title">Pet Care & Veterinary Clinics</div>
+      <div class="card-desc">Pet health records, vaccination reminders, grooming appointments, boarding management.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Pet ownership growing 20% YOY</div>
+        <div class="feature-item"><div class="feature-dot"></div>Owners pay premium for their pets</div>
+        <div class="feature-item"><div class="feature-dot"></div>Vet + grooming = dual market</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">WALLET SIZE</div>
+        <div class="opp-value">HIGH</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#30D158; --color-bg:#30D15812; --color-border:#30D15830;">
+      <div class="card-top">
+        <div class="card-emoji">📸</div>
+        <div class="saturation-pill">NEAR ZERO</div>
+      </div>
+      <div class="card-title">Photography Studios</div>
+      <div class="card-desc">Booking management, project delivery tracking, client proofing, invoice & contracts.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Wedding photography = massive market</div>
+        <div class="feature-item"><div class="feature-dot"></div>Freelancers + studios both need it</div>
+        <div class="feature-item"><div class="feature-dot"></div>High per-booking value</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">PRICING POWER</div>
+        <div class="opp-value">HIGH</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#0A84FF; --color-bg:#0A84FF12; --color-border:#0A84FF30;">
+      <div class="card-top">
+        <div class="card-emoji">🔧</div>
+        <div class="saturation-pill">VERY LOW</div>
+      </div>
+      <div class="card-title">Auto Garages & Service Centers</div>
+      <div class="card-desc">Vehicle service history, job cards, spare parts inventory, customer notifications, billing.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>500K+ garages in India</div>
+        <div class="feature-item"><div class="feature-dot"></div>All running on paper job cards today</div>
+        <div class="feature-item"><div class="feature-dot"></div>High repeat customer frequency</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">REPEAT RATE</div>
+        <div class="opp-value">VERY HIGH</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- HOSPITALITY & EVENTS -->
+  <div class="category-header" style="--cat-color: #FF453A;">
+    <div class="category-badge" style="--cat-color: #FF453A;">HOSPITALITY & EVENTS</div>
+    <div class="category-line"></div>
+    <div class="category-count">5 markets</div>
+  </div>
+  <div class="market-grid">
+
+    <div class="market-card" style="--color:#FF9F0A; --color-bg:#FF9F0A12; --color-border:#FF9F0A30;">
+      <div class="card-top">
+        <div class="card-emoji">🍽️</div>
+        <div class="saturation-pill">LOW</div>
+      </div>
+      <div class="card-title">Caterers & Banquet Halls</div>
+      <div class="card-desc">Event booking calendar, menu management, advance tracking, staff assignment, billing.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Wedding season = peak demand</div>
+        <div class="feature-item"><div class="feature-dot"></div>Large per-transaction value</div>
+        <div class="feature-item"><div class="feature-dot"></div>Tier 2/3 cities completely untouched</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">TICKET SIZE</div>
+        <div class="opp-value">₹2000–5000/mo</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#5E5CE6; --color-bg:#5E5CE612; --color-border:#5E5CE630;">
+      <div class="card-top">
+        <div class="card-emoji">🏨</div>
+        <div class="saturation-pill">LOW</div>
+      </div>
+      <div class="card-title">Small Hotels & Guesthouses</div>
+      <div class="card-desc">Room booking, check-in/out, housekeeping status, billing, OTA sync for small properties.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Budget hotels underserved by PMS tools</div>
+        <div class="feature-item"><div class="feature-dot"></div>Existing tools too expensive for them</div>
+        <div class="feature-item"><div class="feature-dot"></div>Strong seasonal cash flows</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">GAP</div>
+        <div class="opp-value">AFFORDABLE PMS</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#30D158; --color-bg:#30D15812; --color-border:#30D15830;">
+      <div class="card-top">
+        <div class="card-emoji">🌿</div>
+        <div class="saturation-pill">NEAR ZERO</div>
+      </div>
+      <div class="card-title">Plant Nurseries & Garden Centers</div>
+      <div class="card-desc">Inventory, seasonal stock management, customer orders, delivery scheduling, care reminders.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Massive urban gardening boom</div>
+        <div class="feature-item"><div class="feature-dot"></div>Zero software exists for this niche</div>
+        <div class="feature-item"><div class="feature-dot"></div>Subscription plant box model</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">TREND</div>
+        <div class="opp-value">GROWING FAST</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#FF453A; --color-bg:#FF453A12; --color-border:#FF453A30;">
+      <div class="card-top">
+        <div class="card-emoji">🎪</div>
+        <div class="saturation-pill">VERY LOW</div>
+      </div>
+      <div class="card-title">Event Decorators & Planners</div>
+      <div class="card-desc">Client brief management, vendor coordination, budget tracking, event checklist, portfolio.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Indian wedding market = $50B</div>
+        <div class="feature-item"><div class="feature-dot"></div>Planners lose clients to disorganization</div>
+        <div class="feature-item"><div class="feature-dot"></div>CRM + project mgmt in one tool</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">HIGH VALUE</div>
+        <div class="opp-value">PER EVENT</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#0A84FF; --color-bg:#0A84FF12; --color-border:#0A84FF30;">
+      <div class="card-top">
+        <div class="card-emoji">🏕️</div>
+        <div class="saturation-pill">NEAR ZERO</div>
+      </div>
+      <div class="card-title">Adventure & Trekking Camps</div>
+      <div class="card-desc">Group booking, waiver management, guide assignment, equipment tracking, payment collection.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Gen Z travel boom driving growth</div>
+        <div class="feature-item"><div class="feature-dot"></div>Safety waivers still done on paper</div>
+        <div class="feature-item"><div class="feature-dot"></div>Group booking coordination nightmare</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">UNIQUENESS</div>
+        <div class="opp-value">VERY HIGH</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TRADE & RETAIL -->
+  <div class="category-header" style="--cat-color: #5E5CE6;">
+    <div class="category-badge" style="--cat-color: #5E5CE6;">TRADE & RETAIL</div>
+    <div class="category-line"></div>
+    <div class="category-count">5 markets</div>
+  </div>
+  <div class="market-grid">
+
+    <div class="market-card" style="--color:#5E5CE6; --color-bg:#5E5CE612; --color-border:#5E5CE630;">
+      <div class="card-top">
+        <div class="card-emoji">🔩</div>
+        <div class="saturation-pill">VERY LOW</div>
+      </div>
+      <div class="card-title">Hardware & Building Material Stores</div>
+      <div class="card-desc">Credit sales tracking, inventory, contractor account management, purchase orders.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Massive construction boom in India</div>
+        <div class="feature-item"><div class="feature-dot"></div>Contractor credit = biggest pain point</div>
+        <div class="feature-item"><div class="feature-dot"></div>2M+ hardware stores untouched</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">PAIN LEVEL</div>
+        <div class="opp-value">EXTREME</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#FF9F0A; --color-bg:#FF9F0A12; --color-border:#FF9F0A30;">
+      <div class="card-top">
+        <div class="card-emoji">🖨️</div>
+        <div class="saturation-pill">NEAR ZERO</div>
+      </div>
+      <div class="card-title">Print Shops & Stationery</div>
+      <div class="card-desc">Order management, job tracking, design file storage, delivery, billing for bulk orders.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Every city has 50+ print shops</div>
+        <div class="feature-item"><div class="feature-dot"></div>Order confusion = biggest problem</div>
+        <div class="feature-item"><div class="feature-dot"></div>Repeat business clients = high LTV</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">COMPETITION</div>
+        <div class="opp-value">ZERO</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#30D158; --color-bg:#30D15812; --color-border:#30D15830;">
+      <div class="card-top">
+        <div class="card-emoji">💊</div>
+        <div class="saturation-pill">LOW</div>
+      </div>
+      <div class="card-title">Independent Pharmacies</div>
+      <div class="card-desc">Prescription management, expiry tracking, reorder alerts, credit customers, GST billing.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>800K+ pharmacies in India</div>
+        <div class="feature-item"><div class="feature-dot"></div>Existing tools too complex and costly</div>
+        <div class="feature-item"><div class="feature-dot"></div>Regulatory compliance = recurring need</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">STICKINESS</div>
+        <div class="opp-value">EXTREME</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#FF453A; --color-bg:#FF453A12; --color-border:#FF453A30;">
+      <div class="card-top">
+        <div class="card-emoji">🪴</div>
+        <div class="saturation-pill">NEAR ZERO</div>
+      </div>
+      <div class="card-title">Interior Design & Contractors</div>
+      <div class="card-desc">Project management, material procurement tracking, client communication, milestone billing.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Real estate boom = contractor boom</div>
+        <div class="feature-item"><div class="feature-dot"></div>Clients demand progress visibility</div>
+        <div class="feature-item"><div class="feature-dot"></div>High per-project value = premium pricing</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">ARPU</div>
+        <div class="opp-value">₹3000–8000/mo</div>
+      </div>
+    </div>
+
+    <div class="market-card" style="--color:#0A84FF; --color-bg:#0A84FF12; --color-border:#0A84FF30;">
+      <div class="card-top">
+        <div class="card-emoji">🔬</div>
+        <div class="saturation-pill">LOW</div>
+      </div>
+      <div class="card-title">Diagnostic Labs & Path Labs</div>
+      <div class="card-desc">Test booking, report delivery, doctor referral tracking, home collection scheduling.</div>
+      <div class="card-features">
+        <div class="feature-item"><div class="feature-dot"></div>Standalone labs vs. chains underserved</div>
+        <div class="feature-item"><div class="feature-dot"></div>Report sharing via WhatsApp is painful</div>
+        <div class="feature-item"><div class="feature-dot"></div>Digital reports = competitive advantage</div>
+      </div>
+      <div class="card-opportunity">
+        <div class="opp-label">TIMING</div>
+        <div class="opp-value">POST-COVID BOOM</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- STRATEGY -->
+<div style="background: #0A0E18; border-top: 1px solid #1A2030; border-bottom: 1px solid #1A2030;">
+  <div class="section">
+    <div class="section-label">COMPANY STRATEGY</div>
+    <div class="section-title">How to Build a Vertical SaaS Empire</div>
+    <div class="section-sub">The playbook for going from one product to a dominant multi-vertical platform company.</div>
+
+    <div class="strategy-grid">
+
+      <div class="strategy-card">
+        <div class="strategy-num">01</div>
+        <div class="strategy-title">Master One Vertical First</div>
+        <div class="strategy-desc">GymSetu must become the undisputed #1 gym management app in India before you expand. Depth beats breadth at early stage. Every rupee and hour goes into making gym owners say "I can't run my gym without this."</div>
+        <div class="strategy-tip">Target: 1000 paying gyms before building Product 02. Cash, credibility, and a reference base — that's your launchpad.</div>
+      </div>
+
+      <div class="strategy-card">
+        <div class="strategy-num">02</div>
+        <div class="strategy-title">Copy the Core, Change the Skin</div>
+        <div class="strategy-desc">Your second product (SalonSetu) is 70% the same infrastructure as GymSetu — auth, billing, notifications, AI, Supabase backend. Only the domain logic changes. Competitors start from scratch each time. You don't.</div>
+        <div class="strategy-tip">Build a "Setu Core" shared module: auth, payments, notifications, AI layer, white-label engine. All products inherit it.</div>
+      </div>
+
+      <div class="strategy-card">
+        <div class="strategy-num">03</div>
+        <div class="strategy-title">Brand Each Product, One Company</div>
+        <div class="strategy-desc">GymSetu, SalonSetu, TiffinSetu — each product has its own brand that speaks to that industry. But all sit under one parent company. Industry-specific branding builds trust. One company builds investor value.</div>
+        <div class="strategy-tip">"Setu" means bridge in Sanskrit. You're bridging small businesses to technology — a name that carries meaning at scale.</div>
+      </div>
+
+      <div class="strategy-card">
+        <div class="strategy-num">04</div>
+        <div class="strategy-title">Sell With Stories, Not Features</div>
+        <div class="strategy-desc">A gym owner doesn't care about "cloud-based SaaS." They care about "I stopped losing ₹20,000/month because members weren't renewing." Lead with the pain. Show the solution. Prove the ROI.</div>
+        <div class="strategy-tip">Create 1 real case study per vertical. Real numbers, real owner, real result. This closes more deals than any feature list.</div>
+      </div>
+
+      <div class="strategy-card">
+        <div class="strategy-num">05</div>
+        <div class="strategy-title">Price for Tier 2/3 India First</div>
+        <div class="strategy-desc">The biggest underserved market is not Mumbai or Bangalore — it's Indore, Surat, Coimbatore, Nagpur. Low competition, high SMB density, and owners who pay ₹500–1500/mo without hesitation when shown value.</div>
+        <div class="strategy-tip">Freemium is a trap at early stage. Charge from day 1 — even ₹99/mo filters serious customers and validates willingness to pay.</div>
+      </div>
+
+      <div class="strategy-card">
+        <div class="strategy-num">06</div>
+        <div class="strategy-title">AI is Your Moat, Not a Feature</div>
+        <div class="strategy-desc">You've already embedded AI deeply into GymSetu. Most vertical SaaS in India has zero AI. Make AI insights so valuable that owners feel blind without them. This is your unfair advantage — double down on it.</div>
+        <div class="strategy-tip">Future: a shared AI layer across all Setu products — trained on multi-vertical data. Insights no competitor can replicate.</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ROADMAP -->
+<div class="section">
+  <div class="section-label">GROWTH ROADMAP</div>
+  <div class="section-title">The 5-Year Empire Plan</div>
+  <div class="section-sub">Phased expansion from single product to multi-vertical platform.</div>
+
+  <div class="roadmap">
+
+    <div class="roadmap-item" style="--dot-color:#0A84FF; --dot-color-bg:#0A84FF12; --dot-color-border:#0A84FF40;">
+      <div class="roadmap-dot active"></div>
+      <div class="roadmap-phase">PHASE 01 — NOW → 12 MONTHS</div>
+      <div class="roadmap-title">Dominate the Gym Vertical</div>
+      <div class="roadmap-desc">Launch GymSetu publicly, acquire first 500 paying gyms, perfect the product, collect testimonials, build revenue engine. Target ₹5L+ MRR from GymSetu alone before moving on.</div>
+      <div class="roadmap-products">
+        <div class="roadmap-tag">GymSetu v1.0 Launch</div>
+        <div class="roadmap-tag">500 Paying Gyms</div>
+        <div class="roadmap-tag">₹5L MRR</div>
+        <div class="roadmap-tag">Build Setu Core</div>
+      </div>
+    </div>
+
+    <div class="roadmap-item" style="--dot-color:#30D158; --dot-color-bg:#30D15812; --dot-color-border:#30D15840;">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-phase">PHASE 02 — YEAR 1 → YEAR 2</div>
+      <div class="roadmap-title">Launch 2nd & 3rd Verticals</div>
+      <div class="roadmap-desc">Using GymSetu's shared core, launch SalonSetu and YogaSetu. These are the closest domain neighbors — minimal new engineering. Cross-sell to gym owners who also run yoga or sports academies.</div>
+      <div class="roadmap-products">
+        <div class="roadmap-tag">SalonSetu</div>
+        <div class="roadmap-tag">YogaSetu</div>
+        <div class="roadmap-tag">2000 Total Customers</div>
+        <div class="roadmap-tag">₹20L MRR</div>
+      </div>
+    </div>
+
+    <div class="roadmap-item" style="--dot-color:#FF9F0A; --dot-color-bg:#FF9F0A12; --dot-color-border:#FF9F0A40;">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-phase">PHASE 03 — YEAR 2 → YEAR 3</div>
+      <div class="roadmap-title">Education & Services Cluster</div>
+      <div class="roadmap-desc">Enter coaching institutes, driving schools, and tiffin services — India's most densely populated SMB categories. Hire vertical-specific sales reps. Start seeing network effects across one city with multiple Setu products.</div>
+      <div class="roadmap-products">
+        <div class="roadmap-tag">CoachSetu</div>
+        <div class="roadmap-tag">TiffinSetu</div>
+        <div class="roadmap-tag">DriveSetu</div>
+        <div class="roadmap-tag">10,000 Customers</div>
+      </div>
+    </div>
+
+    <div class="roadmap-item" style="--dot-color:#5E5CE6; --dot-color-bg:#5E5CE612; --dot-color-border:#5E5CE640;">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-phase">PHASE 04 — YEAR 3 → YEAR 4</div>
+      <div class="roadmap-title">Platform & Marketplace Play</div>
+      <div class="roadmap-desc">Launch "Setu Platform" — a unified dashboard for owners running multiple businesses. Add a marketplace layer: equipment suppliers, insurance, loans, bulk WhatsApp. Become the operating system for Indian SMBs.</div>
+      <div class="roadmap-products">
+        <div class="roadmap-tag">Setu Platform</div>
+        <div class="roadmap-tag">SMB Marketplace</div>
+        <div class="roadmap-tag">Embedded Finance</div>
+        <div class="roadmap-tag">Series A Ready</div>
+      </div>
+    </div>
+
+    <div class="roadmap-item" style="--dot-color:#FF453A; --dot-color-bg:#FF453A12; --dot-color-border:#FF453A40;">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-phase">PHASE 05 — YEAR 4 → YEAR 5</div>
+      <div class="roadmap-title">Category Leader & Global Expansion</div>
+      <div class="roadmap-desc">10+ verticals, 50,000+ SMB customers, ₹5Cr+ MRR. Expand to Southeast Asia — same market dynamics, massive SMBs, low SaaS penetration. Position for acquisition or IPO. The empire is built.</div>
+      <div class="roadmap-products">
+        <div class="roadmap-tag">SEA Expansion</div>
+        <div class="roadmap-tag">50K+ Customers</div>
+        <div class="roadmap-tag">₹5Cr+ MRR</div>
+        <div class="roadmap-tag">IPO / Acquisition Ready</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PRINCIPLES -->
+<div style="background: #0A0E18; border-top: 1px solid #1A2030;">
+  <div class="section">
+    <div class="section-label">FOUNDER PRINCIPLES</div>
+    <div class="section-title">Rules to Build By</div>
+    <div class="section-sub">The non-negotiable principles that separate empire builders from single-product founders.</div>
+
+    <div class="principles-grid">
+      <div class="principle-card">
+        <div class="principle-emoji">🎯</div>
+        <div class="principle-title">One Metric That Matters</div>
+        <div class="principle-desc">At any given time, the whole company chases one number. Right now: paying gym customers. Not downloads. Not signups. Paying.</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-emoji">💬</div>
+        <div class="principle-title">Talk to 10 Customers a Week</div>
+        <div class="principle-desc">Your best product decisions come from owner conversations, not your imagination. Call 10 gym owners every week until you have product-market fit.</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-emoji">🚫</div>
+        <div class="principle-title">Say No to Scope Creep</div>
+        <div class="principle-desc">Every feature request is a distraction disguised as an opportunity. Build what the top 80% of customers need, not what 1 loud customer demands.</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-emoji">💰</div>
+        <div class="principle-title">Revenue Before Funding</div>
+        <div class="principle-desc">Build a real business first. ₹10L MRR with no investors is worth more than ₹10Cr raised with no product-market fit. Revenue is leverage.</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-emoji">🔁</div>
+        <div class="principle-title">Retention Over Acquisition</div>
+        <div class="principle-desc">Getting a new gym is exciting. Keeping 100 gyms paying for 3 years is a business. Obsess over churn. A gym that leaves is a vote against your product.</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-emoji">⚡</div>
+        <div class="principle-title">Ship Fast, Learn Faster</div>
+        <div class="principle-desc">A perfect product that ships in 6 months loses to a good product that ships today. Ship, learn, iterate. Speed is your only advantage over big companies.</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-emoji">🌐</div>
+        <div class="principle-title">Build in Public</div>
+        <div class="principle-desc">Document your journey on LinkedIn and Twitter. Founders who build in public get free marketing, investor interest, and customer trust. Your story is your brand.</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-emoji">🤝</div>
+        <div class="principle-title">Hire for Vertical Expertise</div>
+        <div class="principle-desc">Your SalonSetu sales rep should understand salons. Domain expertise closes deals faster than generic SaaS sales skills. Knowledge is currency.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="footer-title">The Empire Starts with One Bridge. 🌉</div>
+  <div class="footer-sub">
+    <span class="footer-accent">GymSetu</span> is Product 01.
+    The mission is to become the <span class="footer-accent">operating system for every Indian SMB</span> —
+    one vertical at a time.
+  </div>
+  <div style="margin-top: 20px; font-size: 11px; color: #3A4560; letter-spacing: 1px;">
+    CONFIDENTIAL &nbsp;·&nbsp; INTERNAL STRATEGY DOCUMENT &nbsp;·&nbsp; 2025–2030
+  </div>
+</div>
+
+</body>
+</html>

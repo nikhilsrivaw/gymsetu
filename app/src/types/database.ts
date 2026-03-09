@@ -1,4 +1,4 @@
-export type UserRole = 'gym_owner' | 'staff';
+export type UserRole = 'gym_owner' | 'staff' | 'member' | 'trainer';
 
 export type MemberStatus = 'active' | 'expired' | 'suspended' | 'inactive';
 

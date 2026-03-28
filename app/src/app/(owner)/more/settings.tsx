@@ -1,11 +1,14 @@
- import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Switch, TextInput }
-  from 'react-native';                           
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Switch, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';                     
-  import { useState } from 'react';  
-  import {Colors } from '@/constants/colors';                                       
-  import { Fonts } from '@/constants/fonts';                                           import FadeInView from '@/components/FadeInView';                                                                                    
-  import AnimatedPressable from '@/components/AnimatedPressable';                                                                                                         
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { useState } from 'react';
+import { Colors } from '@/constants/colors';
+import { Fonts } from '@/constants/fonts';
+import FadeInView from '@/components/FadeInView';
+import AnimatedPressable from '@/components/AnimatedPressable';
+import { useAuthStore } from '@/store/authStore';                                                                                                         
   type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];                                                                                              type SettingToggle = {                                                                 kind: 'toggle';                                                                  
     label: string;
     desc: string;
@@ -31,11 +34,21 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
     items: Setting[];
   };
 
-  export default function SettingsScreen() {
+export default function SettingsScreen() {
+    const { signOut } = useAuthStore();
     const [pinModal, setPinModal]         = useState(false);
     const [notifModal, setNotifModal]     = useState(false);
+    const [signOutModal, setSignOutModal] = useState(false);
+    const [signingOut, setSigningOut]     = useState(false);
     const [pin, setPin]                   = useState('');
     const [confirmPin, setConfirmPin]     = useState('');
+
+    const handleSignOut = async () => {
+      setSigningOut(true);
+      await signOut();
+      setSigningOut(false);
+      setSignOutModal(false);
+    };
 
     const [toggles, setToggles] = useState<Record<string, boolean>>({
       expiryAlerts:   true,
@@ -219,24 +232,39 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
             </FadeInView>
           ))}
 
-          {/* ── Danger Zone ──────────────────────────────────── */}
+          {/* ── Sign Out button ───────────────────────────────── */}
           <FadeInView delay={420}>
+            <AnimatedPressable
+              style={styles.signOutBtn}
+              scaleDown={0.97}
+              onPress={() => setSignOutModal(true)}
+            >
+              <LinearGradient
+                colors={['rgba(255,59,48,0.12)', 'rgba(255,59,48,0.06)']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFill} pointerEvents="none"
+              />
+              <View style={styles.signOutIconBox}>
+                <MaterialCommunityIcons name="logout" size={19} color={Colors.red} />
+              </View>
+              <Text style={styles.signOutText}>SIGN OUT</Text>
+              <MaterialCommunityIcons name="chevron-right" size={17} color={Colors.red + '80'} />
+            </AnimatedPressable>
+          </FadeInView>
+
+          {/* ── Danger Zone ──────────────────────────────────── */}
+          <FadeInView delay={460}>
             <Text style={styles.sectionLabel}>DANGER ZONE</Text>
             <View style={styles.dangerCard}>
               <AnimatedPressable style={styles.dangerRow} scaleDown={0.98}>
-                <View style={[styles.settingIcon, { backgroundColor: Colors.red +    
-  '18' }]}>
-                  <MaterialCommunityIcons name="account-remove-outline" size={17}    
-  color={Colors.red} />
+                <View style={[styles.settingIcon, { backgroundColor: Colors.red + '18' }]}>
+                  <MaterialCommunityIcons name="account-remove-outline" size={17} color={Colors.red} />
                 </View>
                 <View style={styles.settingText}>
-                  <Text style={[styles.settingLabel, { color: Colors.red }]}>Delete  
-  Account</Text>
-                  <Text style={styles.settingDesc}>Permanently remove all gym        
-  data</Text>
+                  <Text style={[styles.settingLabel, { color: Colors.red }]}>Delete Account</Text>
+                  <Text style={styles.settingDesc}>Permanently remove all gym data</Text>
                 </View>
-                <MaterialCommunityIcons name="chevron-right" size={17}
-  color={Colors.red} />
+                <MaterialCommunityIcons name="chevron-right" size={17} color={Colors.red} />
               </AnimatedPressable>
             </View>
           </FadeInView>
@@ -290,6 +318,63 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
    setPinModal(false)}>
               <Text style={styles.saveBtnText}>UPDATE PIN</Text>
             </AnimatedPressable>
+          </View>
+        </Modal>
+
+        {/* ── Sign Out Confirm Modal ───────────────────────── */}
+        <Modal visible={signOutModal} transparent animationType="fade" onRequestClose={() => setSignOutModal(false)}>
+          <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
+          <Pressable style={styles.backdrop} onPress={() => !signingOut && setSignOutModal(false)} />
+          <View style={styles.confirmOverlay}>
+            <View style={styles.confirmCard}>
+              <LinearGradient
+                colors={[Colors.red + '12', 'transparent']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill} pointerEvents="none"
+              />
+              <View style={styles.confirmTopBar} />
+
+              <View style={styles.confirmIconRing}>
+                <MaterialCommunityIcons name="logout" size={28} color={Colors.red} />
+              </View>
+
+              <Text style={styles.confirmTitle}>SIGN OUT?</Text>
+              <Text style={styles.confirmDesc}>
+                You'll be returned to the login screen. Your data is safely stored in the cloud.
+              </Text>
+
+              <View style={styles.confirmActions}>
+                <AnimatedPressable
+                  style={styles.confirmCancel}
+                  scaleDown={0.96}
+                  onPress={() => setSignOutModal(false)}
+                  disabled={signingOut}
+                >
+                  <Text style={styles.confirmCancelText}>CANCEL</Text>
+                </AnimatedPressable>
+
+                <AnimatedPressable
+                  style={[styles.confirmSignOut, signingOut && { opacity: 0.6 }]}
+                  scaleDown={0.96}
+                  onPress={handleSignOut}
+                  disabled={signingOut}
+                >
+                  <LinearGradient
+                    colors={[Colors.red, '#990000']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={styles.confirmSignOutGrad}
+                  >
+                    {signingOut
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <>
+                          <MaterialCommunityIcons name="logout" size={16} color="#fff" />
+                          <Text style={styles.confirmSignOutText}>SIGN OUT</Text>
+                        </>
+                    }
+                  </LinearGradient>
+                </AnimatedPressable>
+              </View>
+            </View>
           </View>
         </Modal>
 
@@ -423,6 +508,49 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
    14, alignItems: 'center', marginTop: 8 },
     saveBtnText: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.bg,
   letterSpacing: 1.2 },
+
+    // Sign out button
+    signOutBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      backgroundColor: Colors.bgCard,
+      borderRadius: 16, borderWidth: 1, borderColor: Colors.red + '35',
+      paddingHorizontal: 16, paddingVertical: 15,
+      marginBottom: 12, overflow: 'hidden',
+    },
+    signOutIconBox: {
+      width: 36, height: 36, borderRadius: 10,
+      backgroundColor: Colors.red + '18',
+      justifyContent: 'center', alignItems: 'center',
+    },
+    signOutText: {
+      flex: 1, fontFamily: Fonts.bold, fontSize: 13,
+      color: Colors.red, letterSpacing: 1,
+    },
+
+    // Sign out confirm modal
+    confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 28 },
+    confirmCard: {
+      width: '100%', backgroundColor: Colors.bgCard,
+      borderRadius: 26, borderWidth: 1, borderColor: Colors.red + '35',
+      overflow: 'hidden', alignItems: 'center',
+      paddingHorizontal: 24, paddingBottom: 24,
+    },
+    confirmTopBar:    { alignSelf: 'stretch', height: 3, backgroundColor: Colors.red, marginBottom: 24 },
+    confirmIconRing: {
+      width: 68, height: 68, borderRadius: 34,
+      backgroundColor: Colors.red + '14',
+      borderWidth: 1, borderColor: Colors.red + '35',
+      justifyContent: 'center', alignItems: 'center',
+      marginBottom: 16,
+    },
+    confirmTitle: { fontFamily: Fonts.condensedBold, fontSize: 22, color: Colors.text, letterSpacing: 1, marginBottom: 10 },
+    confirmDesc:  { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+    confirmActions:      { flexDirection: 'row', gap: 10, alignSelf: 'stretch' },
+    confirmCancel:       { flex: 1, backgroundColor: Colors.bgElevated, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, paddingVertical: 14, alignItems: 'center' },
+    confirmCancelText:   { fontFamily: Fonts.bold, fontSize: 12, color: Colors.textMuted, letterSpacing: 1 },
+    confirmSignOut:      { flex: 1 },
+    confirmSignOutGrad:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: 14, paddingVertical: 14 },
+    confirmSignOutText:  { fontFamily: Fonts.bold, fontSize: 12, color: '#fff', letterSpacing: 1 },
 
     // Quiet hours
     quietRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

@@ -1,6 +1,6 @@
-  import { useState } from 'react';                                                                               import {                                                                                                      
-    View, Text, StyleSheet, ScrollView, TextInput,                                                              
-    TouchableOpacity, ActivityIndicator, Alert, Modal,
+ import { useState } from 'react';                                                                                    
+  import {                                                                                                                 View, Text, StyleSheet, ScrollView, TextInput,                                                                     
+    ActivityIndicator, Modal, Keyboard,                                                                                
   } from 'react-native';
   import { Stack, useRouter } from 'expo-router';
   import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -14,58 +14,69 @@
   const ACCENT = '#3B82F6';
 
   export default function AddTrainerScreen() {
-    const { profile } = useAuthStore();
+    const { profile, activeGymId } = useAuthStore();
     const router = useRouter();
 
     const [fullName,       setFullName]       = useState('');
     const [phone,          setPhone]          = useState('');
     const [specialization, setSpecialization] = useState('');
     const [loading,        setLoading]        = useState(false);
+    const [error,          setError]          = useState('');
 
     const [showModal,       setShowModal]       = useState(false);
     const [trainerCode,     setTrainerCode]     = useState('');
     const [trainerPassword, setTrainerPassword] = useState('');
 
     const handleCreate = async () => {
+      setError('');
+
       if (!fullName.trim()) {
-        Alert.alert('Required', "Please enter the trainer's full name.");
+        setError("Trainer's full name is required.");
         return;
       }
-      if (!profile?.gym_id) {
-        Alert.alert('Error', 'No gym found for your account');
+      if (phone.trim() && !/^\d{10,15}$/.test(phone.trim())) {
+        setError('Phone number must be 10–15 digits.');
         return;
       }
 
+      const mainGymId = profile?.gym_id;
+      if (!mainGymId) { setError('No gym found for your account.'); return; }
+      const gymId = activeGymId === 'all' ? mainGymId : (activeGymId ?? mainGymId);
+
+      Keyboard.dismiss();
       setLoading(true);
       try {
-        // 1. Create auth user + profile via edge function
         const { data: fnData, error: fnError } = await supabase.functions.invoke('create-gym-user', {
-          body: { role: 'trainer', gymId: profile.gym_id, fullName: fullName.trim() },
+          body: { role: 'trainer', gymId, fullName: fullName.trim() },
         });
-        if (fnError || !fnData?.userId) throw new Error(fnError?.message ?? 'Failed to create trainer account');
+        if (fnError || !fnData?.userId) {
+          throw new Error(fnError?.message ?? 'Failed to create trainer account');
+        }
 
         const { userId, code, password } = fnData;
 
-        // 2. Insert into trainers table
-        const { error: insertError } = await supabase.from('trainers').insert({
-          gym_id:           profile.gym_id,
-          user_id:          userId,
-          full_name:        fullName.trim(),
-          phone:            phone.trim() || null,
-          specialization:   specialization.trim() || null,
-          status:           'active',
-          trainer_code:     code,
-          trainer_password: password,
-        });
-        if (insertError) throw new Error(insertError.message);
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            gym_id:           gymId,
+            full_name:        fullName.trim(),
+            phone:            phone.trim() || null,
+            specialization:   specialization.trim() || null,
+            status:           'active',
+            trainer_code:     code,
+            trainer_password: password,
+          })
+          .eq('id', userId);
+        if (updateError) throw new Error(updateError.message);
 
         setTrainerCode(code);
         setTrainerPassword(password);
         setShowModal(true);
       } catch (err: any) {
-        Alert.alert('Error', err.message ?? 'Could not create trainer');
+        setError(err.message ?? 'Could not create trainer. Please try again.');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     return (
@@ -94,6 +105,7 @@
                   onChangeText={setFullName}
                   placeholder="e.g. Ramesh Kumar"
                   placeholderTextColor={Colors.textMuted}
+                  autoCapitalize="words"
                 />
               </View>
 
@@ -126,11 +138,21 @@
             <View style={styles.infoCard}>
               <MaterialCommunityIcons name="information-outline" size={16} color={ACCENT} />
               <Text style={styles.infoText}>
-                A unique Trainer ID (GST-XXXXXX) and password will be generated automatically. Share these with 
-  the trainer to log in.
+                A unique Trainer ID (GST-XXXXXX) and password will be generated automatically. Share these with        
+                the trainer to log in.
               </Text>
             </View>
           </FadeInView>
+
+          {/* ── Inline Error ──────────────────────────────── */}
+          {!!error && (
+            <FadeInView delay={0}>
+              <View style={styles.errorBanner}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={15} color={Colors.red} />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            </FadeInView>
+          )}
 
           <FadeInView delay={160}>
             <AnimatedPressable
@@ -149,7 +171,7 @@
           <View style={{ height: 40 }} />
         </ScrollView>
 
-        {/* Credentials Modal */}
+        {/* ── Credentials Modal ────────────────────────── */}
         <Modal visible={showModal} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
@@ -175,12 +197,13 @@
                 </Text>
               </View>
 
-              <TouchableOpacity
+              <AnimatedPressable
                 style={styles.doneBtn}
+                scaleDown={0.97}
                 onPress={() => { setShowModal(false); router.back(); }}
               >
                 <Text style={styles.doneBtnText}>DONE</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
           </View>
         </Modal>
@@ -193,8 +216,7 @@
     scroll:    { paddingHorizontal: 16, paddingTop: 20 },
 
     headline: { fontFamily: Fonts.condensedBold, fontSize: 32, color: Colors.text, letterSpacing: 1 },
-    sub:      { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, marginTop: 4, marginBottom: 20
-   },
+    sub:      { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, marginTop: 4, marginBottom: 20 },    
 
     section: {
       backgroundColor: Colors.bgCard, borderRadius: 18,
@@ -217,44 +239,57 @@
       flexDirection: 'row', alignItems: 'flex-start', gap: 8,
       backgroundColor: ACCENT + '12', borderRadius: 12,
       borderWidth: 1, borderColor: ACCENT + '30',
-      padding: 12, marginBottom: 20,
+      padding: 12, marginBottom: 16,
     },
-    infoText: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted, flex: 1, lineHeight: 18 },    
+    infoText: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted, flex: 1, lineHeight: 18 },
+
+    errorBanner: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      backgroundColor: Colors.red + '15', borderRadius: 10,
+      borderWidth: 1, borderColor: Colors.red + '30',
+      paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16,
+    },
+    errorText: { flex: 1, fontFamily: Fonts.regular, fontSize: 12, color: Colors.red },
 
     submitBtn: {
       backgroundColor: ACCENT, borderRadius: 14,
-      paddingVertical: 16, alignItems: 'center',
+      paddingVertical: 16, alignItems: 'center', justifyContent: 'center', height: 52,
     },
     submitText: { fontFamily: Fonts.bold, fontSize: 14, color: '#FFF', letterSpacing: 1 },
 
-    modalOverlay: { flex: 1, backgroundColor: '#000000AA', justifyContent: 'center', alignItems: 'center',      
-  padding: 24 },
+    modalOverlay: { flex: 1, backgroundColor: '#000000AA', justifyContent: 'center', alignItems: 'center', padding: 24 
+  },
     modalCard: {
       backgroundColor: Colors.bgCard, borderRadius: 24, padding: 24,
       width: '100%', alignItems: 'center', borderWidth: 1, borderColor: Colors.border,
     },
-    modalEmoji:  { fontSize: 40, marginBottom: 10 },
-    modalTitle:  { fontFamily: Fonts.condensedBold, fontSize: 24, color: Colors.text, letterSpacing: 0.5 },     
-    modalSub:    { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, marginTop: 4, marginBottom:
-   20, textAlign: 'center' },
+    modalEmoji: { fontSize: 40, marginBottom: 10 },
+    modalTitle: { fontFamily: Fonts.condensedBold, fontSize: 24, color: Colors.text, letterSpacing: 0.5 },
+    modalSub:   { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, marginTop: 4, marginBottom: 20,    
+  textAlign: 'center' },
 
     credBox: {
       width: '100%', backgroundColor: Colors.bgElevated,
       borderRadius: 14, borderWidth: 1, borderColor: Colors.border,
       marginBottom: 14, overflow: 'hidden',
     },
-    credRow:   {
+    credRow: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
       paddingHorizontal: 16, paddingVertical: 14,
       borderBottomWidth: 1, borderBottomColor: Colors.border,
     },
     credLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1 },
-    credValue: { fontFamily: Fonts.condensedBold, fontSize: 18, color: Colors.text, letterSpacing: 1 },
+    credValue: { fontFamily: Fonts.condensedBold, fontSize: 18, color: Colors.text, letterSpacing: 0.5 },
 
-    warningRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 20 },
-    warningText: { fontFamily: Fonts.regular, fontSize: 11, color: Colors.orange, flex: 1, lineHeight: 16 },    
+    warningRow: {
+      flexDirection: 'row', alignItems: 'flex-start', gap: 6,
+      backgroundColor: Colors.orange + '12', borderRadius: 10,
+      borderWidth: 1, borderColor: Colors.orange + '25',
+      padding: 10, marginBottom: 20, width: '100%',
+    },
+    warningText: { flex: 1, fontFamily: Fonts.regular, fontSize: 11, color: Colors.orange, lineHeight: 16 },
 
-    doneBtn:     { backgroundColor: ACCENT, borderRadius: 12, paddingVertical: 14, width: '100%', alignItems:   
-  'center' },
-    doneBtnText: { fontFamily: Fonts.bold, fontSize: 14, color: '#FFF', letterSpacing: 1 },
+    doneBtn:     { backgroundColor: Colors.green, borderRadius: 12, paddingVertical: 14, alignItems: 'center', width:  
+  '100%' },
+    doneBtnText: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.bg, letterSpacing: 1.5 },
   });

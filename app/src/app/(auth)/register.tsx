@@ -1,109 +1,148 @@
- import { useState } from 'react';
-  import { View, Text, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from   
-  'react-native';
-  import { useRouter, Link } from 'expo-router';
-  import { TextInput } from 'react-native-paper';
-  import { MaterialCommunityIcons } from '@expo/vector-icons';
-  import { useAuthStore } from '@/store/authStore';
-  import { Colors } from '@/constants/colors';
-  import { Fonts } from '@/constants/fonts';
+import { View, Text, StyleSheet, Linking, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter, useNavigation } from 'expo-router';
+import { Colors } from '@/constants/colors';
+import { Fonts } from '@/constants/fonts';
+import AnimatedPressable from '@/components/AnimatedPressable';
+import { useAuthStore } from '@/store/authStore';
 
-  export default function OwnerRegisterScreen() {
-    const router = useRouter();
-    const [fullName, setFullName] = useState('');
-    const [gymName, setGymName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [secureText, setSecureText] = useState(true);
-    const signUp = useAuthStore((s) => s.signUp);
-    const signIn = useAuthStore((s) => s.signIn);
+export default function RegisterScreen() {
+  const insets = useSafeAreaInsets();
+  const router     = useRouter();
+  const navigation = useNavigation();
+  const signOut    = useAuthStore((s) => s.signOut);
 
-    const handleRegister = async () => {
-      if (!fullName || !gymName || !email || !password) { Alert.alert('Error', 'Please fill in all fields');    
-  return; }
-      if (password.length < 6) { Alert.alert('Error', 'Password must be at least 6 characters'); return; }      
-      setLoading(true);
-      const { error } = await signUp(email.trim(), password, fullName.trim(), gymName.trim());
-      if (error) { setLoading(false); Alert.alert('Registration Failed', error); return; }
-      const { error: loginError } = await signIn(email.trim(), password);
-      setLoading(false);
-      if (!loginError) router.replace('/(owner)/dashboard');
-    };
-
-    const ip = {
-      mode: 'outlined' as const,
-      style: styles.input,
-      outlineColor: Colors.border,
-      activeOutlineColor: Colors.accent,
-      textColor: Colors.text,
-      theme: { colors: { onSurfaceVariant: Colors.textMuted } },
-    };
-
-    return (
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>   
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled"
-  showsVerticalScrollIndicator={false}>
-
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <MaterialCommunityIcons name="arrow-left" size={20} color={Colors.textMuted} />
-          </TouchableOpacity>
-
-          <View style={styles.header}>
-            <View style={styles.logoBubble}>
-              <MaterialCommunityIcons name="dumbbell" size={30} color={Colors.accent} />
-            </View>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.sub}>Set up your gym in 30 seconds</Text>
-          </View>
-
-          <View style={styles.form}>
-            <TextInput label="Your full name" value={fullName} onChangeText={setFullName} {...ip} />
-            <TextInput label="Gym name" value={gymName} onChangeText={setGymName} {...ip} />
-            <TextInput label="Email address" value={email} onChangeText={setEmail} autoCapitalize="none"        
-  keyboardType="email-address" {...ip} />
-            <TextInput
-              label="Password (min. 6 chars)"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={secureText}
-              right={<TextInput.Icon icon={secureText ? 'eye-off-outline' : 'eye-outline'} onPress={() =>       
-  setSecureText(!secureText)} color={Colors.textMuted} />}
-              {...ip}
-            />
-            <TouchableOpacity style={[styles.btn, loading && { opacity: 0.6 }]} onPress={handleRegister}        
-  disabled={loading} activeOpacity={0.82}>
-              <Text style={styles.btnText}>{loading ? 'CREATING...' : 'CREATE GYM ACCOUNT'}</Text>
-              {!loading && <MaterialCommunityIcons name="arrow-right" size={18} color={Colors.bg} />}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
-            <Link href="/(auth)/login"><Text style={styles.link}>Sign in</Text></Link>
-          </View>
-
-        </ScrollView>
-      </KeyboardAvoidingView>
-    );
+  function handleBack() {
+    if (navigation.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(auth)/login');
+    }
   }
 
-  const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.bg },
-    scroll: { flexGrow: 1, padding: 24, paddingTop: 16 },
-    backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.bgCard, justifyContent:
-  'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, marginBottom: 24 },
-    header: { alignItems: 'center', marginBottom: 32, gap: 6 },
-    logoBubble: { width: 72, height: 72, borderRadius: 22, backgroundColor: Colors.accentMuted, justifyContent: 
-  'center', alignItems: 'center', borderWidth: 1.5, borderColor: Colors.accent + '40', marginBottom: 8 },       
-    title: { fontFamily: Fonts.bold, fontSize: 26, color: Colors.text },
-    sub: { fontFamily: Fonts.regular, fontSize: 14, color: Colors.textMuted },
-    form: { gap: 14 },
-    input: { backgroundColor: Colors.bgCard },
-    btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor:       
-  Colors.accent, borderRadius: 14, paddingVertical: 16, marginTop: 6 },
-    btnText: { fontFamily: Fonts.bold, fontSize: 15, color: Colors.bg, letterSpacing: 1 },
-    footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
-    footerText: { fontFamily: Fonts.regular, color: Colors.textMuted, fontSize: 14 },
-    link: { fontFamily: Fonts.bold, color: Colors.accent, fontSize: 14 },
-  });
+  const steps = [
+    { n: '1', text: 'Visit gymsetu.com/signup on your browser' },
+    { n: '2', text: 'Enter your gym details and choose a plan' },
+    { n: '3', text: 'Pay securely via Razorpay (Basic ₹999 · Pro ₹1,699)' },
+    { n: '4', text: 'Come back here and sign in with your email & password' },
+  ];
+
+  return (
+    <View style={[s.root, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}>
+
+      <TouchableOpacity style={s.backBtn} onPress={handleBack} activeOpacity={0.7}>
+        <MaterialCommunityIcons name="arrow-left" size={20} color="#888" />
+      </TouchableOpacity>
+
+      {/* Icon + heading */}
+      <View style={s.hero}>
+        <View style={s.iconWrap}>
+          <MaterialCommunityIcons name="web" size={34} color={Colors.accent} />
+        </View>
+        <Text style={s.title}>Register on our Website</Text>
+        <Text style={s.sub}>
+          GymSetu accounts are created on our website so you can choose your plan and pay securely before getting started.
+        </Text>
+      </View>
+
+      {/* Steps */}
+      <View style={s.stepsCard}>
+        {steps.map((step, i) => (
+          <View key={step.n} style={[s.stepRow, i < steps.length - 1 && s.stepBorder]}>
+            <View style={s.stepNum}>
+              <Text style={s.stepNumText}>{step.n}</Text>
+            </View>
+            <Text style={s.stepText}>{step.text}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Plans reminder */}
+      <View style={s.plansRow}>
+        <View style={s.planChip}>
+          <Text style={s.planChipLabel}>BASIC</Text>
+          <Text style={s.planChipPrice}>₹999<Text style={s.planChipPer}>/mo</Text></Text>
+        </View>
+        <View style={[s.planChip, s.planChipPro]}>
+          <Text style={[s.planChipLabel, { color: Colors.accent }]}>PRO</Text>
+          <Text style={s.planChipPrice}>₹1,699<Text style={s.planChipPer}>/mo</Text></Text>
+          <Text style={s.trialNote}>7-day free trial</Text>
+        </View>
+      </View>
+
+      {/* CTA */}
+      <View style={s.ctas}>
+        <AnimatedPressable
+          style={s.primaryBtn}
+          scaleDown={0.97}
+          onPress={() => Linking.openURL('https://gymsetu.com/signup')}
+        >
+          <MaterialCommunityIcons name="open-in-new" size={18} color="#fff" />
+          <Text style={s.primaryBtnText}>Open gymsetu.com/signup</Text>
+        </AnimatedPressable>
+
+        <AnimatedPressable
+          style={s.secondaryBtn}
+          scaleDown={0.97}
+          onPress={() => router.replace('/(auth)/login')}
+        >
+          <Text style={s.secondaryBtnText}>Already registered? Sign in →</Text>
+        </AnimatedPressable>
+      </View>
+
+      <TouchableOpacity style={s.signOutBtn} onPress={() => signOut()} activeOpacity={0.6}>
+        <Text style={s.signOutText}>Sign out</Text>
+      </TouchableOpacity>
+
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#0a0a0a', paddingHorizontal: 20 },
+
+  backBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: '#141414', justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: '#1e1e1e', marginBottom: 24,
+  },
+
+  hero:    { alignItems: 'center', marginBottom: 28 },
+  iconWrap:{ width: 72, height: 72, borderRadius: 22, backgroundColor: Colors.accent + '15',
+             justifyContent: 'center', alignItems: 'center',
+             borderWidth: 1.5, borderColor: Colors.accent + '30', marginBottom: 14 },
+  title:   { fontFamily: Fonts.condensedBold, fontSize: 28, color: '#fff', letterSpacing: 0.5, marginBottom: 8, textAlign: 'center' },
+  sub:     { fontFamily: Fonts.regular, fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22 },
+
+  stepsCard:  { backgroundColor: '#141414', borderRadius: 18, borderWidth: 1, borderColor: '#1e1e1e', marginBottom: 16 },
+  stepRow:    { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
+  stepBorder: { borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
+  stepNum:    { width: 28, height: 28, borderRadius: 8, backgroundColor: Colors.accent + '15',
+                justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.accent + '30' },
+  stepNumText:{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.accent },
+  stepText:   { flex: 1, fontFamily: Fonts.regular, fontSize: 13, color: '#ccc', lineHeight: 20 },
+
+  plansRow:      { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  planChip:      { flex: 1, backgroundColor: '#141414', borderRadius: 14,
+                   borderWidth: 1, borderColor: '#1e1e1e', padding: 14, alignItems: 'center', gap: 2 },
+  planChipPro:   { borderColor: Colors.accent + '30', backgroundColor: Colors.accent + '08' },
+  planChipLabel: { fontFamily: Fonts.bold, fontSize: 9, color: '#555', letterSpacing: 2 },
+  planChipPrice: { fontFamily: Fonts.condensedBold, fontSize: 22, color: '#fff' },
+  planChipPer:   { fontFamily: Fonts.regular, fontSize: 12, color: '#555' },
+  trialNote:     { fontFamily: Fonts.regular, fontSize: 10, color: Colors.accent, marginTop: 2 },
+
+  ctas: { gap: 12, marginBottom: 16 },
+
+  primaryBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                    gap: 10, backgroundColor: Colors.accent, borderRadius: 16, paddingVertical: 16 },
+  primaryBtnText: { fontFamily: Fonts.bold, fontSize: 15, color: '#fff' },
+
+  secondaryBtn:     { alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: '#141414', borderRadius: 16, paddingVertical: 14,
+                      borderWidth: 1, borderColor: '#1e1e1e' },
+  secondaryBtnText: { fontFamily: Fonts.bold, fontSize: 14, color: '#888' },
+
+  signOutBtn:  { alignItems: 'center', paddingVertical: 8 },
+  signOutText: { fontFamily: Fonts.regular, fontSize: 13, color: '#333' },
+});

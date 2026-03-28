@@ -1,331 +1,789 @@
-import { useState } from 'react';
-  import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
-  import { MaterialCommunityIcons } from '@expo/vector-icons';
-  import { Colors } from '@/constants/colors';   
-  import { Fonts } from '@/constants/fonts';
-  import FadeInView from '@/components/FadeInView';
-  import AnimatedPressable from '@/components/AnimatedPressable';
-  import { askAI } from '@/lib/ai';                                                                                                  
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];                                                                 
-  
-  interface Session {
-    id: number; time: string; member: string; type: string;
-    duration: string; emoji: string; color: string;
-    location: string; status: 'upcoming' | 'done' | 'cancelled';
-  }
+import { useState, useCallback, useEffect } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, Pressable,
+  ActivityIndicator, Modal, TextInput,
+} from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import { DrawerActions } from '@react-navigation/native';
+import { Colors } from '@/constants/colors';
+import { Fonts } from '@/constants/fonts';
+import FadeInView from '@/components/FadeInView';
+import AnimatedPressable from '@/components/AnimatedPressable';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/authStore';
 
-  const schedule: Record<string, Session[]> = {
-    Mon: [
-      { id: 1,  time: '6:00 AM', member: 'Amit Singh',   type: 'Push Day',          duration: '60 min', emoji: '💪', color:       
-  Colors.accent, location: 'Weight Room', status: 'done'     },
-      { id: 2,  time: '7:30 AM', member: 'Priya Nair',   type: 'HIIT Cardio',       duration: '45 min', emoji: '🔥', color:       
-  Colors.red,    location: 'Cardio Zone', status: 'done'     },
-      { id: 3,  time: '5:00 PM', member: 'Rahul Mehta',  type: 'Strength Training', duration: '60 min', emoji: '🏋️', color:       
-  Colors.green,  location: 'Weight Room', status: 'upcoming' },
-      { id: 4,  time: '6:30 PM', member: 'Group Class',  type: 'HIIT Blast',        duration: '45 min', emoji: '⚡', color:       
-  Colors.orange, location: 'Studio A',    status: 'upcoming' },
-    ],
-    Tue: [
-      { id: 5,  time: '7:00 AM', member: 'Sneha Patel',  type: 'Yoga & Flexibility',duration: '50 min', emoji: '🧘', color:       
-  '#8B5CF6',     location: 'Yoga Studio', status: 'done'     },
-      { id: 6,  time: '5:30 PM', member: 'Vikram Rao',   type: 'Pull Day',          duration: '65 min', emoji: '🏋️', color:       
-  Colors.accent, location: 'Weight Room', status: 'upcoming' },
-      { id: 7,  time: '7:00 PM', member: 'Arjun Sharma', type: 'Leg Day',           duration: '70 min', emoji: '🦵', color:       
-  Colors.green,  location: 'Weight Room', status: 'upcoming' },
-    ],
-    Wed: [
-      { id: 8,  time: '6:00 AM', member: 'Meena Joshi',  type: 'Cardio Circuit',    duration: '45 min', emoji: '🚴', color:       
-  Colors.orange, location: 'Cardio Zone', status: 'upcoming' },
-      { id: 9,  time: '8:00 AM', member: 'Kavita Desai', type: 'Full Body',         duration: '60 min', emoji: '💥', color:       
-  Colors.red,    location: 'Weight Room', status: 'upcoming' },
-      { id: 10, time: '6:00 PM', member: 'Group Class',  type: 'Strength Circuit',  duration: '60 min', emoji: '⚡', color:       
-  Colors.accent, location: 'Studio B',    status: 'upcoming' },
-    ],
-    Thu: [
-      { id: 11, time: '7:00 AM', member: 'Amit Singh',   type: 'Pull Day',          duration: '60 min', emoji: '💪', color:       
-  Colors.accent, location: 'Weight Room', status: 'upcoming' },
-      { id: 12, time: '5:00 PM', member: 'Priya Nair',   type: 'Strength Circuit',  duration: '50 min', emoji: '🔥', color:       
-  Colors.red,    location: 'Studio A',    status: 'upcoming' },
-    ],
-    Fri: [
-      { id: 13, time: '6:30 AM', member: 'Vikram Rao',   type: 'Chest & Shoulders', duration: '65 min', emoji: '💪', color:       
-  Colors.accent, location: 'Weight Room', status: 'upcoming' },
-      { id: 14, time: '5:30 PM', member: 'Rahul Mehta',  type: 'Cardio + Core',     duration: '50 min', emoji: '🧱', color:       
-  '#EC4899',     location: 'Cardio Zone', status: 'upcoming' },
-      { id: 15, time: '7:00 PM', member: 'Group Class',  type: 'Full Body Burn',    duration: '60 min', emoji: '🔥', color:
-  Colors.orange, location: 'Studio A',    status: 'upcoming' },
-    ],
-    Sat: [
-      { id: 16, time: '7:00 AM', member: 'Arjun Sharma', type: 'Leg Day',           duration: '70 min', emoji: '🦵', color:       
-  Colors.green,  location: 'Weight Room', status: 'upcoming' },
-      { id: 17, time: '9:00 AM', member: 'Group Class',  type: 'Saturday HIIT',     duration: '45 min', emoji: '⚡', color:       
-  Colors.red,    location: 'Studio A',    status: 'upcoming' },
-    ],
-    Sun: [],
+type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+
+const DAYS       = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const todayIndex = (() => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; })();
+
+const SESSION_TYPES: { label: string; icon: IconName; color: string }[] = [
+  { label: 'Strength Training', icon: 'dumbbell',            color: '#3B82F6'     },
+  { label: 'Cardio',            icon: 'run',                 color: Colors.green  },
+  { label: 'HIIT',              icon: 'lightning-bolt',      color: '#ef4444'     },
+  { label: 'Yoga',              icon: 'yoga',                color: '#8B5CF6'     },
+  { label: 'Stretching',        icon: 'human-handsup',       color: '#14B8A6'     },
+  { label: 'Personal Training', icon: 'account-star-outline', color: Colors.accent },
+];
+
+const STATUS_CFG: Record<string, { color: string; icon: IconName; label: string }> = {
+  upcoming:  { color: Colors.accent, icon: 'clock-outline',        label: 'UPCOMING'  },
+  done:      { color: Colors.green,  icon: 'check-circle-outline', label: 'DONE'      },
+  cancelled: { color: Colors.red,    icon: 'close-circle-outline', label: 'CANCELLED' },
+};
+
+const WEEK_MAX = 6; // max sessions per day for bar scaling
+
+interface AssignedMember { id: string; user_id: string; name: string; initials: string; }
+interface Session {
+  id: string; time: string; member_name: string; member_id: string | null;
+  session_type: string; duration: string; location: string;
+  status: 'upcoming' | 'done' | 'cancelled'; day_of_week: string; color: string;
+}
+
+export default function TrainerScheduleScreen() {
+  const { profile } = useAuthStore();
+  const insets     = useSafeAreaInsets();
+  const navigation = useNavigation();
+
+  const [selectedDay,  setSelectedDay]  = useState(todayIndex);
+  const [sessions,     setSessions]     = useState<Session[]>([]);
+  const [members,      setMembers]      = useState<AssignedMember[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [fetchError,   setFetchError]   = useState('');
+  const [updatingId,   setUpdatingId]   = useState<string | null>(null);
+  const [sheetSession, setSheetSession] = useState<Session | null>(null);
+
+  // Add modal
+  const [showAdd,     setShowAdd]     = useState(false);
+  const [selMember,   setSelMember]   = useState<AssignedMember | null>(null);
+  const [selType,     setSelType]     = useState(SESSION_TYPES[0]);
+  const [addTime,     setAddTime]     = useState('09:00 AM');
+  const [addDuration, setAddDuration] = useState('60 min');
+  const [addLocation, setAddLocation] = useState('Main Floor');
+  const [addSaving,   setAddSaving]   = useState(false);
+  const [addError,    setAddError]    = useState('');
+
+  useEffect(() => {
+    if (!profile?.id || !profile?.gym_id) return;
+    // trainer_id is on profiles, not members — query profiles first
+    supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('gym_id', profile.gym_id)
+      .eq('trainer_id', profile.id)
+      .eq('role', 'member')
+      .order('full_name')
+      .then(async ({ data: profileRows }) => {
+        if (!profileRows?.length) return;
+        // get members.id for each profile (needed for session member_id)
+        const { data: memberRows } = await supabase
+          .from('members').select('id, user_id')
+          .in('user_id', profileRows.map((p: any) => p.id));
+        const userToMemberId: Record<string, string> = {};
+        (memberRows ?? []).forEach((m: any) => { userToMemberId[m.user_id] = m.id; });
+        setMembers(profileRows.map((p: any) => ({
+          id:      userToMemberId[p.id] ?? p.id,
+          user_id: p.id,
+          name:    p.full_name,
+          initials: p.full_name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+        })));
+      });
+  }, [profile?.id, profile?.gym_id]);
+
+  const fetchSessions = useCallback(async () => {
+    if (!profile?.id) { setLoading(false); return; }
+    setFetchError('');
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('trainer_sessions')
+        .select('*')
+        .eq('trainer_id', profile.id)
+        .order('time');
+      if (error) throw error;
+      setSessions(data ?? []);
+    } catch (e: any) {
+      setFetchError(e.message ?? 'Failed to load sessions');
+    } finally {
+      setLoading(false);
+    }
+  }, [profile?.id]);
+
+  useFocusEffect(useCallback(() => { fetchSessions(); }, [fetchSessions]));
+
+  const handleAdd = async () => {
+    if (!selMember) { setAddError('Please select a member.'); return; }
+    if (!addTime.trim()) { setAddError('Time is required.'); return; }
+    setAddSaving(true); setAddError('');
+    try {
+      const { data, error } = await supabase
+        .from('trainer_sessions')
+        .insert({
+          trainer_id:   profile?.id,
+          gym_id:       profile?.gym_id,
+          member_id:    selMember.user_id,
+          member_name:  selMember.name,
+          session_type: selType.label,
+          time:         addTime.trim(),
+          duration:     addDuration.trim() || '60 min',
+          location:     addLocation.trim() || 'Main Floor',
+          color:        selType.color,
+          status:       'upcoming',
+          day_of_week:  DAYS[selectedDay],
+        })
+        .select().single();
+      if (error) throw error;
+      setSessions(prev => [...prev, data as Session]);
+      setShowAdd(false);
+      setSelMember(null); setSelType(SESSION_TYPES[0]);
+      setAddTime('09:00 AM'); setAddDuration('60 min'); setAddLocation('Main Floor');
+    } catch (e: any) {
+      setAddError(e.message ?? 'Could not add session.');
+    } finally {
+      setAddSaving(false);
+    }
   };
 
-  const statusStyle: Record<string, { bg: string; text: string; label: string }> = {
-    upcoming:  { bg: Colors.accent + '18', text: Colors.accent, label: 'UPCOMING'  },
-    done:      { bg: Colors.green  + '18', text: Colors.green,  label: 'DONE'      },
-    cancelled: { bg: Colors.red    + '18', text: Colors.red,    label: 'CANCELLED' },
+  const updateStatus = async (session: Session, newStatus: 'done' | 'cancelled') => {
+    setSheetSession(null);
+    setSessions(prev => prev.map(s => s.id === session.id ? { ...s, status: newStatus } : s));
+    setUpdatingId(session.id);
+    try {
+      const { error } = await supabase
+        .from('trainer_sessions').update({ status: newStatus }).eq('id', session.id);
+      if (error) throw error;
+    } catch {
+      setSessions(prev => prev.map(s => s.id === session.id ? { ...s, status: session.status } : s));
+    } finally { setUpdatingId(null); }
   };
 
-  const today      = new Date().getDay();
-  const todayIndex = today === 0 ? 6 : today - 1;
+  const daySessions    = sessions.filter(s => s.day_of_week === DAYS[selectedDay]);
+  const doneSessions   = daySessions.filter(s => s.status === 'done').length;
+  const totalWeek      = sessions.length;
+  const totalDone      = sessions.filter(s => s.status === 'done').length;
+  const activeDays     = DAYS.filter(d => sessions.some(s => s.day_of_week === d)).length;
 
-  export default function TrainerScheduleScreen() {
-    const [selectedDay, setSelectedDay] = useState(todayIndex);
+  if (loading) return (
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={[s.fill, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator color={Colors.accent} size="large" />
+      </View>
+    </>
+  );
 
-    // AI states
-    const [aiPlan, setAiPlan]       = useState<string | null>(null);
-    const [aiLoading, setAiLoading] = useState(false);
-    const [aiDay, setAiDay]         = useState<number | null>(null);
+  return (
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
 
-    const daySessions    = schedule[days[selectedDay]] ?? [];
-    const doneSessions   = daySessions.filter(s => s.status === 'done').length;
-    const totalSessions  = Object.values(schedule).flat().length;
-    const totalDone      = Object.values(schedule).flat().filter(s => s.status === 'done').length;
-    const activeDays     = Object.values(schedule).filter(d => d.length > 0).length;
+      <View style={[s.fill, { paddingTop: insets.top }]}>
 
-    const handleAISessionPlan = async () => {
-      if (daySessions.length === 0) {
-        Alert.alert('No sessions', 'No sessions scheduled for this day');
-        return;
-      }
-      setAiLoading(true);
-      setAiPlan(null);
-      setAiDay(selectedDay);
-      try {
-        const clientsList = daySessions
-          .map(s => `${s.member} (${s.type}, ${s.duration} at ${s.time})`)
-          .join('; ');
-        const text = await askAI('session_planner', { clients: clientsList });
-        setAiPlan(text);
-      } catch {
-        Alert.alert('Error', 'Could not generate session plan');
-      }
-      setAiLoading(false);
-    };
+        {/* ── Sticky top: header + day picker ── */}
+        <View style={s.stickyTop}>
 
-    return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Header row */}
+          <View style={s.topRow}>
+            {/* Back / menu button */}
+            <AnimatedPressable
+              style={s.backBtn}
+              scaleDown={0.9}
+              onPress={() => {
+                if (navigation.canGoBack()) navigation.goBack();
+                else navigation.dispatch(DrawerActions.openDrawer());
+              }}
+            >
+              <MaterialCommunityIcons
+                name={navigation.canGoBack() ? 'arrow-left' : 'menu'}
+                size={20}
+                color={Colors.text}
+              />
+            </AnimatedPressable>
 
-        {/* Day Selector */}
-        <FadeInView delay={0}>
-          <View style={styles.overviewRow}>
-            {days.map((d, i) => {
-              const count      = (schedule[d] ?? []).length;
+            <View style={{ flex: 1 }}>
+              <Text style={s.topMicro}>TRAINER PANEL</Text>
+              <Text style={s.topTitle}>SCHEDULE</Text>
+            </View>
+
+            {/* Week summary pills */}
+            <View style={s.topPills}>
+              <View style={s.topPill}>
+                <MaterialCommunityIcons name="check-circle-outline" size={12} color={Colors.green} />
+                <Text style={[s.topPillText, { color: Colors.green }]}>{totalDone} done</Text>
+              </View>
+              <View style={s.topPill}>
+                <MaterialCommunityIcons name="calendar-month-outline" size={12} color={Colors.textMuted} />
+                <Text style={s.topPillText}>{totalWeek} total</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Week bar mini chart + day selector */}
+          <View style={s.weekRow}>
+            {DAYS.map((d, i) => {
+              const count      = sessions.filter(s => s.day_of_week === d).length;
+              const doneCount  = sessions.filter(s => s.day_of_week === d && s.status === 'done').length;
               const isToday    = i === todayIndex;
               const isSelected = i === selectedDay;
+              const barH       = count > 0 ? Math.max(6, Math.round((count / WEEK_MAX) * 36)) : 4;
+              const doneH      = doneCount > 0 ? Math.round((doneCount / count) * barH) : 0;
+
               return (
                 <AnimatedPressable
                   key={d}
-                  style={[styles.dayBox, isSelected && styles.dayBoxActive]}
+                  style={[s.dayCol, isSelected && s.dayColActive]}
                   scaleDown={0.88}
                   onPress={() => setSelectedDay(i)}
                 >
-                  <Text style={[styles.dayLabel, isSelected && styles.dayLabelActive]}>{d}</Text>
-                  <View style={[styles.dayCount, isSelected && styles.dayCountActive]}>
-                    <Text style={[styles.dayCountText, isSelected && { color: '#FFF' }]}>{count}</Text>
+                  {/* Stacked bar */}
+                  <View style={[s.barTrack, { height: 36 }]}>
+                    {count > 0 && (
+                      <View style={[s.barFill, { height: barH, backgroundColor: isSelected ? Colors.accent : Colors.border }]}>
+                        {doneH > 0 && (
+                          <View style={[s.barDoneOverlay, { height: doneH, backgroundColor: Colors.green }]} />
+                        )}
+                      </View>
+                    )}
                   </View>
-                  {isToday && <View style={styles.todayDot} />}
+
+                  {/* Count */}
+                  <Text style={[s.dayCountNum, isSelected && { color: Colors.accent }]}>
+                    {count > 0 ? count : ''}
+                  </Text>
+
+                  {/* Day label */}
+                  <Text style={[s.dayLabel, isSelected && s.dayLabelActive]}>{d}</Text>
+
+                  {/* Today dot */}
+                  {isToday && <View style={[s.todayDot, isSelected && { backgroundColor: '#fff' }]} />}
                 </AnimatedPressable>
               );
             })}
           </View>
-        </FadeInView>
+        </View>
 
-        {/* Day Summary */}
-        <FadeInView delay={60}>
-          <View style={styles.daySummary}>
-            <View>
-              <Text style={styles.daySummaryTitle}>
-                {days[selectedDay]}{selectedDay === todayIndex ? ' — TODAY' : ''}
-              </Text>
-              <Text style={styles.daySummaryCount}>
-                {daySessions.length} session{daySessions.length !== 1 ? 's' : ''}
-                {selectedDay === todayIndex && daySessions.length > 0 ? ` · ${doneSessions} done` : ''}
+        {/* ── Scrollable content ── */}
+        <ScrollView
+          style={s.scroll}
+          contentContainerStyle={s.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Error */}
+          {!!fetchError && (
+            <View style={s.errorBanner}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={14} color={Colors.red} />
+              <Text style={s.errorText}>{fetchError}</Text>
+              <Pressable onPress={fetchSessions}>
+                <Text style={s.retryText}>Retry</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Purpose info banner */}
+          <FadeInView delay={0}>
+            <View style={s.infoBanner}>
+              <MaterialCommunityIcons name="information-outline" size={14} color="#3B82F6" />
+              <Text style={s.infoText}>
+                Schedule sessions for your assigned members — they'll see it on their Schedule screen.
               </Text>
             </View>
-            <AnimatedPressable style={styles.addBtn} scaleDown={0.95} onPress={() => Alert.alert('Add Session', 'Session scheduling coming soon!')}>
-              <Text style={styles.addBtnText}>+ ADD</Text>
-            </AnimatedPressable>
-          </View>
-        </FadeInView>
+          </FadeInView>
 
-        {/* AI Session Planner */}
-        {daySessions.length > 0 && (
-          <FadeInView delay={80}>
-            <View style={styles.aiCard}>
-              <View style={styles.aiCardGlow} />
-              <View style={styles.aiCardHead}>
-                <View style={styles.aiCardLeft}>
-                  <MaterialCommunityIcons name="robot-outline" size={15} color={Colors.accent} />
-                  <Text style={styles.aiCardLabel}>AI SESSION PLANNER</Text>
-                </View>
-                <TouchableOpacity style={styles.aiBtn} onPress={handleAISessionPlan} disabled={aiLoading}>
-                  {aiLoading
-                    ? <ActivityIndicator size="small" color={Colors.accent} />
-                    : <Text style={styles.aiBtnText}>✨ Plan {days[selectedDay]}</Text>
-                  }
-                </TouchableOpacity>
+          {/* Day header */}
+          <FadeInView delay={20}>
+            <View style={s.dayHeader}>
+              <View style={s.dayHeaderLeft}>
+                <Text style={s.dayHeaderDay}>{DAYS[selectedDay].toUpperCase()}</Text>
+                {selectedDay === todayIndex && (
+                  <View style={s.todayBadge}>
+                    <Text style={s.todayBadgeText}>TODAY</Text>
+                  </View>
+                )}
               </View>
-              {aiPlan && aiDay === selectedDay ? (
-                <View style={styles.aiResult}>
-                  <Text style={styles.aiResultText}>{aiPlan}</Text>
-                </View>
-              ) : (
-                <Text style={styles.aiPlaceholder}>
-                  Tap Plan to get AI-optimised session advice for {daySessions.length} client{daySessions.length !== 1 ? 's' : ''}
+              <View style={s.dayHeaderRight}>
+                <Text style={s.dayHeaderCount}>
+                  {daySessions.length} session{daySessions.length !== 1 ? 's' : ''}
+                  {doneSessions > 0 ? `  ·  ${doneSessions} done` : ''}
                 </Text>
-              )}
-            </View>
-          </FadeInView>
-        )}
-
-        {/* Sessions */}
-        {daySessions.length === 0 ? (
-          <FadeInView delay={100}>
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyEmoji}>😴</Text>
-              <Text style={styles.emptyTitle}>REST DAY</Text>
-              <Text style={styles.emptySub}>No sessions scheduled. Enjoy the break!</Text>
-            </View>
-          </FadeInView>
-        ) : (
-          daySessions.map((s, i) => {
-            const ss = statusStyle[s.status];
-            return (
-              <FadeInView key={s.id} delay={140 + i * 60}>
                 <AnimatedPressable
-                  style={[styles.sessionCard, s.status === 'done' && styles.sessionCardDone]}
-                  scaleDown={0.97}
-                  onPress={() => Alert.alert(s.member, `${s.type}\n${s.time} · ${s.duration}\n📍 ${s.location}`)}
+                  style={s.addBtn}
+                  scaleDown={0.94}
+                  onPress={() => { setAddError(''); setSelMember(null); setShowAdd(true); }}
                 >
-                  <View style={[styles.sessionColorBar, { backgroundColor: s.color }]} />
-                  <View style={styles.timeCol}>
-                    <Text style={styles.timeMain}>{s.time.split(' ')[0]}</Text>
-                    <Text style={styles.timeSuffix}>{s.time.split(' ')[1]}</Text>
-                  </View>
-                  <View style={styles.sessionDivider} />
-                  <View style={styles.sessionInfo}>
-                    <View style={styles.sessionTop}>
-                      <Text style={styles.sessionEmoji}>{s.emoji}</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.sessionMember, s.status === 'done' && { color: Colors.textMuted }]}>{s.member}</Text>
-                        <Text style={styles.sessionType}>{s.type}</Text>
-                      </View>
-                      <View style={[styles.statusBadge, { backgroundColor: ss.bg }]}>
-                        <Text style={[styles.statusText, { color: ss.text }]}>{ss.label}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.sessionMeta}>
-                      <Text style={styles.metaText}>⏱ {s.duration}</Text>
-                      <Text style={styles.metaText}>📍 {s.location}</Text>
-                    </View>
-                  </View>
+                  <MaterialCommunityIcons name="plus" size={14} color={Colors.accent} />
+                  <Text style={s.addBtnText}>ADD</Text>
                 </AnimatedPressable>
-              </FadeInView>
-            );
-          })
-        )}
-
-        {/* Week Stats */}
-        <FadeInView delay={480}>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsTitle}>THIS WEEK</Text>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statVal}>{totalSessions}</Text>
-                <Text style={styles.statLabel}>TOTAL</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statVal, { color: Colors.green }]}>{totalDone}</Text>
-                <Text style={styles.statLabel}>COMPLETED</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statVal}>{activeDays}</Text>
-                <Text style={styles.statLabel}>ACTIVE DAYS</Text>
               </View>
             </View>
+          </FadeInView>
+
+          {/* Sessions */}
+          {daySessions.length === 0 ? (
+            <FadeInView delay={40}>
+              <View style={s.emptyCard}>
+                <View style={s.emptyIconWrap}>
+                  <MaterialCommunityIcons name="calendar-blank-outline" size={28} color={Colors.textMuted} />
+                </View>
+                <Text style={s.emptyTitle}>NO SESSIONS</Text>
+                <Text style={s.emptySub}>Tap ADD to schedule a session for {DAYS[selectedDay]}</Text>
+              </View>
+            </FadeInView>
+          ) : (
+            <View style={s.timeline}>
+              {daySessions.map((session, i) => {
+                const cfg      = STATUS_CFG[session.status];
+                const typeInfo = SESSION_TYPES.find(t => t.label === session.session_type);
+                const color    = session.color || typeInfo?.color || Colors.accent;
+                const icon     = typeInfo?.icon ?? 'dumbbell';
+                const isLast   = i === daySessions.length - 1;
+
+                return (
+                  <FadeInView key={session.id} delay={i * 55}>
+                    <View style={s.timelineRow}>
+                      {/* Time + connector */}
+                      <View style={s.timelineLeft}>
+                        <Text style={s.timelineTime}>{session.time.split(' ')[0]}</Text>
+                        <Text style={s.timelineAmpm}>{session.time.split(' ')[1] ?? ''}</Text>
+                        {!isLast && <View style={s.timelineConnector} />}
+                      </View>
+
+                      {/* Card */}
+                      <View style={{ flex: 1 }}>
+                      <AnimatedPressable
+                        style={[s.sessionCard, { borderColor: color + '30' }, session.status === 'done' && s.sessionCardDone]}
+                        scaleDown={0.97}
+                        onPress={() => setSheetSession(session)}
+                      >
+                        <View style={[s.sessionAccent, { backgroundColor: color }]} />
+
+                        <View style={s.sessionContent}>
+                          {/* Top */}
+                          <View style={s.sessionTop}>
+                            <View style={[s.sessionTypeIcon, { backgroundColor: color + '18', borderColor: color + '30' }]}>
+                              <MaterialCommunityIcons name={icon} size={16} color={color} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[s.sessionMember, session.status === 'done' && { color: Colors.textMuted }]}>
+                                {session.member_name}
+                              </Text>
+                              <Text style={s.sessionType}>{session.session_type}</Text>
+                            </View>
+                            {updatingId === session.id
+                              ? <ActivityIndicator size="small" color={Colors.accent} />
+                              : (
+                                <View style={[s.statusBadge, { backgroundColor: cfg.color + '12', borderColor: cfg.color + '28' }]}>
+                                  <MaterialCommunityIcons name={cfg.icon} size={10} color={cfg.color} />
+                                  <Text style={[s.statusText, { color: cfg.color }]}>{cfg.label}</Text>
+                                </View>
+                              )
+                            }
+                          </View>
+
+                          {/* Meta chips */}
+                          <View style={s.metaRow}>
+                            <View style={s.metaChip}>
+                              <MaterialCommunityIcons name="timer-outline" size={10} color={Colors.textMuted} />
+                              <Text style={s.metaText}>{session.duration}</Text>
+                            </View>
+                            <View style={s.metaChip}>
+                              <MaterialCommunityIcons name="map-marker-outline" size={10} color={Colors.textMuted} />
+                              <Text style={s.metaText}>{session.location}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      </AnimatedPressable>
+                      </View>
+                    </View>
+                  </FadeInView>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Week stats */}
+          <FadeInView delay={300}>
+            <View style={s.weekStatsCard}>
+              <Text style={s.weekStatsLabel}>THIS WEEK</Text>
+              <View style={s.weekStatsRow}>
+                {[
+                  { val: totalWeek,  label: 'TOTAL',       color: '#3B82F6',    icon: 'calendar-month-outline' as IconName  },
+                  { val: totalDone,  label: 'DONE',        color: Colors.green, icon: 'check-circle-outline' as IconName    },
+                  { val: activeDays, label: 'ACTIVE DAYS', color: Colors.accent,icon: 'calendar-check-outline' as IconName  },
+                  { val: members.length, label: 'MEMBERS', color: '#A78BFA',    icon: 'account-group-outline' as IconName   },
+                ].map((item, i) => (
+                  <View key={item.label} style={[s.weekStatItem, i < 3 && s.weekStatBorder]}>
+                    <View style={[s.weekStatIcon, { backgroundColor: item.color + '14', borderColor: item.color + '25' }]}>
+                      <MaterialCommunityIcons name={item.icon} size={12} color={item.color} />
+                    </View>
+                    <Text style={[s.weekStatVal, { color: item.color }]}>{item.val}</Text>
+                    <Text style={s.weekStatLbl}>{item.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </FadeInView>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </View>
+
+      {/* ── Add Session Modal ── */}
+      <Modal visible={showAdd} transparent animationType="slide">
+        <Pressable style={s.backdrop} onPress={() => setShowAdd(false)} />
+        <View style={[s.sheet, { paddingBottom: insets.bottom + 16 }]}>
+          <View style={s.sheetHandle} />
+
+          {/* Sheet header */}
+          <View style={s.sheetTopRow}>
+            <View>
+              <Text style={s.sheetTitle}>NEW SESSION</Text>
+              <Text style={s.sheetSubtitle}>{DAYS[selectedDay].toUpperCase()}</Text>
+            </View>
+            <Pressable style={s.sheetCloseBtn} onPress={() => setShowAdd(false)}>
+              <MaterialCommunityIcons name="close" size={16} color={Colors.textMuted} />
+            </Pressable>
           </View>
-        </FadeInView>
 
-        <View style={{ height: 24 }} />
-      </ScrollView>
-    );
-  }
+          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={s.sheetScroll}>
 
-  const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.bg },
-    content:   { padding: 16, gap: 12 },
+            {/* Member picker */}
+            <Text style={s.fieldLabel}>SELECT MEMBER</Text>
+            {members.length === 0 ? (
+              <View style={s.noMembersBox}>
+                <MaterialCommunityIcons name="account-off-outline" size={18} color={Colors.textMuted} />
+                <Text style={s.noMembersText}>No members assigned to you</Text>
+              </View>
+            ) : (
+              <View style={s.memberList}>
+                {members.map(m => {
+                  const active = selMember?.id === m.id;
+                  return (
+                    <Pressable
+                      key={m.id}
+                      style={[s.memberItem, active && s.memberItemActive]}
+                      onPress={() => { setSelMember(m); setAddError(''); }}
+                    >
+                      <View style={[s.memberAvatar, { borderColor: active ? Colors.accent + '60' : Colors.border }]}>
+                        <Text style={[s.memberInitials, { color: active ? Colors.accent : Colors.textMuted }]}>{m.initials}</Text>
+                      </View>
+                      <Text style={[s.memberName, active && { color: Colors.accent }]} numberOfLines={1}>{m.name}</Text>
+                      {active && <MaterialCommunityIcons name="check-circle" size={16} color={Colors.accent} />}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
 
-    overviewRow:    { flexDirection: 'row', gap: 5 },
-    dayBox:         { flex: 1, alignItems: 'center', gap: 4, backgroundColor: Colors.bgCard, borderRadius: 12, paddingVertical:   
-  10, borderWidth: 1, borderColor: Colors.border },
-    dayBoxActive:   { backgroundColor: Colors.accent, borderColor: Colors.accent },
-    dayLabel:       { fontSize: 10, fontFamily: Fonts.bold, color: Colors.textMuted },
-    dayLabelActive: { color: '#FFF' },
-    dayCount:       { width: 20, height: 20, borderRadius: 10, backgroundColor: Colors.bgElevated, justifyContent: 'center',      
-  alignItems: 'center' },
-    dayCountActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
-    dayCountText:   { fontSize: 10, fontFamily: Fonts.bold, color: Colors.text },
-    todayDot:       { width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.orange },
+            {/* Session type */}
+            <Text style={[s.fieldLabel, { marginTop: 4 }]}>SESSION TYPE</Text>
+            <View style={s.typeGrid}>
+              {SESSION_TYPES.map(t => {
+                const active = selType.label === t.label;
+                return (
+                  <Pressable
+                    key={t.label}
+                    style={[s.typeChip, active && { borderColor: t.color + '60', backgroundColor: t.color + '12' }]}
+                    onPress={() => setSelType(t)}
+                  >
+                    <View style={[s.typeChipDot, { backgroundColor: active ? t.color : Colors.border }]} />
+                    <MaterialCommunityIcons name={t.icon} size={13} color={active ? t.color : Colors.textMuted} />
+                    <Text style={[s.typeChipText, active && { color: t.color }]}>{t.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
-    daySummary:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    daySummaryTitle: { fontSize: 18, fontFamily: Fonts.condensedBold, color: Colors.text, letterSpacing: 0.5 },
-    daySummaryCount: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textMuted, marginTop: 2 },
-    addBtn:          { backgroundColor: Colors.accentMuted, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8,
-  borderWidth: 1, borderColor: Colors.accent + '40' },
-    addBtnText:      { fontSize: 12, fontFamily: Fonts.bold, color: Colors.accent, letterSpacing: 1 },
+            {/* Time + Duration */}
+            <View style={s.fieldRow}>
+              <View style={s.fieldHalf}>
+                <Text style={s.fieldLabel}>TIME</Text>
+                <View style={s.fieldInputWrap}>
+                  <MaterialCommunityIcons name="clock-outline" size={15} color={Colors.textMuted} />
+                  <TextInput
+                    style={s.fieldInput}
+                    value={addTime}
+                    onChangeText={setAddTime}
+                    placeholder="09:00 AM"
+                    placeholderTextColor={Colors.textMuted}
+                  />
+                </View>
+              </View>
+              <View style={s.fieldHalf}>
+                <Text style={s.fieldLabel}>DURATION</Text>
+                <View style={s.fieldInputWrap}>
+                  <MaterialCommunityIcons name="timer-outline" size={15} color={Colors.textMuted} />
+                  <TextInput
+                    style={s.fieldInput}
+                    value={addDuration}
+                    onChangeText={setAddDuration}
+                    placeholder="60 min"
+                    placeholderTextColor={Colors.textMuted}
+                  />
+                </View>
+              </View>
+            </View>
 
-    // AI card
-    aiCard:        { backgroundColor: Colors.bgCard, borderRadius: 16, borderWidth: 1, borderColor: Colors.accent + '30', padding:
-   14, overflow: 'hidden', gap: 10 },
-    aiCardGlow:    { position: 'absolute', top: -20, right: -20, width: 70, height: 70, borderRadius: 35, backgroundColor:        
-  Colors.accentGlow },
-    aiCardHead:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    aiCardLeft:    { flexDirection: 'row', alignItems: 'center', gap: 7 },
-    aiCardLabel:   { fontFamily: Fonts.bold, fontSize: 10, color: Colors.accent, letterSpacing: 1.5 },
-    aiBtn:         { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: Colors.accentMuted, borderRadius: 9, borderWidth:
-   1, borderColor: Colors.accent + '40' },
-    aiBtnText:     { fontFamily: Fonts.bold, fontSize: 11, color: Colors.accent, letterSpacing: 0.5 },
-    aiPlaceholder: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted },
-    aiResult:      { backgroundColor: Colors.bgElevated, borderRadius: 10, padding: 12, borderLeftWidth: 3, borderLeftColor:      
-  Colors.accent },
-    aiResultText:  { fontFamily: Fonts.regular, fontSize: 12, color: Colors.text, lineHeight: 20 },
+            {/* Location */}
+            <Text style={s.fieldLabel}>LOCATION</Text>
+            <View style={s.fieldInputWrap}>
+              <MaterialCommunityIcons name="map-marker-outline" size={15} color={Colors.textMuted} />
+              <TextInput
+                style={s.fieldInput}
+                value={addLocation}
+                onChangeText={setAddLocation}
+                placeholder="Main Floor"
+                placeholderTextColor={Colors.textMuted}
+              />
+            </View>
 
-    emptyCard:  { alignItems: 'center', paddingVertical: 48, gap: 8, backgroundColor: Colors.bgCard, borderRadius: 16,
-  borderWidth: 1, borderColor: Colors.border },
-    emptyEmoji: { fontSize: 44 },
-    emptyTitle: { fontSize: 18, fontFamily: Fonts.condensedBold, color: Colors.text, letterSpacing: 1.5 },
-    emptySub:   { fontSize: 13, fontFamily: Fonts.regular, color: Colors.textMuted },
+            {/* Error */}
+            {!!addError && (
+              <View style={s.addError}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={13} color={Colors.red} />
+                <Text style={s.addErrorText}>{addError}</Text>
+              </View>
+            )}
 
-    sessionCard:      { flexDirection: 'row', alignItems: 'stretch', backgroundColor: Colors.bgCard, borderRadius: 14,
-  borderWidth: 1, borderColor: Colors.border, overflow: 'hidden', marginBottom: 2 },
-    sessionCardDone:  { opacity: 0.6 },
-    sessionColorBar:  { width: 3 },
-    timeCol:          { width: 54, alignItems: 'center', justifyContent: 'center', gap: 1, paddingVertical: 14 },
-    timeMain:         { fontSize: 14, fontFamily: Fonts.condensedBold, color: Colors.text },
-    timeSuffix:       { fontSize: 9, fontFamily: Fonts.bold, color: Colors.textMuted, letterSpacing: 0.5 },
-    sessionDivider:   { width: 1, backgroundColor: Colors.border, marginVertical: 10 },
-    sessionInfo:      { flex: 1, padding: 12, gap: 7 },
-    sessionTop:       { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    sessionEmoji:     { fontSize: 18 },
-    sessionMember:    { fontSize: 14, fontFamily: Fonts.bold, color: Colors.text },
-    sessionType:      { fontSize: 11, fontFamily: Fonts.regular, color: Colors.textMuted, marginTop: 1 },
-    statusBadge:      { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
-    statusText:       { fontSize: 9, fontFamily: Fonts.bold, letterSpacing: 1 },
-    sessionMeta:      { flexDirection: 'row', gap: 14 },
-    metaText:         { fontSize: 11, fontFamily: Fonts.regular, color: Colors.textMuted },
+            {/* Save */}
+            <AnimatedPressable
+              style={[s.saveBtn, addSaving && { opacity: 0.6 }]}
+              scaleDown={0.97}
+              onPress={handleAdd}
+              disabled={addSaving}
+            >
+              <LinearGradient colors={[Colors.accent, '#C55A00']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.saveBtnInner}>
+                {addSaving
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <>
+                      <MaterialCommunityIcons name="calendar-plus" size={18} color="#fff" />
+                      <Text style={s.saveBtnText}>SCHEDULE SESSION</Text>
+                    </>
+                }
+              </LinearGradient>
+            </AnimatedPressable>
 
-    statsCard:   { backgroundColor: Colors.bgCard, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: Colors.border },   
-    statsTitle:  { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 12 },
-    statsRow:    { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
-    statItem:    { alignItems: 'center', gap: 4 },
-    statVal:     { fontSize: 24, fontFamily: Fonts.condensedBold, color: Colors.text },
-    statLabel:   { fontSize: 8, fontFamily: Fonts.bold, color: Colors.textMuted, letterSpacing: 1 },
-    statDivider: { width: 1, height: 36, backgroundColor: Colors.border },
-  });
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* ── Session detail sheet ── */}
+      <Modal visible={!!sheetSession} transparent animationType="slide" onRequestClose={() => setSheetSession(null)}>
+        <Pressable style={s.backdrop} onPress={() => setSheetSession(null)} />
+        {sheetSession && (() => {
+          const cfg      = STATUS_CFG[sheetSession.status];
+          const typeInfo = SESSION_TYPES.find(t => t.label === sheetSession.session_type);
+          const color    = sheetSession.color || typeInfo?.color || Colors.accent;
+          const icon     = typeInfo?.icon ?? 'dumbbell';
+          return (
+            <View style={[s.detailSheet, { paddingBottom: insets.bottom + 24 }]}>
+              <View style={s.sheetHandle} />
+
+              {/* Hero */}
+              <LinearGradient colors={[color + '12', 'transparent']} style={s.detailGrad} pointerEvents="none" />
+              <View style={s.detailHero}>
+                <View style={[s.detailIconBox, { backgroundColor: color + '18', borderColor: color + '35' }]}>
+                  <MaterialCommunityIcons name={icon} size={24} color={color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.detailMember}>{sheetSession.member_name}</Text>
+                  <Text style={s.detailType}>{sheetSession.session_type}</Text>
+                </View>
+                <View style={[s.statusBadge, { backgroundColor: cfg.color + '14', borderColor: cfg.color + '30' }]}>
+                  <MaterialCommunityIcons name={cfg.icon} size={11} color={cfg.color} />
+                  <Text style={[s.statusText, { color: cfg.color }]}>{cfg.label}</Text>
+                </View>
+              </View>
+
+              {/* Meta list */}
+              <View style={s.detailMetaCard}>
+                {[
+                  { icon: 'clock-outline' as IconName,      label: `${sheetSession.time}` },
+                  { icon: 'timer-outline' as IconName,      label: sheetSession.duration  },
+                  { icon: 'map-marker-outline' as IconName, label: sheetSession.location  },
+                  { icon: 'calendar-outline' as IconName,   label: sheetSession.day_of_week },
+                ].map((row, i, arr) => (
+                  <View key={row.icon} style={[s.detailMetaRow, i < arr.length - 1 && s.detailMetaDivider]}>
+                    <View style={s.detailMetaIcon}>
+                      <MaterialCommunityIcons name={row.icon} size={14} color={Colors.textMuted} />
+                    </View>
+                    <Text style={s.detailMetaText}>{row.label}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Actions */}
+              {sheetSession.status === 'upcoming' && (
+                <View style={s.detailActions}>
+                  <AnimatedPressable style={s.doneBtn} scaleDown={0.97} onPress={() => updateStatus(sheetSession, 'done')}>
+                    <MaterialCommunityIcons name="check-circle-outline" size={16} color={Colors.green} />
+                    <Text style={s.doneBtnText}>MARK DONE</Text>
+                  </AnimatedPressable>
+                  <AnimatedPressable style={s.cancelBtn} scaleDown={0.97} onPress={() => updateStatus(sheetSession, 'cancelled')}>
+                    <MaterialCommunityIcons name="close-circle-outline" size={16} color={Colors.red} />
+                    <Text style={s.cancelBtnText}>CANCEL</Text>
+                  </AnimatedPressable>
+                </View>
+              )}
+
+              <AnimatedPressable style={s.closeBtn} scaleDown={0.97} onPress={() => setSheetSession(null)}>
+                <Text style={s.closeBtnText}>CLOSE</Text>
+              </AnimatedPressable>
+            </View>
+          );
+        })()}
+      </Modal>
+    </>
+  );
+}
+
+const s = StyleSheet.create({
+  fill:   { flex: 1, backgroundColor: Colors.bg },
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 14, gap: 12 },
+
+  // Sticky top
+  stickyTop: { backgroundColor: Colors.bg, paddingHorizontal: 16, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
+
+  topRow:      { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 6, paddingBottom: 14 },
+  backBtn:     { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.bgCard, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  topMicro:    { fontFamily: Fonts.condensedBold, fontSize: 9, color: Colors.accent, letterSpacing: 2 },
+  topTitle:    { fontFamily: Fonts.condensedBold, fontSize: 32, color: Colors.text, letterSpacing: 0.5, marginTop: 1 },
+  topPills:    { flexDirection: 'row', gap: 8, paddingBottom: 4 },
+  topPill:     { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.bgCard, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: Colors.border },
+  topPillText: { fontFamily: Fonts.bold, fontSize: 11, color: Colors.textMuted },
+
+  // Week bar row
+  weekRow:    { flexDirection: 'row', gap: 4 },
+  dayCol:     { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 8, borderRadius: 12, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border },
+  dayColActive:{ backgroundColor: Colors.accent + '10', borderColor: Colors.accent + '45' },
+  barTrack:   { justifyContent: 'flex-end', alignItems: 'center', width: '70%' },
+  barFill:    { width: '100%', borderRadius: 3, overflow: 'hidden', justifyContent: 'flex-start' },
+  barDoneOverlay: { width: '100%', borderRadius: 3 },
+  dayCountNum:{ fontFamily: Fonts.condensedBold, fontSize: 11, color: Colors.textMuted, minHeight: 14 },
+  dayLabel:   { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 0.5 },
+  dayLabelActive: { color: Colors.accent },
+  todayDot:   { width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.accent, position: 'absolute', top: 6, right: 7 },
+
+  // Info banner
+  infoBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, backgroundColor: '#3B82F610', borderRadius: 12, borderWidth: 1, borderColor: '#3B82F625', paddingHorizontal: 13, paddingVertical: 11 },
+  infoText:   { fontFamily: Fonts.regular, fontSize: 12, color: '#3B82F6', flex: 1, lineHeight: 17 },
+
+  // Error
+  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.red + '12', borderRadius: 12, borderWidth: 1, borderColor: Colors.red + '28', paddingHorizontal: 14, paddingVertical: 11 },
+  errorText:   { flex: 1, fontFamily: Fonts.regular, fontSize: 12, color: Colors.red },
+  retryText:   { fontFamily: Fonts.bold, fontSize: 12, color: Colors.accent },
+
+  // Day header
+  dayHeader:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  dayHeaderLeft:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  dayHeaderDay:   { fontFamily: Fonts.condensedBold, fontSize: 28, color: Colors.text, letterSpacing: 0.5 },
+  todayBadge:     { backgroundColor: Colors.accent + '18', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 3, borderWidth: 1, borderColor: Colors.accent + '35' },
+  todayBadgeText: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.accent, letterSpacing: 1 },
+  dayHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  dayHeaderCount: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted },
+  addBtn:         { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.accentMuted, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: Colors.accent + '40' },
+  addBtnText:     { fontFamily: Fonts.bold, fontSize: 11, color: Colors.accent, letterSpacing: 0.8 },
+
+  // Empty
+  emptyCard:    { alignItems: 'center', paddingVertical: 48, gap: 10, backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1, borderColor: Colors.border },
+  emptyIconWrap:{ width: 58, height: 58, borderRadius: 17, backgroundColor: Colors.bgElevated, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  emptyTitle:   { fontFamily: Fonts.condensedBold, fontSize: 17, color: Colors.textMuted, letterSpacing: 1 },
+  emptySub:     { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted, textAlign: 'center', paddingHorizontal: 32 },
+
+  // Timeline
+  timeline:       { gap: 0 },
+  timelineRow:    { flexDirection: 'row', gap: 12, marginBottom: 10 },
+  timelineLeft:   { width: 44, alignItems: 'center', paddingTop: 14 },
+  timelineTime:   { fontFamily: Fonts.condensedBold, fontSize: 14, color: Colors.text, lineHeight: 16 },
+  timelineAmpm:   { fontFamily: Fonts.condensedBold, fontSize: 8, color: Colors.textMuted, letterSpacing: 0.5 },
+  timelineConnector: { flex: 1, width: 1, backgroundColor: Colors.border, marginTop: 6 },
+
+  // Session card
+  sessionCard:     { flexDirection: 'row', backgroundColor: Colors.bgCard, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  sessionCardDone: { opacity: 0.5 },
+  sessionAccent:   { width: 3 },
+  sessionContent:  { flex: 1, padding: 13, gap: 9 },
+  sessionTop:      { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sessionTypeIcon: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  sessionMember:   { fontFamily: Fonts.bold, fontSize: 14, color: Colors.text },
+  sessionType:     { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  statusBadge:     { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 4 },
+  statusText:      { fontFamily: Fonts.bold, fontSize: 9, letterSpacing: 0.8 },
+  metaRow:         { flexDirection: 'row', gap: 6 },
+  metaChip:        { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.bgElevated, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: Colors.border },
+  metaText:        { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted },
+
+  // Week stats
+  weekStatsCard:  { backgroundColor: Colors.bgCard, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, padding: 16 },
+  weekStatsLabel: { fontFamily: Fonts.condensedBold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.8, marginBottom: 14 },
+  weekStatsRow:   { flexDirection: 'row' },
+  weekStatItem:   { flex: 1, alignItems: 'center', gap: 5 },
+  weekStatBorder: { borderRightWidth: 1, borderRightColor: Colors.border },
+  weekStatIcon:   { width: 26, height: 26, borderRadius: 8, borderWidth: 1, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
+  weekStatVal:    { fontFamily: Fonts.condensedBold, fontSize: 22 },
+  weekStatLbl:    { fontFamily: Fonts.condensedBold, fontSize: 8, color: Colors.textMuted, letterSpacing: 1, textAlign: 'center' },
+
+  // Modals
+  backdrop:    { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.65)' },
+  sheet:       { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Colors.bgCard, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 12, maxHeight: '88%' },
+  sheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.border, alignSelf: 'center', marginBottom: 14 },
+  sheetTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 },
+  sheetTitle:  { fontFamily: Fonts.condensedBold, fontSize: 24, color: Colors.text, letterSpacing: 0.5 },
+  sheetSubtitle:{ fontFamily: Fonts.condensedBold, fontSize: 11, color: Colors.accent, letterSpacing: 1.5, marginTop: 2 },
+  sheetCloseBtn:{ width: 30, height: 30, borderRadius: 9, backgroundColor: Colors.bgElevated, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  sheetScroll: { gap: 12, paddingBottom: 8 },
+
+  // Member picker
+  fieldLabel:       { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.5 },
+  noMembersBox:     { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.bgElevated, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.border },
+  noMembersText:    { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted },
+  memberList:       { gap: 6 },
+  memberItem:       { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.bgElevated, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: Colors.border },
+  memberItemActive: { borderColor: Colors.accent + '55', backgroundColor: Colors.accentMuted },
+  memberAvatar:     { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.bgCard, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
+  memberInitials:   { fontFamily: Fonts.condensedBold, fontSize: 14 },
+  memberName:       { flex: 1, fontFamily: Fonts.bold, fontSize: 14, color: Colors.text },
+
+  // Type grid
+  typeGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  typeChip:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 8, borderRadius: 11, backgroundColor: Colors.bgElevated, borderWidth: 1, borderColor: Colors.border },
+  typeChipDot:  { width: 5, height: 5, borderRadius: 3 },
+  typeChipText: { fontFamily: Fonts.bold, fontSize: 11, color: Colors.textMuted },
+
+  // Fields
+  fieldRow:      { flexDirection: 'row', gap: 10 },
+  fieldHalf:     { flex: 1, gap: 6 },
+  fieldInputWrap:{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.bgElevated, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 12 },
+  fieldInput:    { flex: 1, fontFamily: Fonts.regular, fontSize: 14, color: Colors.text },
+
+  addError:     { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.red + '12', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: Colors.red + '28' },
+  addErrorText: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.red, flex: 1 },
+
+  saveBtn:      {},
+  saveBtnInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 16, paddingVertical: 16 },
+  saveBtnText:  { fontFamily: Fonts.bold, fontSize: 14, color: '#fff', letterSpacing: 1.5 },
+
+  // Detail sheet
+  detailSheet:   { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Colors.bgCard, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 12, gap: 14, overflow: 'hidden' },
+  detailGrad:    { position: 'absolute', top: 0, left: 0, right: 0, height: 100 },
+  detailHero:    { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  detailIconBox: { width: 52, height: 52, borderRadius: 16, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  detailMember:  { fontFamily: Fonts.condensedBold, fontSize: 22, color: Colors.text },
+  detailType:    { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, marginTop: 2 },
+  detailMetaCard:{ backgroundColor: Colors.bgElevated, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
+  detailMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  detailMetaDivider: { borderBottomWidth: 1, borderBottomColor: Colors.border },
+  detailMetaIcon:{ width: 28, height: 28, borderRadius: 8, backgroundColor: Colors.bgCard, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  detailMetaText:{ fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted },
+  detailActions: { flexDirection: 'row', gap: 10 },
+  doneBtn:       { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.green + '12', borderRadius: 14, paddingVertical: 14, borderWidth: 1, borderColor: Colors.green + '30' },
+  doneBtnText:   { fontFamily: Fonts.bold, fontSize: 13, color: Colors.green, letterSpacing: 0.5 },
+  cancelBtn:     { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.red + '10', borderRadius: 14, paddingVertical: 14, borderWidth: 1, borderColor: Colors.red + '25' },
+  cancelBtnText: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.red, letterSpacing: 0.5 },
+  closeBtn:      { backgroundColor: Colors.bgElevated, borderRadius: 14, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  closeBtnText:  { fontFamily: Fonts.bold, fontSize: 13, color: Colors.textMuted, letterSpacing: 1 },
+});

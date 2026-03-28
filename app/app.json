@@ -6,11 +6,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0a0a0a"
     },
     "ios": {
       "supportsTablet": true,
@@ -27,27 +27,41 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.gymsetu.app",
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [             
-    [                               
-      "expo-router",                             
-      {                           
-        "root": "./src/app"
-      }
-    ],                                                                                                              [
-      "expo-notifications",                                                                                     
-      {                                                                                                         
-        "icon": "./assets/icon.png",
-        "color": "#0A84FF",
-        "sounds": []
-      }
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "root": "./src/app"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0A84FF",
+          "sounds": []
+        }
+      ],
+      "expo-font",
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "GymSetu needs your location to verify you're at the gym for check-in.",
+          "locationWhenInUsePermission": "GymSetu needs your location to verify you're at the gym for check-in."
+        }
+      ]
     ],
-    "expo-font"
-  ],
     "extra": {
       "router": {
         "root": "./src/app"

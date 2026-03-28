@@ -12,6 +12,25 @@ export type PaymentType = 'full' | 'partial';
 
 export type MemberPlanStatus = 'active' | 'expired' | 'cancelled';
 
+export interface GymTiming {
+  day: string;
+  open: string;
+  close: string;
+}
+
+export interface GymAmenity {
+  label: string;
+  icon: string;
+  active: boolean;
+}
+
+export interface GymSocialLink {
+  platform: string;
+  handle: string;
+  icon: string;
+  color: string;
+}
+
 export interface Gym {
   id: string;
   name: string;
@@ -20,6 +39,14 @@ export interface Gym {
   phone: string | null;
   email: string | null;
   logo_url: string | null;
+  description: string | null;
+  timings: GymTiming[] | null;
+  amenities: GymAmenity[] | null;
+  social_links: GymSocialLink[] | null;
+  is_branch: boolean | null;
+  parent_gym_id: string | null;
+  branch_code: string | null;
+  branch_city: string | null;
   created_at: string;
 }
 
@@ -28,8 +55,12 @@ export interface Profile {
   gym_id: string | null;
   role: UserRole;
   full_name: string;
+  email: string | null;
   phone: string | null;
   avatar_url: string | null;
+  member_code: string | null;
+  height_cm: number | null;
+  target_weight: number | null;
   created_at: string;
 }
 
@@ -115,4 +146,30 @@ export interface StaffPermission {
   can_view_reports: boolean;
   can_manage_plans: boolean;
   created_at: string;
+}
+
+export type SubscriptionPlan   = 'basic' | 'pro';
+export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'cancelled';
+
+export interface GymSubscription {
+  id: string;
+  gym_id: string;
+  owner_id: string;
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  trial_ends_at: string | null;
+  current_period_start: string;
+  current_period_end: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionTokens {
+  id: string;
+  gym_id: string;
+  month_year: string;
+  tokens_total: number;
+  tokens_used: number;
+  created_at: string;
+  updated_at: string;
 }

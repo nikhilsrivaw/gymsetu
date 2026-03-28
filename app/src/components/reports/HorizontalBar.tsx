@@ -1,49 +1,62 @@
-import React, { useEffect, useRef } from 'react';
-  import { View, Text, Animated, StyleSheet } from 'react-native';
-  import { Colors } from '@/constants/colors';
-
+  import React, { useEffect, useRef } from 'react';                                                                      import { View, Text, Animated, StyleSheet } from 'react-native';
+  import { Fonts } from '@/constants/fonts';                                                                           
+  
   interface Props {
-    label: string;
-    value: number;
-    total: number;
-    color?: string;
-    formatValue?: (v: number) => string;
-    delay?: number;
+    label:         string;
+    value:         number;
+    total:         number;
+    color?:        string;
+    formatValue?:  (v: number) => string;
+    delay?:        number;
   }
 
-  export default function HorizontalBar({ label, value, total, color = Colors.accent, formatValue, delay = 0 }:      
-  Props) {
+  export default function HorizontalBar({ label, value, total, color = '#6366f1', formatValue, delay = 0 }: Props) {   
     const anim = useRef(new Animated.Value(0)).current;
-    const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+    const pct  = total > 0 ? Math.round((value / total) * 100) : 0;
 
     useEffect(() => {
-      Animated.timing(anim, { toValue: pct, duration: 800, delay, useNativeDriver: false }).start();
+      Animated.timing(anim, { toValue: pct, duration: 900, delay, useNativeDriver: false }).start();
     }, []);
 
     const widthInterp = anim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
 
     return (
-      <View style={styles.container}>
-        <View style={styles.row}>
-          <Text style={styles.label}>{label}</Text>
-          <Text style={styles.value}>
-            {formatValue ? formatValue(value) : value}{' '}
-            <Text style={styles.pct}>({pct}%)</Text>
-          </Text>
+      <View style={s.container}>
+        <View style={s.topRow}>
+          <Text style={s.label}>{label}</Text>
+          <View style={s.valueRow}>
+            <Text style={[s.value, { color }]}>
+              {formatValue ? formatValue(value) : value}
+            </Text>
+            <View style={[s.pctBadge, { backgroundColor: color + '18' }]}>
+              <Text style={[s.pct, { color }]}>{pct}%</Text>
+            </View>
+          </View>
         </View>
-        <View style={styles.track}>
-          <Animated.View style={[styles.fill, { width: widthInterp, backgroundColor: color }]} />
+
+        {/* Track */}
+        <View style={s.track}>
+          {/* Glow layer */}
+          <Animated.View style={[s.glow, { width: widthInterp, backgroundColor: color + '30' }]} />
+          {/* Fill */}
+          <Animated.View style={[s.fill, { width: widthInterp, backgroundColor: color }]} />
         </View>
       </View>
     );
   }
 
-  const styles = StyleSheet.create({
-    container: { marginBottom: 14 },
-    row:       { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-    label:     { fontSize: 13, color: Colors.text, fontWeight: '500' },
-    value:     { fontSize: 13, color: Colors.text, fontWeight: '600' },
-    pct:       { color: Colors.textMuted, fontWeight: '400', fontSize: 12 },
-    track:     { height: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden' },
-    fill:      { height: '100%', borderRadius: 4 },
+  const s = StyleSheet.create({
+    container: { gap: 8 },
+
+    topRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    label:    { fontFamily: Fonts.bold, fontSize: 14, color: '#aaa', flex: 1 },
+    valueRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    value:    { fontFamily: Fonts.condensedBold, fontSize: 20 },
+
+    pctBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+    pct:      { fontFamily: Fonts.bold, fontSize: 10, letterSpacing: 0.5 },
+
+    track: { height: 10, backgroundColor: '#1e1e1e', borderRadius: 6, overflow: 'hidden', position: 'relative' },      
+    glow:  { position: 'absolute', top: 0, left: 0, height: '100%', borderRadius: 6 },
+    fill:  { height: '100%', borderRadius: 6 },
   });

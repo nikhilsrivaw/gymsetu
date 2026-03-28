@@ -1,3 +1,55 @@
-.claude
-database
-CONTEXT.md
+# Claude Code
+.claude/
+
+# Expo
+.expo/
+app/.expo/
+app/dist/
+app/web-build/
+
+# Dependencies
+app/node_modules/
+node_modules/
+
+# Environment files (contain secrets)
+app/.env
+app/.env*.local
+.env
+.env*.local
+
+# Native build folders
+app/ios/
+app/android/
+
+# Build artifacts
+app/expo-env.d.ts
+app/*.tsbuildinfo
+*.tsbuildinfo
+
+# Native signing
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+.kotlin/
+
+# Metro
+.metro-health-check*
+
+# Debug logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Markdown / planning docs (not code)
+*.md
+
+# Database folder (schema reference only, not deployable)
+database/

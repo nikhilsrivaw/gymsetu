@@ -1,4 +1,4 @@
- import { useState, useCallback } from 'react';                                       import { View, Text, StyleSheet, ScrollView, Alert, ActivityIndicator } from         'react-native';                                                                      import { useFocusEffect } from 'expo-router';                                        import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                           import FadeInView from '@/components/FadeInView';                                    import AnimatedPressable from '@/components/AnimatedPressable';                    
+ import { useState, useCallback } from 'react';                                       import { View, Text, StyleSheet, ScrollView, Alert } from         'react-native';                                                                      import { useFocusEffect } from 'expo-router';                                        import LottieView from 'lottie-react-native';                                        import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                           import FadeInView from '@/components/FadeInView';                                    import AnimatedPressable from '@/components/AnimatedPressable';                    
   import { supabase } from '@/lib/supabase';                                           import { useAuthStore } from '@/store/authStore';                                  
                                                                                        interface PaymentRow {                                                             
     id: string;                                                                      
@@ -89,7 +89,8 @@
       return (
         <View style={{ flex: 1, backgroundColor: Colors.bg, justifyContent: 'center',
    alignItems: 'center' }}>
-          <ActivityIndicator color={Colors.accent} size="large" />
+          <LottieView source={require('@/assets/animations/runningCat.json')} autoPlay loop style={{ width: 180, height: 180 }} />
+          <Text style={{ fontFamily: 'BarlowCondensed_700Bold', fontSize: 13, color: 'rgba(255,255,255,0.28)', letterSpacing: 2, marginTop: 8 }}>LOADING...</Text>
         </View>
       );
     }

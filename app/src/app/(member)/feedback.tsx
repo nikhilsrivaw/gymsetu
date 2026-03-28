@@ -1,15 +1,16 @@
 import { useState } from 'react';                                  import { View, Text, StyleSheet, ScrollView, TextInput, Alert }  
-  from 'react-native';                                               import { Stack } from 'expo-router';                             
+  from 'react-native';                                               import { Stack } from 'expo-router';
+  import { MaterialCommunityIcons } from '@expo/vector-icons';                             
   import { Colors } from '@/constants/colors';                       import { Fonts } from '@/constants/fonts';                       
   import AnimatedPressable from '@/components/AnimatedPressable';  
   import FadeInView from '@/components/FadeInView';                                                                                   
-  const categories = [                                             
-    { label: 'Cleanliness', emoji: '🧹' },
-    { label: 'Equipment', emoji: '🏋️' },
-    { label: 'Staff', emoji: '👨‍💼' },
-    { label: 'Classes', emoji: '🧘' },
-    { label: 'Atmosphere', emoji: '💫' },
-    { label: 'Value', emoji: '💰' },
+  const categories = [
+    { label: 'Cleanliness', icon: 'broom' as const },
+    { label: 'Equipment', icon: 'weight-lifter' as const },
+    { label: 'Staff', icon: 'account-tie' as const },
+    { label: 'Classes', icon: 'yoga' as const },
+    { label: 'Atmosphere', icon: 'weather-sunny' as const },
+    { label: 'Value', icon: 'cash-multiple' as const },
   ];
 
   const ratingLabels = ['', 'TERRIBLE', 'POOR', 'OKAY', 'GOOD',    
@@ -86,7 +87,7 @@ import { useState } from 'react';                                  import { View
             <View style={styles.headerCard}>
               <View style={styles.headerAccentBar} />
               <View style={styles.headerInner}>
-                <Text style={styles.headerEmoji}>💬</Text>
+                <MaterialCommunityIcons name="message-text-outline" size={30} color={Colors.accent} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.headerTitle}>SHARE YOUR      
   EXPERIENCE</Text>
@@ -136,7 +137,7 @@ import { useState } from 'react';                                  import { View
               {categories.map((cat, i) => (
                 <View key={cat.label} style={[styles.catRow, i <   
   categories.length - 1 && styles.catRowBorder]}>
-                  <Text style={styles.catEmoji}>{cat.emoji}</Text> 
+                  <MaterialCommunityIcons name={cat.icon} size={17} color={Colors.accent} style={{ width: 26 }} /> 
                   <Text style={styles.catLabel}>{cat.label}</Text> 
                   <View style={styles.catStars}>
                     {[1, 2, 3, 4, 5].map(s => (

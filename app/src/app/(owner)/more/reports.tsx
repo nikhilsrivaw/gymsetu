@@ -1,7 +1,8 @@
-import { useState } from 'react';
-  import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';     
-  import { MaterialCommunityIcons } from '@expo/vector-icons';
-  import { useRouter, Stack } from 'expo-router';
+   
+  import { useState } from 'react';                                                                                    
+  import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';         import { MaterialCommunityIcons } from '@expo/vector-icons';                                                         
+  import { useRouter, Stack } from 'expo-router';                                                                      
+  import LottieView from 'lottie-react-native';
   import { Colors } from '@/constants/colors';
   import { Fonts } from '@/constants/fonts';
   import AnimatedPressable from '@/components/AnimatedPressable';
@@ -14,24 +15,25 @@ import { useState } from 'react';
 
   const reportCards: {
     title: string; desc: string;
-    icon: IconName; emoji: string;
-    color: string; route: string;
+    icon: IconName; color: string; route: string;
   }[] = [
-    { title: 'Revenue',    desc: 'Collections, methods & trends',    icon: 'trending-up',           emoji: '💰',     
-  color: Colors.green,  route: '/(owner)/more/reports-revenue'    },
-    { title: 'Members',    desc: 'Growth, status & demographics',    icon: 'account-group-outline',  emoji: '👥',    
-  color: Colors.accent, route: '/(owner)/more/reports-members'    },
-    { title: 'Attendance', desc: 'Weekly & monthly check-in trends', icon: 'calendar-check-outline', emoji: '📋',    
-  color: '#3B82F6',     route: '/(owner)/more/reports-attendance' },
-    { title: 'Expiry',     desc: 'Expiring & expired memberships',   icon: 'clock-alert-outline',    emoji: '⏰',    
-  color: Colors.orange, route: '/(owner)/more/reports-expiry'     },
+    { title: 'Revenue',    desc: 'Collections, methods & trends',    icon: 'trending-up',           color: '#22c55e',  
+  route: '/(owner)/more/reports-revenue'    },
+    { title: 'Members',    desc: 'Growth, status & demographics',    icon: 'account-group-outline',  color:
+  Colors.accent, route: '/(owner)/more/reports-members'    },
+    { title: 'Attendance', desc: 'Weekly & monthly check-in trends', icon: 'calendar-check-outline', color: '#3B82F6', 
+  route: '/(owner)/more/reports-attendance' },
+    { title: 'Expiry',     desc: 'Expiring & expired memberships',   icon: 'clock-alert-outline',    color: '#f97316', 
+  route: '/(owner)/more/reports-expiry'     },
   ];
 
   const currentMonth = new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' });
 
   export default function ReportsHubScreen() {
     const router = useRouter();
-    const { profile } = useAuthStore();
+    const { profile, activeGymId, branches, subscription } = useAuthStore();
+    const isPro = subscription?.plan === 'pro' &&
+      (subscription?.status === 'trial' || subscription?.status === 'active');
     const [monthlyReport, setMonthlyReport] = useState<string | null>(null);
     const [reportLoading, setReportLoading] = useState(false);
 
@@ -41,35 +43,26 @@ import { useState } from 'react';
       setMonthlyReport(null);
 
       try {
-        const now = new Date();
+        const now        = new Date();
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const mainGymId  = profile.gym_id;
+        const gymIds     = activeGymId === 'all' ? branches.map(b => b.id) : [activeGymId ?? mainGymId];
 
-        // Fetch real data in parallel
         const [totalRes, newRes] = await Promise.all([
-          supabase
-            .from('profiles')
-            .select('id', { count: 'exact', head: true })
-            .eq('gym_id', profile.gym_id)
-            .eq('role', 'member'),
-          supabase
-            .from('profiles')
-            .select('id', { count: 'exact', head: true })
-            .eq('gym_id', profile.gym_id)
-            .eq('role', 'member')
-            .gte('created_at', monthStart),
+          supabase.from('profiles').select('id', { count: 'exact', head: true }).in('gym_id', gymIds).eq('role',       
+  'member'),
+          supabase.from('profiles').select('id', { count: 'exact', head: true }).in('gym_id', gymIds).eq('role',       
+  'member').gte('created_at', monthStart),
         ]);
 
-        const totalMembers = totalRes.count ?? 0;
-        const newMembers   = newRes.count ?? 0;
-
         const text = await askAI('monthly_report', {
-          month:         now.toLocaleString('en-IN', { month: 'long' }),
-          newMembers,
-          totalMembers,
-          revenue:       'not tracked yet',
+          month:          now.toLocaleString('en-IN', { month: 'long' }),
+          newMembers:     newRes.count ?? 0,
+          totalMembers:   totalRes.count ?? 0,
+          revenue:        'not tracked yet',
           attendanceDays: 'not tracked yet',
-          renewals:      'not tracked yet',
-          expired:       'not tracked yet',
+          renewals:       'not tracked yet',
+          expired:        'not tracked yet',
         });
 
         setMonthlyReport(text);
@@ -81,104 +74,150 @@ import { useState } from 'react';
 
     return (
       <>
-        <Stack.Screen options={{ title: 'Reports & Analytics' }} />
-        <ScrollView
-          style={styles.container}
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-        >
+        <Stack.Screen options={{ title: '', headerStyle: { backgroundColor: '#0a0a0a' }, headerTintColor: '#fff' }} /> 
+        <ScrollView style={s.container} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+
+          {/* ── Lottie Banner ── */}
           <FadeInView delay={0}>
-            <Text style={styles.headline}>ANALYTICS</Text>
-            <Text style={styles.sub}>Track your gym's performance</Text>
+            <View style={s.lottieBanner}>
+              <View style={s.lottieBannerLeft}>
+                <Text style={s.lottieBannerMicro}>PERFORMANCE</Text>
+                <Text style={s.lottieBannerTitle}>REPORTS &{'\n'}ANALYTICS</Text>
+                <Text style={s.lottieBannerSub}>Track your gym's growth</Text>
+              </View>
+              <LottieView
+                source={require('@/assets/animations/Analytics.json')}
+                autoPlay loop
+                style={s.lottieAnim}
+              />
+            </View>
           </FadeInView>
 
-          {/* AI Monthly Report Card */}
+          {/* ── AI Monthly Report ── */}
           <FadeInView delay={60}>
-            <View style={styles.aiReportCard}>
-              <View style={styles.aiReportHead}>
-                <View style={styles.aiReportLeft}>
-                  <Text style={styles.aiReportEmoji}>📊</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.aiReportTitle}>AI MONTHLY REPORT</Text>
-                    <Text style={styles.aiReportSub}>Auto-generated summary · {currentMonth}</Text>
+            <Text style={s.sectionLabel}>AI INSIGHTS</Text>
+            <View style={s.aiCard}>
+              <View style={s.aiCardTop}>
+                <View style={s.aiCardTopLeft}>
+                  <View style={s.aiLiveDot} />
+                  <View>
+                    <Text style={s.aiCardTitle}>AI MONTHLY REPORT</Text>
+                    <Text style={s.aiCardSub}>{currentMonth}</Text>
                   </View>
                 </View>
-                <TouchableOpacity style={styles.aiReportBtn} onPress={handleMonthlyReport} disabled={reportLoading}>
-                  {reportLoading
-                    ? <ActivityIndicator size="small" color={Colors.accent} />
-                    : <Text style={styles.aiReportBtnText}>✨ Generate</Text>
-                  }
-                </TouchableOpacity>
+                {isPro ? (
+                  <TouchableOpacity
+                    style={s.aiGenerateBtn}
+                    onPress={handleMonthlyReport}
+                    disabled={reportLoading}
+                  >
+                    {reportLoading
+                      ? <ActivityIndicator size="small" color={Colors.accent} />
+                      : <Text style={s.aiGenerateBtnText}>GENERATE</Text>
+                    }
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={s.aiLockedBtn}
+                    onPress={() => Alert.alert('⚡ Pro Feature', 'AI reports require the Pro plan.\n\nUpgrade at gymsetu.com/pricing', [{ text: 'OK' }])}
+                  >
+                    <MaterialCommunityIcons name="lock-outline" size={12} color={Colors.accent} />
+                    <Text style={s.aiLockedBtnText}>PRO</Text>
+                  </TouchableOpacity>
+                )}
               </View>
+
               {monthlyReport ? (
-                <Text style={styles.aiReportText}>{monthlyReport}</Text>
+                <Text style={s.aiReportText}>{monthlyReport}</Text>
               ) : (
-                <Text style={styles.aiReportPlaceholder}>
-                  Tap Generate to get an AI-written monthly performance summary
+                <Text style={s.aiReportPlaceholder}>
+                  Tap Generate to get an AI-written monthly performance summary for your gym.
                 </Text>
               )}
             </View>
           </FadeInView>
 
-          {/* Report Cards Grid */}
-          <View style={styles.grid}>
-            {reportCards.map((card, i) => (
-              <FadeInView key={card.title} delay={120 + i * 80}>
+          {/* ── Report Cards ── */}
+          <FadeInView delay={100}>
+            <Text style={s.sectionLabel}>DEEP REPORTS</Text>
+            <View style={s.reportList}>
+              {reportCards.map((card, i) => (
                 <AnimatedPressable
-                  style={styles.card}
-                  scaleDown={0.96}
+                  key={card.title}
+                  style={[s.reportRow, i < reportCards.length - 1 && s.rowBorder]}
+                  scaleDown={0.97}
                   onPress={() => router.push(card.route as any)}
                 >
-                  <View style={[styles.cardIcon, { backgroundColor: card.color + '18' }]}>
-                    <Text style={styles.cardEmoji}>{card.emoji}</Text>
+                  <View style={[s.reportIconWrap, { backgroundColor: card.color + '12' }]}>
+                    <MaterialCommunityIcons name={card.icon} size={22} color={card.color} />
                   </View>
-                  <Text style={styles.cardTitle}>{card.title}</Text>
-                  <Text style={styles.cardDesc}>{card.desc}</Text>
-                  <View style={[styles.cardChevron, { backgroundColor: card.color + '15' }]}>
-                    <MaterialCommunityIcons name="arrow-right" size={14} color={card.color} />
+                  <View style={s.reportInfo}>
+                    <Text style={s.reportTitle}>{card.title}</Text>
+                    <Text style={s.reportDesc}>{card.desc}</Text>
+                  </View>
+                  <View style={[s.reportArrow, { backgroundColor: card.color + '10' }]}>
+                    <MaterialCommunityIcons name="arrow-right" size={18} color={card.color} />
                   </View>
                 </AnimatedPressable>
-              </FadeInView>
-            ))}
-          </View>
+              ))}
+            </View>
+          </FadeInView>
 
-          <View style={{ height: 32 }} />
+          <View style={{ height: 40 }} />
         </ScrollView>
       </>
     );
   }
 
-  const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.bg },
-    scroll:    { paddingHorizontal: 16, paddingTop: 20 },
+  const s = StyleSheet.create({
+    // Layout
+    container: { flex: 1, backgroundColor: '#0a0a0a' },
+    scroll:    { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40 },
 
-    headline: { fontFamily: Fonts.condensedBold, fontSize: 32, color: Colors.text, letterSpacing: 1 },
-    sub:      { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, marginTop: 4, marginBottom: 20 },  
-
-    aiReportCard:        { backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1, borderColor:
-  Colors.accent + '30', padding: 18, marginBottom: 20, overflow: 'hidden' },
-    aiReportHead:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom:
-   10 },
-    aiReportLeft:        { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-    aiReportEmoji:       { fontSize: 26 },
-    aiReportTitle:       { fontFamily: Fonts.bold, fontSize: 10, color: Colors.accent, letterSpacing: 1.5 },
-    aiReportSub:         { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, marginTop: 1 },
-    aiReportBtn:         { paddingHorizontal: 14, paddingVertical: 7, backgroundColor: Colors.accentMuted,
-  borderRadius: 10, borderWidth: 1, borderColor: Colors.accent + '40' },
-    aiReportBtnText:     { fontFamily: Fonts.bold, fontSize: 11, color: Colors.accent, letterSpacing: 0.5 },
-    aiReportText:        { fontFamily: Fonts.regular, fontSize: 12, color: Colors.text, lineHeight: 19 },
-    aiReportPlaceholder: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted, lineHeight: 18 },       
-
-    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-
-    card: {
-      width: '47.5%', backgroundColor: Colors.bgCard, borderRadius: 18,
-      borderWidth: 1, borderColor: Colors.border, padding: 18, gap: 6,
+    // Lottie Banner
+    lottieBanner: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: '#141414', borderRadius: 20,
+      paddingLeft: 20, paddingVertical: 20,
+      borderWidth: 1, borderColor: Colors.accent + '25',
+      marginBottom: 24, overflow: 'hidden',
     },
-    cardIcon:    { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center',
-  marginBottom: 4 },
-    cardEmoji:   { fontSize: 24 },
-    cardTitle:   { fontFamily: Fonts.bold, fontSize: 16, color: Colors.text },
-    cardDesc:    { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, lineHeight: 16 },
-    cardChevron: { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+    lottieBannerLeft:  { flex: 1 },
+    lottieBannerMicro: { fontFamily: Fonts.bold, fontSize: 10, color: Colors.accent, letterSpacing: 2 },
+    lottieBannerTitle: { fontFamily: Fonts.condensedBold, fontSize: 30, color: '#fff', letterSpacing: 0.5, marginTop:  
+  6, lineHeight: 34 },
+    lottieBannerSub:   { fontFamily: Fonts.regular, fontSize: 13, color: '#555', marginTop: 8 },
+    lottieAnim:        { width: 180, height: 180 },
+
+    // Section label
+    sectionLabel: { fontFamily: Fonts.bold, fontSize: 10, color: '#444', letterSpacing: 2, marginBottom: 12 },
+
+    // AI Card
+    aiCard:        { backgroundColor: '#141414', borderRadius: 18, borderWidth: 1, borderColor: Colors.accent + '25',  
+  overflow: 'hidden', marginBottom: 28 },
+    aiCardTop:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal:   
+  18, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: '#1e1e1e' },
+    aiCardTopLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
+    aiLiveDot:     { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.accent, shadowColor:
+  Colors.accent, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 6 },
+    aiCardTitle:   { fontFamily: Fonts.bold, fontSize: 13, color: Colors.accent, letterSpacing: 1 },
+    aiCardSub:     { fontFamily: Fonts.regular, fontSize: 12, color: '#555', marginTop: 2 },
+    aiGenerateBtn: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: Colors.accent + '15', borderRadius:  
+  12, borderWidth: 1, borderColor: Colors.accent + '40' },
+    aiGenerateBtnText: { fontFamily: Fonts.bold, fontSize: 11, color: Colors.accent, letterSpacing: 1 },
+    aiLockedBtn:     { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: Colors.accent + '15', borderRadius: 12, borderWidth: 1, borderColor: Colors.accent + '30' },
+    aiLockedBtnText: { fontFamily: Fonts.bold, fontSize: 11, color: Colors.accent, letterSpacing: 1 },
+    aiReportText:        { fontFamily: Fonts.regular, fontSize: 14, color: '#ccc', lineHeight: 22, padding: 18 },      
+    aiReportPlaceholder: { fontFamily: Fonts.regular, fontSize: 14, color: '#333', lineHeight: 22, padding: 18 },      
+
+    // Report list
+    reportList: { backgroundColor: '#141414', borderRadius: 18, borderWidth: 1, borderColor: '#1e1e1e', overflow:      
+  'hidden' },
+    reportRow:  { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingVertical: 18 },   
+    rowBorder:  { borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
+    reportIconWrap: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },       
+    reportInfo:     { flex: 1 },
+    reportTitle:    { fontFamily: Fonts.bold, fontSize: 16, color: '#fff' },
+    reportDesc:     { fontFamily: Fonts.regular, fontSize: 13, color: '#555', marginTop: 3 },
+    reportArrow:    { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },       
   });

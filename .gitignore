@@ -32,6 +32,9 @@ app/*.tsbuildinfo
 *.p12
 *.key
 *.mobileprovision
+
+# SSH / private keys — NEVER commit
+*.pem
 *.orig.*
 .kotlin/
 

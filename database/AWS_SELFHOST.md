@@ -200,9 +200,14 @@ Restart Expo (`npx expo start --web`) and hard-refresh.
 - **Security:** keep 22 locked to your IP; never expose 5432/8000 publicly; rotate keys.
 - **Monitoring:** `docker compose logs -f <service>`; consider CloudWatch agent.
 
-## Cost sanity check
-`t3.medium` on-demand ≈ $30/mo + 40 GB gp3 ≈ $3/mo + S3 backups ≈ $1/mo → **~$34/mo**,
-all covered by your $1200 credit for **~2.5–3 years**. Reserved/Savings Plan is cheaper still.
+## Cost sanity check — DECISION: t3.medium
+`t3.medium` on-demand (~$33) + 40 GB gp3 (~$4) + public IPv4 (~$3.6) + S3 backups
+(~$1) + transfer (~$2) ≈ **~$43/mo**.
 ```
-Supabase bill: $0   |   AWS: ~$34/mo from credit   |   Out of pocket: $0
+Supabase bill: $0   |   AWS: ~$43/mo from credit   |   Out of pocket: $0
 ```
+- $1200 credit → **~27 months (~2.25 years)** on-demand.
+- Add a **1-year Savings Plan / Reserved Instance** → EC2 ~35% cheaper → ~$30/mo → **~3+ years**.
+- ⚠️ **Check the credit's EXPIRY date** in AWS Billing — Activate credits often
+  expire 1–2 yrs from issue regardless of balance; that may be the real limit.
+- Only upsize to t3.large if the server actually feels slow under real load.

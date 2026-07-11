@@ -237,7 +237,7 @@ const sc = StyleSheet.create({
 // ── Main screen ──────────────────────────────────────────────────
 export default function TrainerAddMemberScreen() {
   const router = useRouter();
-  const { profile } = useAuthStore();
+  const { profile, gymProfile } = useAuthStore();
 
   const [fullName, setFullName]             = useState('');
   const [phone, setPhone]                   = useState('');
@@ -339,6 +339,23 @@ export default function TrainerAddMemberScreen() {
           });
           if (planError) throw new Error(`Member created but plan assignment failed: ${planError.message}`);
         }
+      }
+
+      // Send WhatsApp welcome message (fire-and-forget)
+      if (trimmedPhone) {
+        supabase.functions.invoke('send-whatsapp', {
+          body: {
+            type: 'welcome',
+            phone: trimmedPhone,
+            gym_id: gymId,
+            data: {
+              member_name: trimmedName,
+              gym_name: gymProfile?.name ?? 'Your Gym',
+              member_code: credData.code,
+              member_password: credData.password,
+            },
+          },
+        }).catch(() => {});
       }
 
       setCredentials({ code: credData.code, password: credData.password, name: trimmedName });

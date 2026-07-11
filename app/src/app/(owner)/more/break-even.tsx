@@ -13,7 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import FadeInView from '@/components/FadeInView';
 import AnimatedPressable from '@/components/AnimatedPressable';
-import LottieView from 'lottie-react-native';
+import LottieView from '@/components/AppLottie';
 
 interface BreakEvenData {
   totalExpenses:       number;
@@ -53,7 +53,7 @@ export default function BreakEvenScreen() {
     const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
     const [expRes, payRes, planRes] = await Promise.all([
-      supabase.from('expenses').select('amount').in('gym_id', gymIds).gte('date', monthStart).lte('date', monthEnd),
+      supabase.from('expenses').select('amount').in('gym_id', gymIds).gte('expense_date', monthStart).lte('expense_date', monthEnd),
       supabase.from('payments').select('amount').in('gym_id', gymIds).gte('payment_date', monthStart).lte('payment_date', monthEnd),
       supabase.from('member_plans').select('member_id').in('gym_id', gymIds).eq('status', 'active'),
     ]);

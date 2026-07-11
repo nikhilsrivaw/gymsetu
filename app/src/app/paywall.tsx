@@ -6,17 +6,16 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';
+import { Links, WEBSITE_DISPLAY } from '@/constants/links';
 import AnimatedPressable from '@/components/AnimatedPressable';
 import { useAuthStore } from '@/store/authStore';
-
-const WEBSITE_PRICING_URL = 'https://gymsetu.com/pricing';
 
 const PLAN_HIGHLIGHTS = [
   { icon: 'account-group-outline',  text: 'Member management & attendance',  both: true  },
   { icon: 'wallet-outline',         text: 'Payments, receipts & reports',     both: true  },
   { icon: 'dumbbell',               text: 'Trainer & branch management',      both: true  },
   { icon: 'robot-outline',          text: 'AI insights & revenue forecast',   both: false },
-  { icon: 'whatsapp',               text: 'WhatsApp automation (500 tokens)', both: false },
+  { icon: 'whatsapp',               text: 'WhatsApp automation (500–2,000 tokens)', both: false },
   { icon: 'alert-circle-outline',   text: 'Churn detection & member LTV',     both: false },
 ];
 
@@ -26,11 +25,11 @@ export default function PaywallScreen() {
   const [checking, setChecking] = useState(false);
 
   async function handleOpenWebsite() {
-    const supported = await Linking.canOpenURL(WEBSITE_PRICING_URL);
+    const supported = await Linking.canOpenURL(Links.pricing);
     if (supported) {
-      await Linking.openURL(WEBSITE_PRICING_URL);
+      await Linking.openURL(Links.pricing);
     } else {
-      Alert.alert('Error', 'Could not open the website. Please visit gymsetu.com/pricing in your browser.');
+      Alert.alert('Error', `Could not open the website. Please visit ${WEBSITE_DISPLAY}/pricing in your browser.`);
     }
   }
 
@@ -87,27 +86,33 @@ export default function PaywallScreen() {
         </View>
 
         {/* Pricing summary */}
-        <View style={s.pricingRow}>
-          <View style={s.pricingCard}>
-            <Text style={s.pricingPlan}>BASIC</Text>
-            <Text style={s.pricingAmount}>₹999<Text style={s.pricingPer}>/mo</Text></Text>
-          </View>
-          <View style={s.pricingDivider} />
-          <View style={s.pricingCard}>
-            <Text style={[s.pricingPlan, { color: Colors.accent }]}>PRO</Text>
-            <Text style={s.pricingAmount}>₹1,699<Text style={s.pricingPer}>/mo</Text></Text>
-            <View style={s.trialBadge}>
-              <Text style={s.trialBadgeText}>7-DAY FREE TRIAL</Text>
+        <View style={s.pricingGrid}>
+          {[
+            { name: 'BASIC',    price: '₹999',   color: '#555',    members: 'Any size',  trial: false },
+            { name: 'PRO',      price: '₹1,699',  color: Colors.accent, members: '≤200',    trial: true  },
+            { name: 'PRO PLUS', price: '₹2,199',  color: '#A78BFA', members: '200–500',   trial: false },
+            { name: 'PRO MAX',  price: '₹2,999',  color: '#3B82F6', members: '500+',      trial: false },
+          ].map((p, i) => (
+            <View key={p.name} style={[s.pricingCard, { borderColor: p.color + '30' }]}>
+              <Text style={[s.pricingPlan, { color: p.color }]}>{p.name}</Text>
+              <Text style={s.pricingAmount}>{p.price}<Text style={s.pricingPer}>/mo</Text></Text>
+              <Text style={s.pricingMembers}>{p.members}</Text>
+              {p.trial && (
+                <View style={s.trialBadge}>
+                  <Text style={s.trialBadgeText}>7-DAY TRIAL</Text>
+                </View>
+              )}
             </View>
-          </View>
+          ))}
         </View>
+        <Text style={s.gstNote}>+18% GST applicable</Text>
       </View>
 
       {/* ── CTAs ── */}
       <View style={s.ctas}>
         <AnimatedPressable style={s.primaryBtn} scaleDown={0.97} onPress={handleOpenWebsite}>
           <MaterialCommunityIcons name="web" size={20} color="#fff" />
-          <Text style={s.primaryBtnText}>View Plans on gymsetu.com</Text>
+          <Text style={s.primaryBtnText}>View Plans on {WEBSITE_DISPLAY}</Text>
           <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
         </AnimatedPressable>
 
@@ -159,14 +164,16 @@ const s = StyleSheet.create({
                    borderWidth: 1, borderColor: Colors.accent + '30' },
   proBadgeText:  { fontFamily: Fonts.bold, fontSize: 8, color: Colors.accent, letterSpacing: 1 },
 
-  pricingRow:    { flexDirection: 'row', backgroundColor: '#0f0f0f', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#1e1e1e' },
-  pricingCard:   { flex: 1, alignItems: 'center', padding: 14, gap: 2 },
-  pricingDivider:{ width: 1, backgroundColor: '#1e1e1e' },
-  pricingPlan:   { fontFamily: Fonts.bold, fontSize: 10, color: '#555', letterSpacing: 2 },
-  pricingAmount: { fontFamily: Fonts.condensedBold, fontSize: 26, color: '#fff' },
-  pricingPer:    { fontFamily: Fonts.regular, fontSize: 13, color: '#555' },
+  pricingGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pricingCard:   { width: '48%' as any, alignItems: 'center', padding: 12, gap: 3,
+                   backgroundColor: '#0f0f0f', borderRadius: 14, borderWidth: 1 },
+  pricingPlan:   { fontFamily: Fonts.bold, fontSize: 9, letterSpacing: 1.5 },
+  pricingAmount: { fontFamily: Fonts.condensedBold, fontSize: 22, color: '#fff' },
+  pricingPer:    { fontFamily: Fonts.regular, fontSize: 11, color: '#555' },
+  pricingMembers:{ fontFamily: Fonts.regular, fontSize: 9, color: '#444' },
   trialBadge:    { backgroundColor: Colors.accent + '15', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginTop: 2 },
-  trialBadgeText:{ fontFamily: Fonts.bold, fontSize: 8, color: Colors.accent, letterSpacing: 1 },
+  trialBadgeText:{ fontFamily: Fonts.bold, fontSize: 7, color: Colors.accent, letterSpacing: 1 },
+  gstNote:       { fontFamily: Fonts.regular, fontSize: 10, color: '#444', textAlign: 'center', marginTop: 8 },
 
   ctas: { gap: 12 },
 

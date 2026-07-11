@@ -1,6 +1,11 @@
-                                                                                     import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';        import { SafeAreaView } from 'react-native-safe-area-context';                       import { MaterialCommunityIcons } from '@expo/vector-icons';                         import { useState } from 'react';                                                  
-  import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                         
-  import FadeInView from '@/components/FadeInView';                                    import AnimatedPressable from '@/components/AnimatedPressable';                    
+import { View, Text, StyleSheet, ScrollView, Pressable, Linking, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useState } from 'react';
+import { Colors } from '@/constants/colors';
+import { Fonts } from '@/constants/fonts';
+import FadeInView from '@/components/FadeInView';
+import AnimatedPressable from '@/components/AnimatedPressable';                    
                                                                                      
   type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];       
 
@@ -47,16 +52,27 @@
     },
   ];
 
-  const contactOptions: { label: string; desc: string; icon: IconName; color: string;
-   value: string }[] = [
-    { label: 'WhatsApp Support', desc: 'Chat with us — usually replies in 5 min',    
-  icon: 'whatsapp',          color: '#25D366', value: '+91 98765 43210' },
-    { label: 'Email Support',    desc: 'Detailed queries & bug reports',
-  icon: 'email-outline',     color: Colors.accent, value: 'support@gymsetu.in' },    
-    { label: 'Call Us',          desc: 'Mon–Sat, 9 AM – 6 PM',
-  icon: 'phone-outline',     color: '#3B82F6', value: '+91 98765 43210'    },        
-    { label: 'Video Tutorial',   desc: 'Watch our getting started guide',
-  icon: 'youtube',           color: '#FF0000', value: 'youtube.com/gymsetu' },       
+  const contactOptions: { label: string; desc: string; icon: IconName; color: string; value: string; action: () => void }[] = [
+    {
+      label: 'WhatsApp Support', desc: 'Chat with us — usually replies in 5 min',
+      icon: 'whatsapp', color: '#25D366', value: '+91 98765 43210',
+      action: () => Linking.openURL('https://wa.me/919876543210?text=Hi%20GymSetu%20Support%2C%20I%20need%20help%20with%20my%20gym%20app.'),
+    },
+    {
+      label: 'Email Support', desc: 'Detailed queries & bug reports',
+      icon: 'email-outline', color: Colors.accent, value: 'support@gymsetu.in',
+      action: () => Linking.openURL('mailto:support@gymsetu.in?subject=GymSetu%20Support%20Request'),
+    },
+    {
+      label: 'Call Us', desc: 'Mon–Sat, 9 AM – 6 PM',
+      icon: 'phone-outline', color: '#3B82F6', value: '+91 98765 43210',
+      action: () => Linking.openURL('tel:+919876543210'),
+    },
+    {
+      label: 'Video Tutorial', desc: 'Watch our getting started guide',
+      icon: 'youtube', color: '#FF0000', value: 'youtube.com/gymsetu',
+      action: () => Linking.openURL('https://youtube.com/@gymsetu'),
+    },
   ];
 
   const quickGuides: { label: string; icon: IconName; color: string; steps: number   
@@ -191,9 +207,9 @@
             {contactOptions.map((c, i) => (
               <AnimatedPressable
                 key={c.label}
-                style={[styles.contactRow, i < contactOptions.length - 1 && {        
-  marginBottom: 8 }]}
+                style={[styles.contactRow, i < contactOptions.length - 1 && { marginBottom: 8 }]}
                 scaleDown={0.97}
+                onPress={c.action}
               >
                 <View style={[styles.contactIcon, { backgroundColor: c.color + '18'  
   }]}>

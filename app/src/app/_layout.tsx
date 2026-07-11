@@ -1,5 +1,5 @@
 import { Slot, useSegments, useRouter } from 'expo-router';
-import { LogBox } from 'react-native';
+import { LogBox, Platform, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { PaperProvider } from 'react-native-paper';
 import { View, ActivityIndicator } from 'react-native';
@@ -88,11 +88,43 @@ export default function RootLayout() {
     );
   }
 
-  return (
-    <PaperProvider theme={appTheme}>
+  const content = (
+    <>
       <RouteGuard />
       <Slot />
       <StatusBar style="light" backgroundColor={Colors.bg} />
+    </>
+  );
+
+  return (
+    <PaperProvider theme={appTheme}>
+      {Platform.OS === 'web' ? (
+        // On web, constrain the mobile layout to a centered phone-width column
+        // so it doesn't stretch edge-to-edge and look distorted on desktop.
+        <View style={webShell.outer}>
+          <View style={webShell.frame}>{content}</View>
+        </View>
+      ) : (
+        content
+      )}
     </PaperProvider>
   );
 }
+
+const webShell = StyleSheet.create({
+  outer: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+  frame: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 480,
+    backgroundColor: Colors.bg,
+    overflow: 'hidden',
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+});

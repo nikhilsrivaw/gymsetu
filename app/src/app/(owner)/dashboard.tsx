@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, ActivityIndicator, Dimensions, RefreshControl, Modal,
+  Alert, ActivityIndicator, Dimensions, RefreshControl, Modal, Linking,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import * as Location from 'expo-location';
@@ -9,10 +9,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import LottieView from 'lottie-react-native';
+import LottieView from '@/components/AppLottie';
 import { useAuthStore } from '@/store/authStore';
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';
+import { Links } from '@/constants/links';
 import AnimatedPressable from '@/components/AnimatedPressable';
 import FadeInView from '@/components/FadeInView';
 import { supabase } from '@/lib/supabase';
@@ -149,7 +150,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function DashboardScreen() {
-  const { profile, subscription, activeGymId, branches, setActiveGym } = useAuthStore();
+  const { profile, subscription, tokenBalance, activeGymId, branches, setActiveGym } = useAuthStore();
   const router      = useRouter();
   const trialDays = (() => {
     if (subscription?.status !== 'trial' || !subscription?.trial_ends_at) return 0;
@@ -577,6 +578,49 @@ export default function DashboardScreen() {
           </View>
         </FadeInView>
 
+        {/* ── Token Balance (Pro only) ── */}
+        {subscription?.plan && subscription.plan !== 'basic' && tokenBalance && (
+          <FadeInView delay={250}>
+            <View style={s.tokenCard}>
+              <LinearGradient
+                colors={['rgba(139,92,246,0.12)', 'transparent']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+              />
+              <View style={s.tokenHead}>
+                <View style={s.aiCardLeft}>
+                  <MaterialCommunityIcons name="message-text-outline" size={16} color="#A78BFA" />
+                  <Text style={s.tokenLabel}>WHATSAPP TOKENS</Text>
+                </View>
+                <View style={s.tokenBadge}>
+                  <Text style={s.tokenBadgeText}>{tokenBalance.remaining} LEFT</Text>
+                </View>
+              </View>
+
+              {/* Progress bar */}
+              <View style={s.tokenBarBg}>
+                <View style={[s.tokenBarFill, { width: `${Math.min(100, (tokenBalance.used / tokenBalance.total) * 100)}%` as any }]} />
+              </View>
+              <View style={s.tokenRow}>
+                <Text style={s.tokenUsed}>{tokenBalance.used} used</Text>
+                <Text style={s.tokenTotal}>of {tokenBalance.total}</Text>
+              </View>
+
+              {/* Buy More button */}
+              <AnimatedPressable
+                style={s.tokenBuyBtn}
+                scaleDown={0.95}
+                onPress={() => Linking.openURL(Links.tokens)}
+              >
+                <MaterialCommunityIcons name="cart-plus" size={14} color="#A78BFA" />
+                <Text style={s.tokenBuyText}>BUY MORE TOKENS</Text>
+                <MaterialCommunityIcons name="open-in-new" size={11} color="#A78BFA" style={{ opacity: 0.6 }} />
+              </AnimatedPressable>
+            </View>
+          </FadeInView>
+        )}
+
         {/* ── Quick Actions ── */}
         <FadeInView delay={260}>
           <Text style={s.sectionLabel}>QUICK ACTIONS</Text>
@@ -794,7 +838,7 @@ const s = StyleSheet.create({
     lineHeight:    30,
     letterSpacing: 0.4,
   },
-  heroLottie: { width: 118, height: 118 },
+  heroLottie: { width: 118, height: 118, flexShrink: 0 },
 
   // Insight rows section
   heroRows: {
@@ -932,6 +976,39 @@ const s = StyleSheet.create({
   growthCardLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.green, letterSpacing: 2 },
   growthBtn:       { paddingHorizontal: 14, paddingVertical: 7, backgroundColor: Colors.green + '18', borderRadius: 10, borderWidth: 1, borderColor: Colors.green + '40' },
   growthBtnText:   { fontFamily: Fonts.bold, fontSize: 11, color: Colors.green, letterSpacing: 0.5 },
+
+  // ── Token balance card ────────────────────────────────────────
+  tokenCard: {
+    backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1,
+    borderColor: '#A78BFA30', padding: 16, marginBottom: 20, overflow: 'hidden',
+  },
+  tokenHead: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14,
+  },
+  tokenLabel: { fontFamily: Fonts.bold, fontSize: 9, color: '#A78BFA', letterSpacing: 2 },
+  tokenBadge: {
+    backgroundColor: '#A78BFA18', borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderWidth: 1, borderColor: '#A78BFA30',
+  },
+  tokenBadgeText: { fontFamily: Fonts.bold, fontSize: 10, color: '#A78BFA', letterSpacing: 0.5 },
+  tokenBarBg: {
+    height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden',
+  },
+  tokenBarFill: {
+    height: '100%', borderRadius: 4, backgroundColor: '#A78BFA',
+  },
+  tokenRow: {
+    flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, marginBottom: 14,
+  },
+  tokenUsed:  { fontFamily: Fonts.bold, fontSize: 11, color: '#A78BFA' },
+  tokenTotal: { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted },
+  tokenBuyBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#A78BFA14', borderRadius: 12,
+    paddingVertical: 11, borderWidth: 1, borderColor: '#A78BFA30',
+  },
+  tokenBuyText: { fontFamily: Fonts.bold, fontSize: 11, color: '#A78BFA', letterSpacing: 1 },
 
   sectionLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.8, marginBottom: 10, marginTop: 4 },
 

@@ -52,7 +52,7 @@ const TAG_CFG: { label: string; icon: IconName; color: string }[] = [
   { label: 'PR Set',            icon: 'trophy-outline',         color: Colors.green  },
   { label: 'Goal Reached',      icon: 'check-decagram-outline', color: Colors.green  },
   { label: 'Consistency Issue', icon: 'alert-outline',          color: Colors.red    },
-  { label: 'Injury',            icon: 'bandage-outline',        color: Colors.red    },
+  { label: 'Injury',            icon: 'hospital-box-outline',   color: Colors.red    },
   { label: 'Progress',          icon: 'trending-up',            color: Colors.accent },
   { label: 'Flexibility',       icon: 'human-handsup',          color: '#8B5CF6'     },
 ];

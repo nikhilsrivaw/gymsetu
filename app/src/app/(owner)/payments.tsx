@@ -13,7 +13,7 @@
   import { supabase } from '@/lib/supabase';
   import { useAuthStore } from '@/store/authStore';
   import type { PaymentMethod } from '@/types/database';
-  import LottieView from 'lottie-react-native';
+  import LottieView from '@/components/AppLottie';
 
   const methodIcon:  Record<string, string> = { cash: '💵', upi: '📱', card: '💳', bank_transfer: '🏦', other: '💸' }; 
   const methodColor: Record<string, string> = { cash: Colors.green, upi: '#4F6EF7', card: Colors.orange, bank_transfer:
@@ -28,10 +28,10 @@
     notes:          string | null;
   }
 
-  interface MemberOption { id: string; full_name: string; }
+  interface MemberOption { id: string; full_name: string; phone?: string | null; }
 
   export default function PaymentsScreen() {
-    const { profile, activeGymId, branches } = useAuthStore();
+    const { profile, activeGymId, branches, gymProfile } = useAuthStore();
 
     const [payments, setPayments]               = useState<PaymentRow[]>([]);
     const [members, setMembers]                 = useState<MemberOption[]>([]);
@@ -107,7 +107,7 @@
       try {
         const { data } = await supabase
           .from('profiles')
-          .select('id, full_name')
+          .select('id, full_name, phone')
           .in('gym_id', gymIds)
           .eq('role', 'member')
           .eq('status', 'active')
@@ -154,6 +154,24 @@
           created_by:     profile?.id,
         });
         if (error) throw error;
+
+        // Send WhatsApp payment confirmation (fire-and-forget)
+        if (selectedMember.phone) {
+          supabase.functions.invoke('send-whatsapp', {
+            body: {
+              type: 'payment_confirm',
+              phone: selectedMember.phone,
+              gym_id: gymId,
+              data: {
+                member_name: selectedMember.full_name,
+                amount: parsedAmount.toLocaleString('en-IN'),
+                plan_name: method,
+                gym_name: gymProfile?.name ?? 'Your Gym',
+                expiry_date: '',
+              },
+            },
+          }).catch(() => {});
+        }
 
         setShow(false);
         setSelectedMember(null); setAmount(''); setMethod('cash'); setNote('');

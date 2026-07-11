@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';                                                                       
   import { View, Text, StyleSheet, FlatList } from 'react-native';                                                       import { Searchbar, FAB } from 'react-native-paper';                                                                 
   import { useRouter, Stack, useFocusEffect } from 'expo-router';                                                      
-  import LottieView from 'lottie-react-native';
+  import LottieView from '@/components/AppLottie';
   import { Colors } from '@/constants/colors';
   import { Fonts } from '@/constants/fonts';
   import AnimatedPressable from '@/components/AnimatedPressable';

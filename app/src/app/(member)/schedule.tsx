@@ -12,7 +12,7 @@ import {
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import LottieView from 'lottie-react-native';
+import LottieView from '@/components/AppLottie';
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';
 import AnimatedPressable from '@/components/AnimatedPressable';

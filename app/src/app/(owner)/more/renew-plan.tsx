@@ -20,6 +20,7 @@ type ExpiringMember = {
   profileId: string;   // profiles.id
   membersId: string;   // members.id  (used for member_plans)
   name:      string;
+  phone:     string | null;
   planName:  string;
   daysLeft:  number;
   initials:  string;
@@ -57,7 +58,7 @@ function urgencyLabel(days: number) {
 }
 
 export default function RenewPlanScreen() {
-  const { profile } = useAuthStore();
+  const { profile, gymProfile } = useAuthStore();
   const params      = useLocalSearchParams<{ memberId?: string }>();
   const gymId       = profile?.gym_id;
 
@@ -100,12 +101,13 @@ export default function RenewPlanScreen() {
       const memberIds = [...new Set(expPlans.map((p: any) => p.member_id))];
       const { data: membersRows } = await supabase
         .from('members')
-        .select('id, user_id')
+        .select('id, user_id, phone')
         .in('id', memberIds);
 
-      // map members.id → user_id
+      // map members.id → user_id, members.id → phone
       const memberToUser: Record<string, string> = {};
-      (membersRows ?? []).forEach((m: any) => { memberToUser[m.id] = m.user_id; });
+      const memberToPhone: Record<string, string | null> = {};
+      (membersRows ?? []).forEach((m: any) => { memberToUser[m.id] = m.user_id; memberToPhone[m.id] = m.phone; });
 
       // ── Step 3: fetch profile names ─────────────────────────────
       const userIds = [...new Set(Object.values(memberToUser))].filter(Boolean);
@@ -141,6 +143,7 @@ export default function RenewPlanScreen() {
           profileId: userId ?? p.member_id,
           membersId: p.member_id,
           name,
+          phone:     memberToPhone[p.member_id] ?? null,
           planName:  (p.membership_plans as any)?.name ?? 'Unknown Plan',
           daysLeft,
           initials:  getInitials(name),
@@ -217,6 +220,24 @@ export default function RenewPlanScreen() {
 
       // Update member status to active
       await supabase.from('profiles').update({ status: 'active' }).eq('id', selected.profileId);
+
+      // Send WhatsApp payment confirmation (fire-and-forget)
+      if (selected.phone) {
+        supabase.functions.invoke('send-whatsapp', {
+          body: {
+            type: 'payment_confirm',
+            phone: selected.phone,
+            gym_id: gymId,
+            data: {
+              member_name: selected.name,
+              amount: activePlan.price.toLocaleString('en-IN'),
+              plan_name: activePlan.label,
+              gym_name: gymProfile?.name ?? 'Your Gym',
+              expiry_date: endDate,
+            },
+          },
+        }).catch(() => {});
+      }
 
       setSuccessModal(true);
     } catch (e: any) {

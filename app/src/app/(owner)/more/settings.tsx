@@ -1,11 +1,13 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Switch, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Switch, TextInput, ActivityIndicator, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useState } from 'react';
+import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';
+import { Links } from '@/constants/links';
 import FadeInView from '@/components/FadeInView';
 import AnimatedPressable from '@/components/AnimatedPressable';
 import { useAuthStore } from '@/store/authStore';                                                                                                         
@@ -35,7 +37,21 @@ import { useAuthStore } from '@/store/authStore';
   };
 
 export default function SettingsScreen() {
-    const { signOut } = useAuthStore();
+    const { signOut, subscription } = useAuthStore();
+    const router = useRouter();
+
+    const planLabel = (() => {
+      const p = subscription?.plan;
+      if (!p || p === 'basic') return 'BASIC';
+      if (p === 'pro')         return 'PRO';
+      if (p === 'pro_plus')    return 'PRO PLUS';
+      if (p === 'pro_max')     return 'PRO MAX';
+      return 'PRO';
+    })();
+
+    const planRenews = subscription?.current_period_end
+      ? new Date(subscription.current_period_end).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      : null;
     const [pinModal, setPinModal]         = useState(false);
     const [notifModal, setNotifModal]     = useState(false);
     const [signOutModal, setSignOutModal] = useState(false);
@@ -131,19 +147,21 @@ export default function SettingsScreen() {
         title: 'ACCOUNT',
         items: [
           {
-            kind: 'action', label: 'Subscription Plan', desc: 'GymSetu Pro — renews  Jun 2025',
-            icon: 'crown-outline', color: Colors.accent, value: 'PRO',
-            onPress: () => {},
+            kind: 'action',
+            label: 'Subscription Plan',
+            desc: planRenews ? `Renews ${planRenews}` : 'Manage your GymSetu plan',
+            icon: 'crown-outline', color: Colors.accent, value: planLabel,
+            onPress: () => router.push('/paywall' as any),
           },
           {
-            kind: 'action', label: 'Privacy Policy',    desc: 'View data usage  policy',
+            kind: 'action', label: 'Privacy Policy', desc: 'View data usage policy',
             icon: 'shield-outline', color: Colors.textMuted,
-            onPress: () => {},
+            onPress: () => Linking.openURL(Links.privacy),
           },
           {
-            kind: 'action', label: 'Terms of Service',  desc: 'Usage terms &conditions',
+            kind: 'action', label: 'Terms of Service', desc: 'Usage terms & conditions',
             icon: 'file-document-outline', color: Colors.textMuted,
-            onPress: () => {},
+            onPress: () => Linking.openURL(Links.terms),
           },
         ],
       },
@@ -256,7 +274,20 @@ export default function SettingsScreen() {
           <FadeInView delay={460}>
             <Text style={styles.sectionLabel}>DANGER ZONE</Text>
             <View style={styles.dangerCard}>
-              <AnimatedPressable style={styles.dangerRow} scaleDown={0.98}>
+              <AnimatedPressable
+                style={styles.dangerRow}
+                scaleDown={0.98}
+                onPress={() =>
+                  Alert.alert(
+                    'Delete Account',
+                    'This will permanently delete your gym, all members, payments, and data. This cannot be undone.\n\nTo proceed, contact support@gymsetu.in from your registered email.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Contact Support', onPress: () => Linking.openURL('mailto:support@gymsetu.in?subject=Account%20Deletion%20Request') },
+                    ]
+                  )
+                }
+              >
                 <View style={[styles.settingIcon, { backgroundColor: Colors.red + '18' }]}>
                   <MaterialCommunityIcons name="account-remove-outline" size={17} color={Colors.red} />
                 </View>

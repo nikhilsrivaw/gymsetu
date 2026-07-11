@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import { useNavigation, useRouter, useFocusEffect } from 'expo-router';
-import LottieView from 'lottie-react-native';
+import LottieView from '@/components/AppLottie';
 import { DrawerActions } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';

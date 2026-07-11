@@ -14,7 +14,7 @@ import AnimatedPressable from '@/components/AnimatedPressable';
 import FadeInView from '@/components/FadeInView';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import LottieView from 'lottie-react-native';
+import LottieView from '@/components/AppLottie';
 
 const CATEGORIES = [
   { label: 'Rent',        emoji: '🏢', color: '#4F6EF7' },

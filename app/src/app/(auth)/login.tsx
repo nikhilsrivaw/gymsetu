@@ -13,6 +13,7 @@ import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';
+import { Links, WEBSITE_DISPLAY } from '@/constants/links';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -43,7 +44,7 @@ export default function OwnerLoginScreen() {
       router.replace('/(owner)/dashboard');
     } else {
       // No gym profile — account not set up via website yet
-      setError('No gym found for this account. Please complete registration at gymsetu.com first.');
+      setError(`No gym found for this account. Please complete registration at ${WEBSITE_DISPLAY} first.`);
     }
   }, [profile]);
 
@@ -245,10 +246,32 @@ export default function OwnerLoginScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>New to GymSetu? </Text>
-          <TouchableOpacity onPress={() => Linking.openURL('https://gymsetu.com/signup')} activeOpacity={0.7}>
-            <Text style={styles.link}>Register at gymsetu.com →</Text>
+        {/* No account? CTA — matches the web PWA */}
+        <View style={styles.signupBlock}>
+          <Text style={styles.signupMicro}>[NEW HERE]</Text>
+          <Text style={styles.signupTitle}>No account?{'\n'}Make one.</Text>
+          <Text style={styles.signupSub}>
+            Create your gym on the website — choose a plan, pay via Razorpay,
+            come back here to sign in.
+          </Text>
+          <TouchableOpacity
+            style={styles.signupBtn}
+            onPress={() => Linking.openURL(Links.home)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.signupBtnText}>
+              VISIT {WEBSITE_DISPLAY.toUpperCase()}
+            </Text>
+            <MaterialCommunityIcons name="arrow-right" size={16} color={Colors.bg} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => Linking.openURL(Links.pricing)}
+            activeOpacity={0.7}
+            style={{ marginTop: 12 }}
+          >
+            <Text style={styles.pricingLink}>
+              See plans · ₹999/mo onwards →
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -322,4 +345,34 @@ const styles = StyleSheet.create({
   footer:     { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
   footerText: { fontFamily: Fonts.regular, fontSize: 14, color: Colors.textMuted },
   link:       { fontFamily: Fonts.bold, fontSize: 14, color: Colors.accent },
+
+  signupBlock: {
+    marginTop: 32, paddingTop: 24,
+    borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  signupMicro: {
+    fontFamily: Fonts.bold, fontSize: 10, color: Colors.textMuted,
+    letterSpacing: 2, marginBottom: 10,
+  },
+  signupTitle: {
+    fontFamily: Fonts.condensedBold ?? Fonts.bold, fontSize: 28,
+    color: Colors.text, letterSpacing: -0.5, lineHeight: 32, marginBottom: 8,
+  },
+  signupSub: {
+    fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted,
+    lineHeight: 20, marginBottom: 18,
+  },
+  signupBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 20, paddingVertical: 16,
+    borderRadius: 999,
+  },
+  signupBtnText: {
+    fontFamily: Fonts.bold, fontSize: 13, color: Colors.bg, letterSpacing: 1.2,
+  },
+  pricingLink: {
+    fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted,
+    textAlign: 'center', textDecorationLine: 'underline',
+  },
 });

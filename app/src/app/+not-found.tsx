@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
   import { useRouter } from 'expo-router';                                                                             
   import { SafeAreaView } from 'react-native-safe-area-context';
   import { MaterialCommunityIcons } from '@expo/vector-icons';
-  import LottieView from 'lottie-react-native';
+  import LottieView from '@/components/AppLottie';
   import { Colors } from '@/constants/colors';
   import { Fonts } from '@/constants/fonts';
 

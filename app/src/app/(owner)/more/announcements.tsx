@@ -101,42 +101,94 @@ import { useState, useCallback } from 'react';
 
     const resetForm = () => { setTitle(''); setBody(''); setSelectedCat('General'); };
 
-    const handleSend = async () => {                                                                                         const mainGymId = (profile as any)?.gym_id;
-    const gymId = activeGymId === 'all' ? mainGymId : (activeGymId ?? mainGymId);                                      
-    if (!title.trim() || !body.trim() || !gymId) return;                                                               
-    setSaving(true);
-    const emoji = categories.find(c => c.label === selectedCat)?.emoji ?? '📢';
-    const { error } = await supabase.from('announcements').insert({
-      gym_id: gymId,
-      title: title.trim(),
-      body: body.trim(),
-      category: selectedCat,
-      emoji,
-    });
-    if (error) { setSaving(false); Alert.alert('Error', error.message); return; }
+    const handleSend = async () => {
+      const mainGymId = (profile as any)?.gym_id;
+      const gymId = activeGymId === 'all' ? mainGymId : (activeGymId ?? mainGymId);
+      if (!title.trim() || !body.trim() || !gymId) return;
 
-    // ── Broadcast to all members via WhatsApp ──
-    try {
-      await supabase.functions.invoke('send-whatsapp', {
-        body: {
-          type:   'announcement',
-          gym_id: gymId,
-          data: {
-            gym_name: gymName,
-            message:  `${emoji} ${title.trim()}\n\n${body.trim()}`,
-          },
-        },
+      // ── Count members with phone numbers for token check ──
+      const { data: membersWithPhone, error: countErr } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: false })
+        .eq('gym_id', gymId)
+        .eq('role', 'member')
+        .not('phone', 'is', null);
+
+      const memberCount = membersWithPhone?.length ?? 0;
+
+      if (memberCount > 0) {
+        const tokenBalance = useAuthStore.getState().tokenBalance;
+        const remaining = tokenBalance?.remaining ?? 0;
+
+        if (remaining < memberCount) {
+          Alert.alert(
+            'Tokens Kam Hai',
+            `WhatsApp broadcast ke liye ${memberCount} tokens chahiye (1 per member).\n\nAapke paas sirf ${remaining} tokens bache hain.\n\nAnnouncement save hoga but WhatsApp nahi jayega.`,
+            [
+              { text: 'Sirf Save Karo', onPress: () => saveAnnouncementOnly(gymId) },
+              { text: 'Cancel', style: 'cancel' },
+            ]
+          );
+          return;
+        }
+      }
+
+      setSaving(true);
+      const emoji = categories.find(c => c.label === selectedCat)?.emoji ?? '📢';
+      const { error } = await supabase.from('announcements').insert({
+        gym_id: gymId,
+        title: title.trim(),
+        body: body.trim(),
+        category: selectedCat,
+        emoji,
       });
-    } catch (e) {
-      // WhatsApp failure shouldn't block the announcement
-      console.warn('WhatsApp broadcast failed:', e);
-    }
+      if (error) { setSaving(false); Alert.alert('Error', error.message); return; }
 
-    setSaving(false);
-    setShow(false);
-    resetForm();
-    fetchAnnouncements();
-  };
+      // ── Broadcast to all members via WhatsApp ──
+      if (memberCount > 0) {
+        try {
+          const { data: waRes } = await supabase.functions.invoke('send-whatsapp', {
+            body: {
+              type:   'announcement',
+              gym_id: gymId,
+              data: {
+                gym_name: gymName,
+                message:  `${emoji} ${title.trim()}\n\n${body.trim()}`,
+              },
+            },
+          });
+
+          // Deduct tokens for successfully sent messages
+          const sent = waRes?.sent ?? 0;
+          if (sent > 0) {
+            await useAuthStore.getState().spendTokens(sent, 'whatsapp_broadcast');
+          }
+        } catch (e) {
+          console.warn('WhatsApp broadcast failed:', e);
+        }
+      }
+
+      setSaving(false);
+      setShow(false);
+      resetForm();
+      fetchAnnouncements();
+    };
+
+    const saveAnnouncementOnly = async (gymId: string) => {
+      setSaving(true);
+      const emoji = categories.find(c => c.label === selectedCat)?.emoji ?? '📢';
+      await supabase.from('announcements').insert({
+        gym_id: gymId,
+        title: title.trim(),
+        body: body.trim(),
+        category: selectedCat,
+        emoji,
+      });
+      setSaving(false);
+      setShow(false);
+      resetForm();
+      fetchAnnouncements();
+    };
 
 
     const handleDelete = (id: string) => {

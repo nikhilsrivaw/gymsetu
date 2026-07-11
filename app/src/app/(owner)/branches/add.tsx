@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator,
-  TextInput as RNTextInput, Modal, Pressable,
+  TextInput as RNTextInput, Modal, Alert, Linking,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';
+import { Links } from '@/constants/links';
 import AnimatedPressable from '@/components/AnimatedPressable';
 import FadeInView from '@/components/FadeInView';
 import { supabase } from '@/lib/supabase';
@@ -16,7 +17,14 @@ import { useAuthStore } from '@/store/authStore';
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
-// ── Custom field ──────────────────────────────────────────────────────────────
+// ── Branch packs ─────────────────────────────────────────────────
+const BRANCH_PACKS = [
+  { slots: 1, price: 799,   perMonth: '₹799'   },
+  { slots: 2, price: 1499,  perMonth: '₹1,499' },
+  { slots: 3, price: 2099,  perMonth: '₹2,099' },
+];
+
+// ── Custom field ──────────────────────────────────────────────────
 function Field({
   icon, label, value, onChange, required, hint, ...rest
 }: {
@@ -70,7 +78,7 @@ const f = StyleSheet.create({
 });
 
 export default function AddBranchScreen() {
-  const { profile, fetchBranches } = useAuthStore();
+  const { profile, fetchBranches, subscription, fetchSubscription } = useAuthStore();
   const router = useRouter();
 
   const [name,     setName]     = useState('');
@@ -82,8 +90,56 @@ export default function AddBranchScreen() {
   const [error,    setError]    = useState('');
   const [success,  setSuccess]  = useState(false);
 
+  // Branch slot tracking
+  const [currentBranchCount, setCurrentBranchCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const branchSlots  = subscription?.branch_slots ?? 0;
+  const slotsUsed    = currentBranchCount;
+  const slotsLeft    = Math.max(0, branchSlots - slotsUsed);
+  const hasSlots     = slotsLeft > 0;
+  const isPro        = !!subscription?.plan && subscription.plan !== 'basic';
+
+  // Count existing branches
+  useFocusEffect(useCallback(() => {
+    (async () => {
+      setLoading(true);
+      const mainGymId = (profile as any)?.gym_id;
+      if (!mainGymId) { setLoading(false); return; }
+
+      const { count } = await supabase
+        .from('gyms')
+        .select('id', { count: 'exact', head: true })
+        .eq('parent_gym_id', mainGymId);
+
+      setCurrentBranchCount(count ?? 0);
+      await fetchSubscription();
+      setLoading(false);
+    })();
+  }, [(profile as any)?.gym_id]));
+
   const handleSave = async () => {
     setError('');
+
+    // Gate: must be Pro
+    if (!isPro) {
+      Alert.alert(
+        'Pro Plan Required',
+        'Adding branches is available on Pro plan and above.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Upgrade', onPress: () => router.push('/paywall' as any) },
+        ]
+      );
+      return;
+    }
+
+    // Gate: must have available slots
+    if (!hasSlots) {
+      Alert.alert('No Branch Slots', 'Purchase a branch pack from the website to add more branches.');
+      return;
+    }
+
     if (!name.trim()) { setError('Branch name is required.'); return; }
     const mainGymId = (profile as any)?.gym_id;
     if (!mainGymId) { setError('No gym found. Please try again.'); return; }
@@ -115,6 +171,15 @@ export default function AddBranchScreen() {
     setSuccess(true);
   };
 
+  if (loading) return (
+    <>
+      <Stack.Screen options={{ title: 'Add Branch' }} />
+      <View style={{ flex: 1, backgroundColor: Colors.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={Colors.accent} />
+      </View>
+    </>
+  );
+
   return (
     <>
       <Stack.Screen options={{ title: 'Add Branch' }} />
@@ -125,119 +190,224 @@ export default function AddBranchScreen() {
         showsVerticalScrollIndicator={false}
       >
 
-        {/* ── Info banner ── */}
+        {/* ── Slot status banner ── */}
         <FadeInView delay={0}>
-          <View style={s.infoBanner}>
+          <View style={[s.slotBanner, hasSlots ? s.slotBannerOk : s.slotBannerEmpty]}>
             <LinearGradient
-              colors={[Colors.accent + '12', 'transparent']}
+              colors={[hasSlots ? Colors.green + '12' : '#A78BFA12', 'transparent']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill} pointerEvents="none"
             />
-            <View style={s.infoIconBox}>
-              <MaterialCommunityIcons name="source-branch" size={20} color={Colors.accent} />
+            <View style={[s.slotIconBox, { backgroundColor: hasSlots ? Colors.green + '18' : '#A78BFA18' }]}>
+              <MaterialCommunityIcons
+                name={hasSlots ? 'check-decagram' : 'lock-outline'}
+                size={20}
+                color={hasSlots ? Colors.green : '#A78BFA'}
+              />
             </View>
-            <View style={{ flex: 1, gap: 3 }}>
-              <Text style={s.infoTitle}>NEW BRANCH</Text>
-              <Text style={s.infoDesc}>
-                Each branch is fully independent — own members, trainers, payments & attendance.
+            <View style={{ flex: 1 }}>
+              <Text style={[s.slotTitle, { color: hasSlots ? Colors.green : '#A78BFA' }]}>
+                {hasSlots
+                  ? `${slotsLeft} BRANCH SLOT${slotsLeft !== 1 ? 'S' : ''} AVAILABLE`
+                  : 'NO BRANCH SLOTS'}
+              </Text>
+              <Text style={s.slotSub}>
+                {hasSlots
+                  ? `${slotsUsed} of ${branchSlots} slots used`
+                  : 'Purchase a branch pack to add locations'}
               </Text>
             </View>
           </View>
         </FadeInView>
 
-        {/* ── Fields ── */}
-        <FadeInView delay={60}>
-          <Text style={s.sectionLabel}>BRANCH DETAILS</Text>
-          <View style={s.card}>
-            <Field
-              icon="store-outline"
-              label="BRANCH NAME"
-              required
-              value={name}
-              onChange={(v) => { setName(v); setError(''); }}
-              placeholder="e.g. GymSetu Andheri"
-            />
-            <Field
-              icon="tag-outline"
-              label="BRANCH CODE"
-              value={code}
-              onChange={(v) => { setCode(v.toUpperCase()); setError(''); }}
-              autoCapitalize="characters"
-              maxLength={5}
-              placeholder="e.g. ANH"
-              hint="Short 2–5 letter identifier shown on reports"
-            />
-            <Field
-              icon="city-variant-outline"
-              label="CITY"
-              value={city}
-              onChange={setCity}
-              placeholder="e.g. Mumbai"
-            />
-            <Field
-              icon="map-marker-outline"
-              label="ADDRESS"
-              value={address}
-              onChange={setAddress}
-              placeholder="Full branch address"
-              multiline
-              numberOfLines={2}
-            />
-            <Field
-              icon="phone-outline"
-              label="PHONE"
-              value={phone}
-              onChange={setPhone}
-              keyboardType="phone-pad"
-              placeholder="+91 98765 43210"
-            />
-          </View>
-        </FadeInView>
+        {/* ── Buy Branches (shown when no slots) ── */}
+        {!hasSlots && (
+          <FadeInView delay={60}>
+            <Text style={s.sectionLabel}>BRANCH PACKS</Text>
 
-        {/* ── Tip card ── */}
-        <FadeInView delay={120}>
-          <View style={s.tipCard}>
-            <MaterialCommunityIcons name="lightbulb-on-outline" size={14} color={Colors.orange} />
-            <Text style={s.tipText}>
-              After creating, switch to the branch from the dashboard to add its members and trainers.
+            {BRANCH_PACKS.map((pack) => (
+              <View key={pack.slots} style={s.packCard}>
+                <View style={s.packRow}>
+                  <View style={s.packIconBox}>
+                    <MaterialCommunityIcons name="source-branch" size={20} color="#A78BFA" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.packLabel}>
+                      {pack.slots} {pack.slots === 1 ? 'Branch' : 'Branches'}
+                    </Text>
+                    <Text style={s.packSub}>added to monthly subscription</Text>
+                  </View>
+                  <View style={s.packPriceCol}>
+                    <Text style={s.packPrice}>{pack.perMonth}</Text>
+                    <Text style={s.packPriceUnit}>/month</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+
+            <Text style={s.packNote}>
+              Each branch gets its own members, trainers, payments & WhatsApp token pool.
             </Text>
-          </View>
-        </FadeInView>
 
-        {/* ── Inline error ── */}
-        {!!error && (
-          <FadeInView delay={0}>
-            <View style={s.errorBox}>
-              <MaterialCommunityIcons name="alert-circle-outline" size={14} color={Colors.red} />
-              <Text style={s.errorText}>{error}</Text>
-            </View>
+            {/* Buy on website */}
+            <AnimatedPressable
+              style={s.buyBtn}
+              scaleDown={0.97}
+              onPress={() => Linking.openURL(Links.branches)}
+            >
+              <LinearGradient
+                colors={['#A78BFA', '#7C3AED']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={s.buyBtnGrad}
+              >
+                <MaterialCommunityIcons name="cart-outline" size={18} color="#fff" />
+                <Text style={s.buyBtnText}>BUY ON WEBSITE</Text>
+                <MaterialCommunityIcons name="open-in-new" size={13} color="rgba(255,255,255,0.6)" />
+              </LinearGradient>
+            </AnimatedPressable>
+
+            {/* Already purchased? Refresh */}
+            <AnimatedPressable
+              style={s.refreshBtn}
+              scaleDown={0.95}
+              onPress={async () => {
+                setLoading(true);
+                await fetchSubscription();
+                const mainGymId = (profile as any)?.gym_id;
+                if (mainGymId) {
+                  const { count } = await supabase
+                    .from('gyms')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('parent_gym_id', mainGymId);
+                  setCurrentBranchCount(count ?? 0);
+                }
+                setLoading(false);
+              }}
+            >
+              <MaterialCommunityIcons name="refresh" size={14} color={Colors.textMuted} />
+              <Text style={s.refreshBtnText}>Already purchased? Tap to refresh</Text>
+            </AnimatedPressable>
           </FadeInView>
         )}
 
-        {/* ── Create button ── */}
-        <FadeInView delay={180}>
-          <AnimatedPressable
-            style={[s.createPressable, saving && { opacity: 0.6 }]}
-            onPress={handleSave}
-            disabled={saving}
-            scaleDown={0.97}
-          >
-            <LinearGradient
-              colors={[Colors.accent, '#C55A00']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={s.createBtn}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <MaterialCommunityIcons name="source-branch-plus" size={18} color="#fff" />
-                  <Text style={s.createBtnText}>CREATE BRANCH</Text>
-                </>
-              )}
-            </LinearGradient>
-          </AnimatedPressable>
-        </FadeInView>
+        {/* ── Branch Form (only when slots available) ── */}
+        {hasSlots && (
+          <>
+            {/* ── Info banner ── */}
+            <FadeInView delay={60}>
+              <View style={s.infoBanner}>
+                <LinearGradient
+                  colors={[Colors.accent + '12', 'transparent']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill} pointerEvents="none"
+                />
+                <View style={s.infoIconBox}>
+                  <MaterialCommunityIcons name="source-branch" size={20} color={Colors.accent} />
+                </View>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={s.infoTitle}>NEW BRANCH</Text>
+                  <Text style={s.infoDesc}>
+                    Each branch is fully independent — own members, trainers, payments & attendance.
+                  </Text>
+                </View>
+              </View>
+            </FadeInView>
+
+            {/* ── Fields ── */}
+            <FadeInView delay={120}>
+              <Text style={s.sectionLabel}>BRANCH DETAILS</Text>
+              <View style={s.card}>
+                <Field
+                  icon="store-outline"
+                  label="BRANCH NAME"
+                  required
+                  value={name}
+                  onChange={(v) => { setName(v); setError(''); }}
+                  placeholder="e.g. GymSetu Andheri"
+                />
+                <Field
+                  icon="tag-outline"
+                  label="BRANCH CODE"
+                  value={code}
+                  onChange={(v) => { setCode(v.toUpperCase()); setError(''); }}
+                  autoCapitalize="characters"
+                  maxLength={5}
+                  placeholder="e.g. ANH"
+                  hint="Short 2–5 letter identifier shown on reports"
+                />
+                <Field
+                  icon="city-variant-outline"
+                  label="CITY"
+                  value={city}
+                  onChange={setCity}
+                  placeholder="e.g. Mumbai"
+                />
+                <Field
+                  icon="map-marker-outline"
+                  label="ADDRESS"
+                  value={address}
+                  onChange={setAddress}
+                  placeholder="Full branch address"
+                  multiline
+                  numberOfLines={2}
+                />
+                <Field
+                  icon="phone-outline"
+                  label="PHONE"
+                  value={phone}
+                  onChange={setPhone}
+                  keyboardType="phone-pad"
+                  placeholder="+91 98765 43210"
+                />
+              </View>
+            </FadeInView>
+
+            {/* ── Tip card ── */}
+            <FadeInView delay={180}>
+              <View style={s.tipCard}>
+                <MaterialCommunityIcons name="lightbulb-on-outline" size={14} color={Colors.orange} />
+                <Text style={s.tipText}>
+                  After creating, switch to the branch from the dashboard to add its members and trainers.
+                </Text>
+              </View>
+            </FadeInView>
+
+            {/* ── Inline error ── */}
+            {!!error && (
+              <FadeInView delay={0}>
+                <View style={s.errorBox}>
+                  <MaterialCommunityIcons name="alert-circle-outline" size={14} color={Colors.red} />
+                  <Text style={s.errorText}>{error}</Text>
+                </View>
+              </FadeInView>
+            )}
+
+            {/* ── Create button ── */}
+            <FadeInView delay={240}>
+              <AnimatedPressable
+                style={[s.createPressable, saving && { opacity: 0.6 }]}
+                onPress={handleSave}
+                disabled={saving}
+                scaleDown={0.97}
+              >
+                <LinearGradient
+                  colors={[Colors.accent, '#C55A00']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={s.createBtn}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="source-branch-plus" size={18} color="#fff" />
+                      <Text style={s.createBtnText}>CREATE BRANCH</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </AnimatedPressable>
+            </FadeInView>
+          </>
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -252,23 +422,17 @@ export default function AddBranchScreen() {
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill} pointerEvents="none"
             />
-            {/* Top accent */}
             <View style={s.successTopBar} />
-
-            {/* Icon */}
             <View style={s.successIconRing}>
               <View style={s.successIconInner}>
                 <MaterialCommunityIcons name="check" size={32} color={Colors.green} />
               </View>
             </View>
-
             <Text style={s.successTitle}>BRANCH CREATED</Text>
             <Text style={s.successName}>{name}</Text>
             <Text style={s.successDesc}>
               Your new branch is ready. Switch to it from the dashboard branch switcher to start managing it.
             </Text>
-
-            {/* Details row */}
             <View style={s.successDetails}>
               {code ? (
                 <View style={s.successPill}>
@@ -283,8 +447,6 @@ export default function AddBranchScreen() {
                 </View>
               ) : null}
             </View>
-
-            {/* Button */}
             <AnimatedPressable
               style={s.successBtn}
               scaleDown={0.96}
@@ -310,7 +472,57 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   scroll:    { padding: 16, gap: 14 },
 
-  // ── Info banner ───────────────────────────────────────────────
+  // ── Slot status banner ──────────────────────────────────────────
+  slotBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: Colors.bgCard, borderRadius: 16,
+    borderWidth: 1, padding: 16, overflow: 'hidden',
+  },
+  slotBannerOk:    { borderColor: Colors.green + '40' },
+  slotBannerEmpty: { borderColor: '#A78BFA40' },
+  slotIconBox: {
+    width: 44, height: 44, borderRadius: 13,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  slotTitle: { fontFamily: Fonts.bold, fontSize: 11, letterSpacing: 1.2 },
+  slotSub:   { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+
+  // ── Pack cards ───────────────────────────────────────────────────
+  packCard: {
+    backgroundColor: Colors.bgCard, borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: Colors.border, marginBottom: 8,
+  },
+  packRow:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  packIconBox:  {
+    width: 40, height: 40, borderRadius: 11,
+    backgroundColor: '#A78BFA14', justifyContent: 'center', alignItems: 'center',
+  },
+  packLabel:     { fontFamily: Fonts.bold, fontSize: 14, color: Colors.text },
+  packSub:       { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted, marginTop: 1 },
+  packPriceCol:  { alignItems: 'flex-end' },
+  packPrice:     { fontFamily: Fonts.condensedBold, fontSize: 20, color: '#A78BFA' },
+  packPriceUnit: { fontFamily: Fonts.regular, fontSize: 9, color: Colors.textMuted },
+  packNote: {
+    fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted,
+    lineHeight: 17, marginTop: 4, marginBottom: 4,
+  },
+
+  // ── Buy button ──────────────────────────────────────────────────
+  buyBtn:      { marginTop: 4 },
+  buyBtnGrad:  {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 10, borderRadius: 16, paddingVertical: 18, minHeight: 58,
+  },
+  buyBtnText: { fontFamily: Fonts.bold, fontSize: 14, color: '#fff', letterSpacing: 2 },
+
+  // ── Refresh button ──────────────────────────────────────────────
+  refreshBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 14,
+  },
+  refreshBtnText: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted },
+
+  // ── Info banner ─────────────────────────────────────────────────
   infoBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: Colors.bgCard, borderRadius: 16,
@@ -326,11 +538,11 @@ const s = StyleSheet.create({
   infoTitle: { fontFamily: Fonts.bold, fontSize: 11, color: Colors.accent, letterSpacing: 1.3 },
   infoDesc:  { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted, lineHeight: 18 },
 
-  // ── Fields ───────────────────────────────────────────────────
+  // ── Fields ──────────────────────────────────────────────────────
   sectionLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.8, marginBottom: 8 },
   card:         { backgroundColor: Colors.bgCard, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: Colors.border, gap: 12 },
 
-  // ── Tip ──────────────────────────────────────────────────────
+  // ── Tip ─────────────────────────────────────────────────────────
   tipCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
     backgroundColor: Colors.orange + '10', borderRadius: 12,
@@ -339,7 +551,7 @@ const s = StyleSheet.create({
   },
   tipText: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted, lineHeight: 18, flex: 1 },
 
-  // ── Error ────────────────────────────────────────────────────
+  // ── Error ───────────────────────────────────────────────────────
   errorBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: Colors.red + '14', borderRadius: 12,
@@ -348,12 +560,12 @@ const s = StyleSheet.create({
   },
   errorText: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.red, flex: 1 },
 
-  // ── Create button ────────────────────────────────────────────
+  // ── Create button ───────────────────────────────────────────────
   createPressable: {},
   createBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 16, paddingVertical: 18, minHeight: 58 },
   createBtnText:   { fontFamily: Fonts.bold, fontSize: 14, color: '#fff', letterSpacing: 2 },
 
-  // ── Success overlay ──────────────────────────────────────────
+  // ── Success overlay ─────────────────────────────────────────────
   successOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   successCard: {
     width: '100%', backgroundColor: Colors.bgCard,
@@ -361,34 +573,30 @@ const s = StyleSheet.create({
     overflow: 'hidden', alignItems: 'center',
     paddingHorizontal: 28, paddingBottom: 28,
   },
-  successTopBar: {
-    alignSelf: 'stretch', height: 3,
-    backgroundColor: Colors.green, marginBottom: 28,
-  },
+  successTopBar:   { alignSelf: 'stretch', height: 3, backgroundColor: Colors.green, marginBottom: 28 },
   successIconRing: {
     width: 80, height: 80, borderRadius: 40,
     backgroundColor: Colors.green + '14',
     borderWidth: 1, borderColor: Colors.green + '40',
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 20,
   },
   successIconInner: {
     width: 60, height: 60, borderRadius: 30,
     backgroundColor: Colors.green + '22',
     justifyContent: 'center', alignItems: 'center',
   },
-  successTitle:  { fontFamily: Fonts.condensedBold, fontSize: 14, color: Colors.green, letterSpacing: 3, marginBottom: 8 },
-  successName:   { fontFamily: Fonts.condensedBold, fontSize: 26, color: Colors.text, textAlign: 'center', marginBottom: 10 },
-  successDesc:   { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
-  successDetails:{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 24 },
-  successPill:   {
+  successTitle:   { fontFamily: Fonts.condensedBold, fontSize: 14, color: Colors.green, letterSpacing: 3, marginBottom: 8 },
+  successName:    { fontFamily: Fonts.condensedBold, fontSize: 26, color: Colors.text, textAlign: 'center', marginBottom: 10 },
+  successDesc:    { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+  successDetails: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 24 },
+  successPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: Colors.accentMuted, borderRadius: 20,
     paddingHorizontal: 10, paddingVertical: 5,
     borderWidth: 1, borderColor: Colors.accent + '30',
   },
   successPillText: { fontFamily: Fonts.bold, fontSize: 10, color: Colors.accent, letterSpacing: 0.5 },
-  successBtn:    { alignSelf: 'stretch' },
-  successBtnGrad:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, paddingVertical: 16 },
-  successBtnText:{ fontFamily: Fonts.bold, fontSize: 13, color: '#fff', letterSpacing: 1.5 },
+  successBtn:      { alignSelf: 'stretch' },
+  successBtnGrad:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, paddingVertical: 16 },
+  successBtnText:  { fontFamily: Fonts.bold, fontSize: 13, color: '#fff', letterSpacing: 1.5 },
 });

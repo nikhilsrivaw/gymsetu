@@ -148,7 +148,7 @@ export interface StaffPermission {
   created_at: string;
 }
 
-export type SubscriptionPlan   = 'basic' | 'pro';
+export type SubscriptionPlan   = 'basic' | 'pro' | 'pro_plus' | 'pro_max';
 export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'cancelled';
 
 export interface GymSubscription {
@@ -160,6 +160,7 @@ export interface GymSubscription {
   trial_ends_at: string | null;
   current_period_start: string;
   current_period_end: string;
+  branch_slots: number;
   created_at: string;
   updated_at: string;
 }

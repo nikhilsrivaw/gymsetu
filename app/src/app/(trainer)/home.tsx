@@ -6,7 +6,7 @@ import { useNavigation, useFocusEffect } from 'expo-router';
 import { DrawerActions } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import LottieView from 'lottie-react-native';
+import LottieView from '@/components/AppLottie';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';

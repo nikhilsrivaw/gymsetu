@@ -1,7 +1,7 @@
  import { useState, useCallback } from 'react';                                                                       
   import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';                                   import { Stack, useFocusEffect } from 'expo-router';                                                                 
   import { MaterialCommunityIcons } from '@expo/vector-icons';                                                         
-  import LottieView from 'lottie-react-native';
+  import LottieView from '@/components/AppLottie';
   import { Colors } from '@/constants/colors';
   import { Fonts } from '@/constants/fonts';
   import FadeInView from '@/components/FadeInView';

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Pressable } from
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import LottieView from 'lottie-react-native';
+import LottieView from '@/components/AppLottie';
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';
 import AnimatedPressable from '@/components/AnimatedPressable';
@@ -115,7 +115,7 @@ export default function DietPlanScreen() {
   const [aiDietPlan, setAiDietPlan]       = useState<string | null>(null);
   const [aiDietLoading, setAiDietLoading] = useState(false);
 
-  const lottieRef = useRef<LottieView>(null);
+  const lottieRef = useRef<any>(null);
   const todayStr  = new Date().toISOString().split('T')[0];
 
   // ── Fetch ──────────────────────────────────────────────────────

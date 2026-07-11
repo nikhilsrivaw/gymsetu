@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';
+import { Links, WEBSITE_DISPLAY } from '@/constants/links';
 import AnimatedPressable from '@/components/AnimatedPressable';
 import { useAuthStore } from '@/store/authStore';
 
@@ -22,7 +23,7 @@ export default function RegisterScreen() {
   }
 
   const steps = [
-    { n: '1', text: 'Visit gymsetu.com/signup on your browser' },
+    { n: '1', text: `Visit ${WEBSITE_DISPLAY}/signup on your browser` },
     { n: '2', text: 'Enter your gym details and choose a plan' },
     { n: '3', text: 'Pay securely via Razorpay (Basic ₹999 · Pro ₹1,699)' },
     { n: '4', text: 'Come back here and sign in with your email & password' },
@@ -76,10 +77,10 @@ export default function RegisterScreen() {
         <AnimatedPressable
           style={s.primaryBtn}
           scaleDown={0.97}
-          onPress={() => Linking.openURL('https://gymsetu.com/signup')}
+          onPress={() => Linking.openURL(Links.signup)}
         >
           <MaterialCommunityIcons name="open-in-new" size={18} color="#fff" />
-          <Text style={s.primaryBtnText}>Open gymsetu.com/signup</Text>
+          <Text style={s.primaryBtnText}>Open {WEBSITE_DISPLAY}/signup</Text>
         </AnimatedPressable>
 
         <AnimatedPressable

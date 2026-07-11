@@ -35,7 +35,16 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "GymSetu",
+      "shortName": "GymSetu",
+      "themeColor": "#0a0a0a",
+      "backgroundColor": "#0a0a0a",
+      "display": "standalone",
+      "orientation": "portrait",
+      "lang": "en"
     },
     "plugins": [
       [

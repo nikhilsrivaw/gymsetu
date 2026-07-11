@@ -7,7 +7,7 @@
   import { MaterialCommunityIcons } from '@expo/vector-icons';
   import { SafeAreaView } from 'react-native-safe-area-context';
   import { useRef, useEffect, useState, useCallback } from 'react';
-  import LottieView from 'lottie-react-native';
+  import LottieView from '@/components/AppLottie';
   import { Colors } from '@/constants/colors';
   import { Fonts } from '@/constants/fonts';
   import { ActivityIndicator } from 'react-native';

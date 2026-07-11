@@ -8,7 +8,7 @@
   import FadeInView from '@/components/FadeInView';
   import { supabase } from '@/lib/supabase';
   import { useAuthStore } from '@/store/authStore';
-   import LottieView from 'lottie-react-native';
+   import LottieView from '@/components/AppLottie';
 
   interface BranchStats {
     id: string;
@@ -23,7 +23,7 @@
   }
 
   export default function BranchesScreen() {
-    const { profile, activeGymId, setActiveGym, fetchBranches } = useAuthStore();
+    const { profile, activeGymId, setActiveGym, fetchBranches, subscription } = useAuthStore();
     const router  = useRouter();
     const [branches, setBranches] = useState<BranchStats[]>([]);
     const [loading, setLoading]  = useState(true);
@@ -128,14 +128,52 @@
 
           {/* Add Branch Button */}
           <FadeInView delay={60}>
-            <AnimatedPressable
-              style={styles.addBtn}
-              scaleDown={0.97}
-              onPress={() => router.push('/(owner)/branches/add' as any)}
-            >
-              <MaterialCommunityIcons name="plus-circle-outline" size={20} color={Colors.accent} />
-              <Text style={styles.addBtnText}>ADD NEW BRANCH</Text>
-            </AnimatedPressable>
+            {(() => {
+              const branchSlots = subscription?.branch_slots ?? 0;
+              const branchCount = branches.filter(b => b.is_branch).length;
+              const slotsLeft   = Math.max(0, branchSlots - branchCount);
+              const isPro       = !!subscription?.plan && subscription.plan !== 'basic';
+
+              return (
+                <View>
+                  <AnimatedPressable
+                    style={styles.addBtn}
+                    scaleDown={0.97}
+                    onPress={() => {
+                      if (!isPro) {
+                        Alert.alert(
+                          'Pro Plan Required',
+                          'Adding branches is available on Pro plan and above.',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Upgrade', onPress: () => router.push('/paywall' as any) },
+                          ]
+                        );
+                        return;
+                      }
+                      router.push('/(owner)/branches/add' as any);
+                    }}
+                  >
+                    <MaterialCommunityIcons name="plus-circle-outline" size={20} color={Colors.accent} />
+                    <Text style={styles.addBtnText}>ADD NEW BRANCH</Text>
+                    {!isPro && (
+                      <View style={styles.proBadge}>
+                        <Text style={styles.proBadgeText}>PRO</Text>
+                      </View>
+                    )}
+                  </AnimatedPressable>
+                  {isPro && (
+                    <Text style={styles.slotHint}>
+                      {slotsLeft > 0
+                        ? `${slotsLeft} of ${branchSlots} slot${branchSlots !== 1 ? 's' : ''} available`
+                        : branchSlots === 0
+                          ? 'No branch slots — purchase a pack to add branches'
+                          : 'All slots used — purchase more to add branches'}
+                    </Text>
+                  )}
+                </View>
+              );
+            })()}
           </FadeInView>
 
           {/* Branch Cards */}
@@ -242,6 +280,9 @@
    borderRadius: 14, borderWidth: 1, borderColor: Colors.accent + '50', borderStyle: 'dashed', backgroundColor:      
   Colors.accentMuted },
     addBtnText: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.accent, letterSpacing: 1.2 },
+    proBadge:     { backgroundColor: Colors.accent, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+    proBadgeText: { fontFamily: Fonts.bold, fontSize: 8, color: '#fff', letterSpacing: 1 },
+    slotHint:     { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, textAlign: 'center', marginTop: 6 },
 
     sectionLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.5 },
 

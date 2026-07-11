@@ -17,7 +17,7 @@ import FadeInView from '@/components/FadeInView';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import type { MembershipPlan } from '@/types/database';
-import LottieView from 'lottie-react-native';
+import LottieView from '@/components/AppLottie';
 
 const planColors = [Colors.accent, Colors.green, '#4F6EF7', Colors.orange, '#EC4899'];
 

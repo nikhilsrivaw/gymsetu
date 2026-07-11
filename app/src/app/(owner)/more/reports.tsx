@@ -2,7 +2,7 @@
   import { useState } from 'react';                                                                                    
   import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';         import { MaterialCommunityIcons } from '@expo/vector-icons';                                                         
   import { useRouter, Stack } from 'expo-router';                                                                      
-  import LottieView from 'lottie-react-native';
+  import LottieView from '@/components/AppLottie';
   import { Colors } from '@/constants/colors';
   import { Fonts } from '@/constants/fonts';
   import AnimatedPressable from '@/components/AnimatedPressable';
@@ -32,7 +32,7 @@
   export default function ReportsHubScreen() {
     const router = useRouter();
     const { profile, activeGymId, branches, subscription } = useAuthStore();
-    const isPro = subscription?.plan === 'pro' &&
+    const isPro = !!subscription?.plan && subscription.plan !== 'basic' &&
       (subscription?.status === 'trial' || subscription?.status === 'active');
     const [monthlyReport, setMonthlyReport] = useState<string | null>(null);
     const [reportLoading, setReportLoading] = useState(false);
@@ -119,7 +119,7 @@
                 ) : (
                   <TouchableOpacity
                     style={s.aiLockedBtn}
-                    onPress={() => Alert.alert('⚡ Pro Feature', 'AI reports require the Pro plan.\n\nUpgrade at gymsetu.com/pricing', [{ text: 'OK' }])}
+                    onPress={() => Alert.alert('⚡ Pro Feature', 'AI reports require the Pro plan.\n\nUpgrade at gymsetu.it.com/pricing', [{ text: 'OK' }])}
                   >
                     <MaterialCommunityIcons name="lock-outline" size={12} color={Colors.accent} />
                     <Text style={s.aiLockedBtnText}>PRO</Text>

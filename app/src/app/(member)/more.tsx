@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import LottieView from 'lottie-react-native';
+import LottieView from '@/components/AppLottie';
 
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';

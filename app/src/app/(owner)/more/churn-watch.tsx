@@ -5,7 +5,7 @@ import { useState, useCallback } from 'react';
   import { supabase } from '@/lib/supabase';
   import { useAuthStore } from '@/store/authStore';
   import FadeInView from '@/components/FadeInView';
-import LottieView from 'lottie-react-native';
+import LottieView from '@/components/AppLottie';
 
   type RiskLevel = 'HIGH' | 'MEDIUM' | 'LOW';
 

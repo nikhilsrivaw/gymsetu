@@ -52,7 +52,7 @@ interface AuthState {
   fetchBranches: () => Promise<void>;
   fetchGymProfile: () => Promise<void>;
   fetchSubscription: () => Promise<void>;
-  spendTokens: (amount?: number) => Promise<{ error: string | null; remaining?: number }>;
+  spendTokens: (amount?: number, feature?: string) => Promise<{ error: string | null; remaining?: number }>;
   setActiveGym: (gymId: string) => void;
   clearError: () => void;
 }
@@ -61,6 +61,15 @@ interface AuthState {
 function currentMonthYear(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function tokensForPlan(plan: string | undefined | null): number {
+  switch (plan) {
+    case 'pro':      return 500;
+    case 'pro_plus': return 1000;
+    case 'pro_max':  return 2000;
+    default:         return 0;
+  }
 }
 
 // ── Singleton auth subscription ───────────────────────────────
@@ -219,8 +228,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (subError) throw subError;
       set({ subscription: sub as GymSubscription | null });
 
-      // Fetch token balance for current month (Pro only)
-      if (sub && sub.plan === 'pro' && sub.status !== 'expired' && sub.status !== 'cancelled') {
+      // Fetch token balance for current month (Pro tiers only)
+      const planTokens = tokensForPlan(sub?.plan);
+      if (sub && planTokens > 0 && sub.status !== 'expired' && sub.status !== 'cancelled') {
         const gymId = (get().profile as any)?.gym_id;
         if (!gymId) return;
 
@@ -244,7 +254,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         } else {
           // No record yet this month — treat as full balance
           set({
-            tokenBalance: { total: 500, used: 0, remaining: 500, monthYear },
+            tokenBalance: { total: planTokens, used: 0, remaining: planTokens, monthYear },
           });
         }
       } else {
@@ -256,31 +266,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // ── Spend Tokens ───────────────────────────────────────────
-  spendTokens: async (amount = 1) => {
+  spendTokens: async (amount = 1, feature = 'unknown') => {
     try {
       const gymId = (get().profile as any)?.gym_id;
       if (!gymId) return { error: 'No gym found' };
 
       const sub = get().subscription;
-      if (!sub || sub.plan !== 'pro') return { error: 'Pro plan required' };
+      const planTotal = tokensForPlan(sub?.plan);
+      if (!sub || planTotal === 0) return { error: 'Pro plan required' };
 
       const balance = get().tokenBalance;
       const remaining = balance?.remaining ?? 0;
       if (remaining < amount) return { error: 'Insufficient tokens' };
 
       const monthYear = currentMonthYear();
+      const total = balance?.total ?? planTotal;
       const newUsed = (balance?.used ?? 0) + amount;
 
       const { error } = await supabase
         .from('subscription_tokens')
         .upsert(
-          { gym_id: gymId, month_year: monthYear, tokens_total: 500, tokens_used: newUsed },
+          { gym_id: gymId, month_year: monthYear, tokens_total: total, tokens_used: newUsed },
           { onConflict: 'gym_id,month_year' }
         );
 
       if (error) return { error: error.message };
 
-      const newBalance = { total: 500, used: newUsed, remaining: 500 - newUsed, monthYear };
+      // Log usage to token_usage_log for breakdown tracking (non-blocking)
+      try {
+        await supabase.from('token_usage_log').insert({
+          gym_id: gymId,
+          feature,
+          tokens_spent: amount,
+        });
+      } catch {}
+
+      const newBalance = { total, used: newUsed, remaining: total - newUsed, monthYear };
       set({ tokenBalance: newBalance });
       return { error: null, remaining: newBalance.remaining };
     } catch (err: any) {

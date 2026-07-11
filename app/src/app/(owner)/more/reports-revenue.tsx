@@ -31,7 +31,7 @@
 
   export default function ReportsRevenueScreen() {
     const { profile, activeGymId, branches, subscription } = useAuthStore();
-    const isPro = subscription?.plan === 'pro' &&
+    const isPro = !!subscription?.plan && subscription.plan !== 'basic' &&
       (subscription?.status === 'trial' || subscription?.status === 'active');
     const [data, setData]           = useState<RevenueData | null>(null);
     const [loading, setLoading]     = useState(true);
@@ -174,7 +174,7 @@
                 ) : (
                   <TouchableOpacity
                     style={styles.aiLockedBtn}
-                    onPress={() => Alert.alert('⚡ Pro Feature', 'AI revenue summaries require the Pro plan.\n\nUpgrade at gymsetu.com/pricing', [{ text: 'OK' }])}
+                    onPress={() => Alert.alert('⚡ Pro Feature', 'AI revenue summaries require the Pro plan.\n\nUpgrade at gymsetu.it.com/pricing', [{ text: 'OK' }])}
                   >
                     <Text style={styles.aiLockedBtnText}>🔒 PRO</Text>
                   </TouchableOpacity>

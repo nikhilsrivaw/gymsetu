@@ -23,6 +23,13 @@ const PRO_ONLY = new Set([
   '/(owner)/more/announcements',
 ]);
 
+// Routes not yet built — show "coming soon" instead of navigating to 404
+const COMING_SOON = new Set([
+  '/(owner)/more/lockers',
+  '/(owner)/more/incidents',
+  '/(owner)/more/suppliers',
+]);
+
 const sections: { title: string; icon: IconName; color: string; items: MenuItem[] }[] = [
   {
     title: 'REPORTS', icon: 'chart-bar', color: Colors.accent,
@@ -77,13 +84,21 @@ const totalItems = sections.reduce((s, sec) => s + sec.items.length, 0);
 export default function MoreScreen() {
   const router = useRouter();
   const { subscription } = useAuthStore();
-  const isPro = subscription?.plan === 'pro' &&
+  const isPro = !!subscription?.plan && subscription.plan !== 'basic' &&
     (subscription?.status === 'trial' || subscription?.status === 'active');
 
   function handlePress(route: string) {
+    if (COMING_SOON.has(route)) {
+      Alert.alert(
+        'Jald Aata Hai',
+        'Yeh feature abhi development mein hai. Jaldi aa raha hai!',
+        [{ text: 'OK', style: 'cancel' }]
+      );
+      return;
+    }
     if (!isPro && PRO_ONLY.has(route)) {
       Alert.alert(
-        '🔒 Pro Plan Chahiye',
+        'Pro Plan Chahiye',
         'Yeh feature sirf Pro plan mein milta hai (₹1,699/month).\n\nUpgrade karo aur AI tips, WhatsApp automation aur bahut kuch unlock karo.',
         [
           { text: 'Abhi Nahi', style: 'cancel' },
@@ -123,7 +138,7 @@ export default function MoreScreen() {
             />
             <Text style={[s.planBadgeText, isPro ? s.planBadgeTextPro : s.planBadgeTextBasic]}>
               {isPro
-                ? `PRO PLAN${subscription?.status === 'trial' ? ' · FREE TRIAL' : ' · ACTIVE'}`
+                ? `${(subscription?.plan ?? 'pro').toUpperCase().replace('_', ' ')} PLAN${subscription?.status === 'trial' ? ' · FREE TRIAL' : ' · ACTIVE'}`
                 : 'BASIC PLAN · 🔒 wale features upgrade karne par milenge'}
             </Text>
           </View>
@@ -145,6 +160,7 @@ export default function MoreScreen() {
               <View style={s.itemsCard}>
                 {section.items.map((item, i) => {
                   const locked = !isPro && PRO_ONLY.has(item.route);
+                  const soon   = COMING_SOON.has(item.route);
                   return (
                     <AnimatedPressable
                       key={item.label}
@@ -152,32 +168,37 @@ export default function MoreScreen() {
                       scaleDown={0.97}
                       onPress={() => handlePress(item.route)}
                     >
-                      <View style={[s.iconWrap, { backgroundColor: locked ? '#1a1a1a' : item.color + '12' }]}>
+                      <View style={[s.iconWrap, { backgroundColor: (locked || soon) ? '#1a1a1a' : item.color + '12' }]}>
                         <MaterialCommunityIcons
                           name={item.icon}
                           size={20}
-                          color={locked ? '#444' : item.color}
+                          color={(locked || soon) ? '#444' : item.color}
                         />
                       </View>
 
                       <View style={s.rowText}>
                         <View style={s.rowLabelRow}>
-                          <Text style={[s.rowLabel, locked && s.rowLabelLocked]}>{item.label}</Text>
+                          <Text style={[s.rowLabel, (locked || soon) && s.rowLabelLocked]}>{item.label}</Text>
                           {locked && (
                             <View style={s.proBadge}>
                               <MaterialCommunityIcons name="crown" size={9} color={Colors.accent} />
                               <Text style={s.proBadgeText}>PRO</Text>
                             </View>
                           )}
+                          {soon && (
+                            <View style={s.soonBadge}>
+                              <Text style={s.soonBadgeText}>SOON</Text>
+                            </View>
+                          )}
                         </View>
-                        <Text style={[s.rowDesc, locked && s.rowDescLocked]}>{item.desc}</Text>
+                        <Text style={[s.rowDesc, (locked || soon) && s.rowDescLocked]}>{item.desc}</Text>
                       </View>
 
-                      <View style={[s.arrowWrap, { backgroundColor: locked ? '#111' : item.color + '10' }]}>
+                      <View style={[s.arrowWrap, { backgroundColor: (locked || soon) ? '#111' : item.color + '10' }]}>
                         <MaterialCommunityIcons
-                          name={locked ? 'lock-outline' : 'chevron-right'}
-                          size={locked ? 15 : 18}
-                          color={locked ? '#333' : item.color}
+                          name={locked ? 'lock-outline' : soon ? 'clock-outline' : 'chevron-right'}
+                          size={(locked || soon) ? 15 : 18}
+                          color={(locked || soon) ? '#333' : item.color}
                         />
                       </View>
                     </AnimatedPressable>
@@ -234,6 +255,8 @@ const s = StyleSheet.create({
 
   proBadge:     { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Colors.accent + '15', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: Colors.accent + '30' },
   proBadgeText: { fontFamily: Fonts.bold, fontSize: 8, color: Colors.accent, letterSpacing: 1 },
+  soonBadge:    { backgroundColor: '#2a2a2a', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: '#333' },
+  soonBadgeText:{ fontFamily: Fonts.bold, fontSize: 8, color: '#555', letterSpacing: 1 },
 
   version: { fontFamily: Fonts.bold, fontSize: 9, color: '#2a2a2a', letterSpacing: 2, textAlign: 'center', marginTop: 8 },
 });

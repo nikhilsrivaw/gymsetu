@@ -1,0 +1,18 @@
+# Reverse proxy: HTTPS  ->  Kong (Supabase API gateway on :8000)
+# Put at /etc/caddy/Caddyfile, then: sudo systemctl restart caddy
+#
+# Pick ONE option depending on how Cloudflare is set for api.gymsetu.it.com.
+
+# ── Option A (recommended): Caddy gets its own Let's Encrypt cert ───────────
+# Set the Cloudflare DNS record to "DNS only" (grey cloud) until the cert
+# issues, then flip to "Proxied" (orange) with SSL mode = Full (strict).
+api.gymsetu.it.com {
+    reverse_proxy localhost:8000
+}
+
+# ── Option B (fastest launch): Cloudflare Flexible, origin over HTTP ────────
+# Comment out Option A above and use this instead. Cloudflare (orange cloud)
+# terminates TLS; Caddy just serves plain HTTP on :80. SSL mode = Flexible.
+# :80 {
+#     reverse_proxy localhost:8000
+# }

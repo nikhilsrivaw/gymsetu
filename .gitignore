@@ -48,8 +48,14 @@ yarn-error.*
 Thumbs.db
 desktop.ini
 
-# Markdown / planning docs (not code)
-*.md
+# Website lives in its own git repo — kept here locally for reference only
+GYMSETU--WEB/
 
-# Database folder (schema reference only, not deployable)
-database/
+# Markdown / planning docs (not code) — but DO track the backend runbooks
+*.md
+!database/*.md
+!deploy/*.md
+
+# Database folder is now the AUTHORITATIVE, deployable backend — DO track it.
+# (Previously ignored as "schema reference only"; reversed after the Supabase
+#  project was deleted and rebuilt from these files.)

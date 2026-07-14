@@ -20,7 +20,10 @@ create extension if not exists pg_net;
 create table if not exists app_config (key text primary key, value text);
 insert into app_config (key, value) values
   ('whatsapp_fn_url', 'https://api.gymsetu.it.com/functions/v1/send-whatsapp'),
-  ('webhook_secret',  'gymsetu_webhook_2026')
+  ('webhook_secret',  'gymsetu_webhook_2026'),
+  -- anon key is required so the request passes the Kong gateway; set the real
+  -- value when loading (it's the public anon key, safe to store here).
+  ('anon_key',        'REPLACE_WITH_ANON_KEY')
 on conflict (key) do update set value = excluded.value;
 
 -- ----------------------------------------------------------------------------
@@ -31,6 +34,7 @@ returns void as $$
 declare
   fn_url  text := (select value from app_config where key = 'whatsapp_fn_url');
   secret  text := (select value from app_config where key = 'webhook_secret');
+  anon    text := (select value from app_config where key = 'anon_key');
   r       record;
 begin
   -- 1) EXPIRY REMINDER — active plans ending in exactly 3 days
@@ -47,7 +51,7 @@ begin
   loop
     perform net.http_post(
       url     := fn_url,
-      headers := jsonb_build_object('Content-Type','application/json','x-webhook-secret',secret),
+      headers := jsonb_build_object('Content-Type','application/json','x-webhook-secret',secret,'Authorization','Bearer '||anon,'apikey',anon),
       body    := jsonb_build_object(
         'type','expiry_reminder','phone',r.phone,'gym_id',r.gym_id,
         'data', jsonb_build_object('member_name',r.member_name,'gym_name',r.gym_name,
@@ -69,7 +73,7 @@ begin
   loop
     perform net.http_post(
       url     := fn_url,
-      headers := jsonb_build_object('Content-Type','application/json','x-webhook-secret',secret),
+      headers := jsonb_build_object('Content-Type','application/json','x-webhook-secret',secret,'Authorization','Bearer '||anon,'apikey',anon),
       body    := jsonb_build_object(
         'type','membership_expired','phone',r.phone,'gym_id',r.gym_id,
         'data', jsonb_build_object('member_name',r.member_name,'gym_name',r.gym_name,
@@ -95,7 +99,7 @@ begin
   loop
     perform net.http_post(
       url     := fn_url,
-      headers := jsonb_build_object('Content-Type','application/json','x-webhook-secret',secret),
+      headers := jsonb_build_object('Content-Type','application/json','x-webhook-secret',secret,'Authorization','Bearer '||anon,'apikey',anon),
       body    := jsonb_build_object(
         'type','inactive_nudge','phone',r.phone,'gym_id',r.gym_id,
         'data', jsonb_build_object('member_name',r.member_name,'gym_name',r.gym_name,

@@ -105,13 +105,14 @@ function getTemplateInfo(
   switch (type) {
     case "welcome":
       return {
-        template: "gymsetu_welcome_member",
-        // {{1}} member_name, {{2}} gym_name, {{3}} member_code, {{4}} member_password
+        template: "gymsetu_welcome_members",
+        // {{1}} member_name, {{2}} gym_name
+        // NOTE: login credentials are intentionally NOT sent over WhatsApp —
+        // Meta rejects templates that share passwords. The gym owner shares the
+        // member's login ID + password directly (shown to them in the app).
         params: [
           data.member_name ?? "",
           data.gym_name ?? "",
-          data.member_code ?? "",
-          data.member_password ?? "",
         ],
       };
 

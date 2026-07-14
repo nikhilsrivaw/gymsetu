@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TextInput as RNTextInput, Modal, TouchableOpacity,
-  ActivityIndicator, Keyboard, Pressable,
+  ActivityIndicator, Keyboard, Pressable, Linking,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -18,7 +18,7 @@ import type { MembershipPlan } from '@/types/database';
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
-interface Credentials { code: string; password: string; name: string; }
+interface Credentials { code: string; password: string; name: string; phone: string; }
 
 const DOB_RE   = /^\d{2}\/\d{2}\/\d{4}$/;
 const PHONE_RE = /^\d{10,15}$/;
@@ -358,7 +358,7 @@ export default function TrainerAddMemberScreen() {
         }).catch(() => {});
       }
 
-      setCredentials({ code: credData.code, password: credData.password, name: trimmedName });
+      setCredentials({ code: credData.code, password: credData.password, name: trimmedName, phone: trimmedPhone });
     } catch (err: any) {
       setError(err.message ?? 'Something went wrong.');
     } finally {
@@ -408,6 +408,30 @@ export default function TrainerAddMemberScreen() {
               <MaterialCommunityIcons name="alert-circle-outline" size={13} color={Colors.orange} />
               <Text style={s.warningText}>Screenshot or write this down — the member uses these to log in.</Text>
             </View>
+
+            {/* Share credentials via the trainer's own WhatsApp (no Meta template needed) */}
+            <AnimatedPressable
+              style={s.modalShareBtn}
+              scaleDown={0.97}
+              onPress={() => {
+                if (!credentials) return;
+                const gymName = gymProfile?.name ?? 'our gym';
+                const msg =
+                  `Hi ${credentials.name}! Welcome to ${gymName}. 🎉\n\n` +
+                  `Here are your GymSetu app login details:\n` +
+                  `Member ID: ${credentials.code}\n` +
+                  `Password: ${credentials.password}\n\n` +
+                  `Download GymSetu, choose "Member", and log in with these. See you at the gym! 💪`;
+                const digits = credentials.phone.replace(/\D/g, '');
+                const to = digits.length === 10 ? `91${digits}` : digits;
+                Linking.openURL(`https://wa.me/${to}?text=${encodeURIComponent(msg)}`).catch(() => {});
+              }}
+            >
+              <View style={s.modalShareInner}>
+                <MaterialCommunityIcons name="whatsapp" size={18} color="#fff" />
+                <Text style={s.modalShareText}>SHARE ON WHATSAPP</Text>
+              </View>
+            </AnimatedPressable>
 
             <AnimatedPressable
               style={s.modalDoneBtn}
@@ -736,6 +760,13 @@ const s = StyleSheet.create({
 
   warningRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: Colors.orange + '0E', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: Colors.orange + '20' },
   warningText: { fontFamily: Fonts.regular, fontSize: 11, color: Colors.orange, flex: 1, lineHeight: 17 },
+
+  modalShareBtn:   { marginBottom: 10 },
+  modalShareInner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9,
+    borderRadius: 14, paddingVertical: 15, backgroundColor: '#25D366',
+  },
+  modalShareText:  { fontFamily: Fonts.bold, fontSize: 14, color: '#fff', letterSpacing: 1.5 },
 
   modalDoneBtn:      { marginTop: 4 },
   modalDoneBtnInner: { borderRadius: 14, paddingVertical: 15, alignItems: 'center' },

@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import LottieView from '@/components/AppLottie';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
+import { confirmAction } from '@/lib/confirm';
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';
 import FadeInView from '@/components/FadeInView';
@@ -146,17 +147,15 @@ export default function MemberProfileScreen() {
 
   // ── Sign out handler ────────────────────────────────────────
   function handleSignOut() {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          await signOut();
-          router.replace('/(auth)/member-login');
-        },
+    confirmAction(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      async () => {
+        await signOut();
+        router.replace('/(auth)/member-login');
       },
-    ]);
+      { confirmText: 'Sign Out', destructive: true },
+    );
   }
 
   // ── Loading state ───────────────────────────────────────────

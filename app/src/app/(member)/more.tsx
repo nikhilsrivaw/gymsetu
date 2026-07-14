@@ -12,6 +12,7 @@ import AnimatedPressable from '@/components/AnimatedPressable';
 import FadeInView from '@/components/FadeInView';
 import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
+import { confirmAction } from '@/lib/confirm';
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -233,16 +234,12 @@ export default function MoreScreen() {
 
   // ── Handle sign out ────────────────────────────────────────────
   const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          await signOut();
-        },
-      },
-    ]);
+    confirmAction(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      () => { signOut(); },
+      { confirmText: 'Sign Out', destructive: true },
+    );
   };
 
   return (

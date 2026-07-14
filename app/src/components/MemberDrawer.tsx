@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';
 import { useAuthStore } from '@/store/authStore';
+import { confirmAction } from '@/lib/confirm';
 import AnimatedPressable from '@/components/AnimatedPressable';
 
 const menuItems: {
@@ -34,10 +35,12 @@ export default function MemberDrawer({ state, navigation }: DrawerContentCompone
   const initials = fullName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
 
   const handleLogout = () => {
-    Alert.alert('Log Out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', style: 'destructive', onPress: () => signOut() },
-    ]);
+    confirmAction(
+      'Log Out',
+      'Are you sure you want to log out?',
+      () => signOut(),
+      { confirmText: 'Log Out', destructive: true },
+    );
   };
 
   return (

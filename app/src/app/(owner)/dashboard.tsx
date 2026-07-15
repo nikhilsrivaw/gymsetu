@@ -291,13 +291,6 @@ export default function DashboardScreen() {
   const fmt = (n: number) =>
     n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}K` : `₹${n}`;
 
-  const pulseStats: { label: string; value: string; sub: string; color: string; icon: IconName }[] = [
-    { label: 'TODAY IN',   value: stats.todayCheckIns.toString(), sub: 'check-ins', color: Colors.green,  icon: 'calendar-check-outline' },
-    { label: 'EXPIRED',    value: stats.expiredCount.toString(),  sub: 'members',   color: Colors.red,    icon: 'account-off-outline'    },
-    { label: 'EXPIRING',   value: stats.expiringCount.toString(), sub: 'this week', color: Colors.orange, icon: 'clock-alert-outline'    },
-    { label: 'THIS MONTH', value: fmt(stats.monthRevenue),        sub: 'revenue',   color: Colors.accent, icon: 'trending-up'            },
-  ];
-
   const weekInsights: { icon: IconName; color: string; label: string; value: string }[] = [
     { icon: 'calendar-check-outline', color: '#3B82F6',     label: `${stats.todayCheckIns} members checked in today`, value: stats.todayCheckIns.toString() },
     { icon: 'clock-alert-outline',    color: Colors.orange, label: `${stats.expiringCount} plans expiring this week`, value: stats.expiringCount.toString() },
@@ -506,45 +499,6 @@ export default function DashboardScreen() {
           </View>
         </FadeInView>
 
-        {/* ── Pulse Stats — 2×2 grid ── */}
-        <FadeInView delay={160}>
-          <View style={s.pulseGrid}>
-            {pulseStats.map((p) => (
-              <View key={p.label} style={[s.pulseBox, { borderColor: p.color + '20' }]}>
-
-                {/* Soft vertical gradient — colour bleeds down from top */}
-                <LinearGradient
-                  colors={[p.color + '1A', 'transparent']}
-                  start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                  pointerEvents="none"
-                />
-
-                {/* 2.5 px top accent stripe */}
-                <View style={[s.pulseTopLine, { backgroundColor: p.color }]} />
-
-                {/* Ghost icon — large, bottom-right, barely visible */}
-                <View style={s.pulseGhost} pointerEvents="none">
-                  <MaterialCommunityIcons name={p.icon} size={68} color={p.color} />
-                </View>
-
-                {/* Icon + label pill — top of card */}
-                <View style={[s.pulseChip, { backgroundColor: p.color + '14', borderColor: p.color + '22' }]}>
-                  <MaterialCommunityIcons name={p.icon} size={11} color={p.color} />
-                  <Text style={[s.pulseChipLabel, { color: p.color }]}>{p.label}</Text>
-                </View>
-
-                {/* Hero number */}
-                <Text style={[s.pulseVal, { color: p.color }]}>{p.value}</Text>
-
-                {/* Context sub-label */}
-                <Text style={s.pulseSub}>{p.sub}</Text>
-
-              </View>
-            ))}
-          </View>
-        </FadeInView>
-
         {/* ── AI Insights ── */}
         <FadeInView delay={220}>
           <View style={s.aiCard}>
@@ -625,38 +579,42 @@ export default function DashboardScreen() {
         <FadeInView delay={260}>
           <Text style={s.sectionLabel}>QUICK ACTIONS</Text>
           <View style={s.actionsGrid}>
-            {quickActions.map((a) => (
-              <AnimatedPressable
-                key={a.label}
-                style={[s.actionCard, { borderColor: a.color + '22' }]}
-                scaleDown={0.94}
-                onPress={() => router.push(a.route as any)}
-              >
-                {/* Colour gradient wash */}
-                <LinearGradient
-                  colors={[a.color + '18', 'transparent']}
-                  start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                  pointerEvents="none"
-                />
+            {[0, 2].map((start) => (
+              <View key={start} style={s.actionRow}>
+                {quickActions.slice(start, start + 2).map((a) => (
+                  <AnimatedPressable
+                    key={a.label}
+                    style={[s.actionCard, { borderColor: a.color + '22' }]}
+                    scaleDown={0.94}
+                    onPress={() => router.push(a.route as any)}
+                  >
+                    {/* Colour gradient wash */}
+                    <LinearGradient
+                      colors={[a.color + '18', 'transparent']}
+                      start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                      pointerEvents="none"
+                    />
 
-                {/* Arrow — top-right tap hint */}
-                <View style={s.actionArrow}>
-                  <MaterialCommunityIcons name="arrow-top-right" size={13} color={a.color} />
-                </View>
+                    {/* Arrow — top-right tap hint */}
+                    <View style={s.actionArrow}>
+                      <MaterialCommunityIcons name="arrow-top-right" size={13} color={a.color} />
+                    </View>
 
-                {/* Icon in a rounded square */}
-                <View style={[s.actionIconWrap, { backgroundColor: a.color + '1C' }]}>
-                  <MaterialCommunityIcons name={a.icon} size={26} color={a.color} />
-                </View>
+                    {/* Icon in a rounded square */}
+                    <View style={[s.actionIconWrap, { backgroundColor: a.color + '1C' }]}>
+                      <MaterialCommunityIcons name={a.icon} size={26} color={a.color} />
+                    </View>
 
-                {/* Label + sub */}
-                <View>
-                  <Text style={s.actionLabel}>{a.label}</Text>
-                  <Text style={s.actionSub}>{a.sub}</Text>
-                </View>
+                    {/* Label + sub */}
+                    <View>
+                      <Text style={s.actionLabel}>{a.label}</Text>
+                      <Text style={s.actionSub}>{a.sub}</Text>
+                    </View>
 
-              </AnimatedPressable>
+                  </AnimatedPressable>
+                ))}
+              </View>
             ))}
           </View>
         </FadeInView>
@@ -1014,13 +972,15 @@ const s = StyleSheet.create({
 
   // ── Quick actions 2×2 grid ────────────────────────────────────
   actionsGrid: {
+    marginBottom: 20,
+  },
+  actionRow: {
     flexDirection: 'row',
-    flexWrap:      'wrap',
     gap:           10,
-    marginBottom:  20,
+    marginBottom:  10,
   },
   actionCard: {
-    width:           (CARD_W - 10) / 2,
+    flex:            1,
     backgroundColor: Colors.bgCard,
     borderRadius:    20,
     borderWidth:     1,

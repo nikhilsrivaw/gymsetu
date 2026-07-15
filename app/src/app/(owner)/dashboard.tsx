@@ -62,59 +62,6 @@ function HeroBgDecor() {
   );
 }
 
-// ── Wave bottom border — height-spanning technique = truly gap-free ──
-const WAVE_N = 300;
-function WaveBottomBorder() {
-  const segW = CARD_W / WAVE_N;
-  const freq = Math.PI * 3; // 1.5 full cycles across card width
-  const amp  = 7;
-
-  return (
-    <View style={{ height: 26, position: 'relative' }}>
-      {/* Soft outer glow — wide + low opacity */}
-      {Array.from({ length: WAVE_N }).map((_, i) => {
-        const p  = i / (WAVE_N - 1);
-        const y  = Math.sin(p * freq) * amp;
-        const ny = i < WAVE_N - 1 ? Math.sin(((i + 1) / (WAVE_N - 1)) * freq) * amp : y;
-        const t  = Math.min(y, ny);
-        const h  = Math.max(6, Math.abs(ny - y) + 6);
-        return (
-          <View key={`g${i}`} style={{
-            position:        'absolute',
-            left:            i * segW,
-            width:           segW + 0.8,
-            top:             11 + t - 3,
-            height:          h,
-            backgroundColor: Colors.accent,
-            opacity:         0.10,
-          }} />
-        );
-      })}
-      {/* Core — each segment spans exactly to the next = zero gaps */}
-      {Array.from({ length: WAVE_N }).map((_, i) => {
-        const p    = i / (WAVE_N - 1);
-        const sin  = Math.sin(p * freq);
-        const y    = sin * amp;
-        const ny   = i < WAVE_N - 1 ? Math.sin(((i + 1) / (WAVE_N - 1)) * freq) * amp : y;
-        const topY = Math.min(y, ny);
-        const h    = Math.max(1.8, Math.abs(ny - y) + 1.8);
-        const peak = (sin + 1) / 2;
-        return (
-          <View key={i} style={{
-            position:        'absolute',
-            left:            i * segW,
-            width:           segW + 0.8,
-            top:             11 + topY - 0.4,
-            height:          h,
-            backgroundColor: Colors.accent,
-            opacity:         0.42 + peak * 0.52,
-          }} />
-        );
-      })}
-    </View>
-  );
-}
-
 // ── Quick actions ───────────────────────────────────────────────
 const quickActions: { label: string; sub: string; icon: IconName; color: string; route: string }[] = [
   { label: 'Add Member',  sub: 'Onboard new member',  icon: 'account-plus-outline',    color: Colors.accent, route: '/(owner)/members/add'     },
@@ -497,9 +444,13 @@ export default function DashboardScreen() {
               </View>
             )}
 
-            {/* ── Wave bottom border — the actual lower edge of the card ── */}
-            <View style={s.heroWaveWrap}>
-              <WaveBottomBorder />
+            {/* ── Bottom accent — a clean flame underline (replaces the noisy wave) ── */}
+            <View style={s.heroAccentWrap}>
+              <LinearGradient
+                colors={['transparent', Colors.accent, Colors.accentLight, Colors.accent, 'transparent']}
+                start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
+                style={s.heroAccentLine}
+              />
             </View>
 
           </View>
@@ -852,9 +803,19 @@ const s = StyleSheet.create({
   },
 
   // Wave sits at the very bottom of the card — it IS the lower border
-  heroWaveWrap: {
-    paddingHorizontal: 0,
-    paddingTop:        6,
+  heroAccentWrap: {
+    paddingHorizontal: 22,
+    paddingTop:        16,
+    paddingBottom:     18,
+  },
+  heroAccentLine: {
+    width:         '100%',
+    height:        3,
+    borderRadius:  3,
+    shadowColor:   Colors.accent,
+    shadowOpacity: 0.55,
+    shadowRadius:  7,
+    shadowOffset:  { width: 0, height: 0 },
   },
 
   // ── Pulse stats 2×2 grid ─────────────────────────────────────

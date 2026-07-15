@@ -112,10 +112,12 @@ export function buildInvoiceHTML(data: InvoiceData): string {
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap');
+@page{size:A4;margin:0;}
 :root{--ink:#16130F;--sub:#6B6259;--faint:#A79E93;--line:#E7E1D6;--paper:#FBF9F4;--flame:#FF4D00;--flame-ink:#C23B00;--green:#1F7A44;}
 *{box-sizing:border-box;margin:0;padding:0}
+html,body{margin:0;padding:0;}
 body{font-family:'Inter',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;background:var(--paper);}
-.sheet{width:100%;max-width:794px;min-height:1040px;margin:0 auto;background:var(--paper);padding:56px 52px 48px;position:relative;}
+.sheet{width:100%;min-height:100vh;display:flex;flex-direction:column;background:var(--paper);padding:46px 50px 38px;position:relative;}
 .sheet::before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--flame),#FF8A3D);}
 .mono{font-family:'Space Mono',monospace;}
 .head{display:flex;justify-content:space-between;align-items:flex-start;}
@@ -155,7 +157,7 @@ tbody td.r{text-align:right;font-family:'Space Mono',monospace;font-size:13px;fo
 .method b{color:var(--ink);font-weight:600;}
 .paid{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--green);color:var(--green);border-radius:999px;padding:7px 16px;font-family:'Space Mono',monospace;font-weight:700;font-size:11px;letter-spacing:.2em;text-transform:uppercase;white-space:nowrap;}
 .paid .dot{width:7px;height:7px;border-radius:50%;background:var(--green);}
-.foot{margin-top:56px;}
+.foot{margin-top:auto;padding-top:32px;}
 .thanks{font-family:'Fraunces',serif;font-style:italic;font-size:16px;color:var(--ink);}
 .terms{font-size:10.5px;color:var(--faint);margin-top:10px;line-height:1.6;padding-top:14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:24px;}
 .terms .sig{font-family:'Space Mono',monospace;letter-spacing:.02em;white-space:nowrap;}

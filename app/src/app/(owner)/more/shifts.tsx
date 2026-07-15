@@ -38,7 +38,7 @@ function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
-const STAFF_COLORS = ['#FF7E1D', '#22C55E', '#3B82F6', '#A78BFA', '#EC4899', '#F59E0B', '#14B8A6'];
+const STAFF_COLORS = ['#FF4D00', '#22C55E', '#3B82F6', '#A78BFA', '#EC4899', '#F59E0B', '#14B8A6'];
 function staffColor(id: string) {
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);

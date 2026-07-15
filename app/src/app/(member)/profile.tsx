@@ -224,7 +224,7 @@ export default function MemberProfileScreen() {
       <FadeInView delay={0}>
         <View style={styles.heroCard}>
           <LinearGradient
-            colors={['rgba(255,126,29,0.15)', 'rgba(255,126,29,0.03)', 'transparent']}
+            colors={['rgba(255,77,0,0.15)', 'rgba(255,77,0,0.03)', 'transparent']}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
             style={StyleSheet.absoluteFillObject}

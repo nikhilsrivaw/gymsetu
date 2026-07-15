@@ -251,7 +251,7 @@ export default function OwnerLoginScreen() {
           <Text style={styles.signupMicro}>[NEW HERE]</Text>
           <Text style={styles.signupTitle}>No account?{'\n'}Make one.</Text>
           <Text style={styles.signupSub}>
-            Create your gym on the website — choose a plan, pay via Razorpay,
+            Create your gym on the website — choose a plan, pay via PayU,
             come back here to sign in.
           </Text>
           <TouchableOpacity

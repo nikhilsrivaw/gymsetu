@@ -25,7 +25,7 @@ export default function RegisterScreen() {
   const steps = [
     { n: '1', text: `Visit ${WEBSITE_DISPLAY}/signup on your browser` },
     { n: '2', text: 'Enter your gym details and choose a plan' },
-    { n: '3', text: 'Pay securely via Razorpay (Basic ₹999 · Pro ₹1,699)' },
+    { n: '3', text: 'Pay securely via PayU (Basic ₹999 · Pro ₹1,699)' },
     { n: '4', text: 'Come back here and sign in with your email & password' },
   ];
 

@@ -53,8 +53,8 @@ function HeroBgDecor() {
         />
       ))}
       {/* Concentric ring accent — top-right */}
-      <View pointerEvents="none" style={{ position: 'absolute', top: -52, right: -52, width: 160, height: 160, borderRadius: 80,  borderWidth: 1, borderColor: 'rgba(255,126,29,0.09)' }} />
-      <View pointerEvents="none" style={{ position: 'absolute', top: -30, right: -30, width: 100, height: 100, borderRadius: 50,  borderWidth: 1, borderColor: 'rgba(255,126,29,0.06)' }} />
+      <View pointerEvents="none" style={{ position: 'absolute', top: -52, right: -52, width: 160, height: 160, borderRadius: 80,  borderWidth: 1, borderColor: 'rgba(255,77,0,0.09)' }} />
+      <View pointerEvents="none" style={{ position: 'absolute', top: -30, right: -30, width: 100, height: 100, borderRadius: 50,  borderWidth: 1, borderColor: 'rgba(255,77,0,0.06)' }} />
       {/* Bottom-left faint ring */}
       <View pointerEvents="none" style={{ position: 'absolute', bottom: -30, left: -30, width: 110, height: 110, borderRadius: 55, borderWidth: 1, borderColor: 'rgba(255,255,255,0.04)' }} />
     </>
@@ -434,7 +434,7 @@ export default function DashboardScreen() {
             <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(10,7,5,0.52)' }]} />
             {/* Orange ambient — warm glow from top-right background orb */}
             <LinearGradient
-              colors={['rgba(255,126,29,0.16)', 'rgba(255,126,29,0.05)', 'transparent']}
+              colors={['rgba(255,77,0,0.16)', 'rgba(255,77,0,0.05)', 'transparent']}
               start={{ x: 1, y: 0 }} end={{ x: 0.2, y: 1 }}
               style={StyleSheet.absoluteFill}
               pointerEvents="none"
@@ -858,7 +858,7 @@ const s = StyleSheet.create({
   },
   trialSep: {
     height:          1,
-    backgroundColor: 'rgba(255,126,29,0.14)',
+    backgroundColor: 'rgba(255,77,0,0.14)',
     marginBottom:    10,
   },
   trialContent: {
@@ -876,10 +876,10 @@ const s = StyleSheet.create({
   trialBtn: {
     paddingHorizontal: 12,
     paddingVertical:   4,
-    backgroundColor:   'rgba(255,126,29,0.10)',
+    backgroundColor:   'rgba(255,77,0,0.10)',
     borderRadius:      20,
     borderWidth:       1,
-    borderColor:       'rgba(255,126,29,0.28)',
+    borderColor:       'rgba(255,77,0,0.28)',
   },
   trialBtnText: {
     fontFamily: Fonts.bold,

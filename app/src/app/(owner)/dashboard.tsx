@@ -603,7 +603,7 @@ export default function DashboardScreen() {
 
                     {/* Icon in a rounded square */}
                     <View style={[s.actionIconWrap, { backgroundColor: a.color + '1C' }]}>
-                      <MaterialCommunityIcons name={a.icon} size={26} color={a.color} />
+                      <MaterialCommunityIcons name={a.icon} size={30} color={a.color} />
                     </View>
 
                     {/* Label + sub */}
@@ -981,13 +981,13 @@ const s = StyleSheet.create({
   },
   actionCard: {
     flex:            1,
-    minHeight:       124,
+    aspectRatio:     1,
     justifyContent:  'space-between',
     backgroundColor: Colors.bgCard,
-    borderRadius:    20,
+    borderRadius:    22,
     borderWidth:     1,
-    paddingVertical:   16,
-    paddingHorizontal: 16,
+    paddingVertical:   18,
+    paddingHorizontal: 18,
     overflow:        'hidden',
   },
   actionArrow: {
@@ -997,9 +997,9 @@ const s = StyleSheet.create({
     opacity:  0.40,
   },
   actionIconWrap: {
-    width:          52,
-    height:         52,
-    borderRadius:   16,
+    width:          58,
+    height:         58,
+    borderRadius:   18,
     justifyContent: 'center',
     alignItems:     'center',
   },

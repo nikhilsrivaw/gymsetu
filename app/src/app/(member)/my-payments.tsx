@@ -1,11 +1,16 @@
  import { useState, useCallback } from 'react';                                       import { View, Text, StyleSheet, ScrollView, Alert } from         'react-native';                                                                      import { useFocusEffect } from 'expo-router';                                        import LottieView from '@/components/AppLottie';                                        import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                           import FadeInView from '@/components/FadeInView';                                    import AnimatedPressable from '@/components/AnimatedPressable';                    
-  import { supabase } from '@/lib/supabase';                                           import { useAuthStore } from '@/store/authStore';                                  
-                                                                                       interface PaymentRow {                                                             
-    id: string;                                                                      
-    date: string;                                                                    
+  import { supabase } from '@/lib/supabase';
+  import { MaterialCommunityIcons } from '@expo/vector-icons';
+  import { shareInvoice } from '@/lib/invoice';                                           import { useAuthStore } from '@/store/authStore';                                  
+                                                                                       interface PaymentRow {
+    id: string;
+    date: string;
+    date_raw: string;
     planName: string;
     amount: number;
     method: string;
+    receipt_number: string | null;
+    notes: string | null;
   }
 
   const methodColor: Record<string, string> = {
@@ -19,6 +24,9 @@
   export default function MyPaymentsScreen() {
     const { session } = useAuthStore();
     const [payments, setPayments]         = useState<PaymentRow[]>([]);
+    const [gym, setGym]                   = useState<{ name: string; address: string | null; phone: string | null; logo_url: string | null; gstin: string | null } | null>(null);
+    const [me, setMe]                     = useState<{ name: string; phone: string | null } | null>(null);
+    const [sharingId, setSharingId]       = useState<string | null>(null);
     const [totalPaid, setTotalPaid]       = useState(0);
     const [activePlanName, setActivePlanName] = useState('');
     const [daysLeft, setDaysLeft]         = useState(0);
@@ -39,10 +47,25 @@
 
         if (!m || !active) { setLoading(false); return; }
 
+        // Member identity + gym header for the invoice document.
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('full_name, phone, gym_id')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        if (active && prof) {
+          setMe({ name: prof.full_name ?? 'Member', phone: prof.phone ?? null });
+          if (prof.gym_id) {
+            const { data: g } = await supabase
+              .from('gyms').select('name, address, phone, logo_url').eq('id', prof.gym_id).maybeSingle();
+            if (active && g) setGym({ name: g.name, address: g.address, phone: g.phone, logo_url: g.logo_url, gstin: (g as any).gstin ?? null });
+          }
+        }
+
         const [payRes, planRes] = await Promise.all([
           supabase
             .from('payments')
-            .select('id, amount, payment_date, payment_method,member_plans(membership_plans(name))')
+            .select('id, amount, payment_date, payment_method, receipt_number, notes, member_plans(membership_plans(name))')
             .eq('member_id', m.id)
             .order('payment_date', { ascending: false }),
           supabase
@@ -59,11 +82,14 @@
 
         const rows: PaymentRow[] = (payRes.data ?? []).map((p: any) => ({
           id:       p.id,
-          date:     new Date(p.payment_date).toLocaleDateString('en-IN', { day:      
+          date:     new Date(p.payment_date).toLocaleDateString('en-IN', { day:
   '2-digit', month: 'short', year: 'numeric' }),
-          planName: p.member_plans?.membership_plans?.name ?? 'Membership',
+          date_raw: p.payment_date,
+          planName: p.member_plans?.membership_plans?.name ?? p.notes ?? 'Membership',
           amount:   p.amount,
           method:   p.payment_method,
+          receipt_number: p.receipt_number ?? null,
+          notes:    p.notes ?? null,
         }));
 
         setPayments(rows);
@@ -84,6 +110,30 @@
       load();
       return () => { active = false; };
     }, [session?.user?.id]));
+
+    const openInvoice = async (p: PaymentRow) => {
+      if (!me) return;
+      try {
+        setSharingId(p.id);
+        await shareInvoice({
+          gym: gym
+            ? { name: gym.name, address: gym.address, phone: gym.phone, logoUrl: gym.logo_url, gstin: gym.gstin }
+            : { name: 'Your Gym' },
+          member:  { name: me.name, phone: me.phone, memberId: null },
+          payment: {
+            receiptNumber: p.receipt_number ?? p.id.slice(0, 8).toUpperCase(),
+            date:          p.date_raw,
+            method:        p.method,
+            amount:        p.amount,
+            description:   p.notes || p.planName,
+          },
+        });
+      } catch (e) {
+        Alert.alert('Could not open invoice', e instanceof Error ? e.message : 'Please try again.');
+      } finally {
+        setSharingId(null);
+      }
+    };
 
     if (loading) {
       return (
@@ -141,13 +191,19 @@
         {/* ── History ───────────────────────── */}
         {payments.length > 0 ? (
           <FadeInView delay={80}>
-            <Text style={styles.sectionLabel}>PAYMENT HISTORY — {payments.length} RECORDS</Text>
+            <Text style={styles.sectionLabel}>YOUR INVOICES — {payments.length} RECORDS · TAP TO DOWNLOAD</Text>
             <View style={styles.historyCard}>
               {payments.map((p, i) => {
                 const color = methodColor[p.method] ?? Colors.textMuted;
+                const busy = sharingId === p.id;
                 return (
-                  <View key={p.id} style={[styles.payRow, i < payments.length - 1 && 
-  styles.payRowBorder]}>
+                  <AnimatedPressable
+                    key={p.id}
+                    scaleDown={0.98}
+                    onPress={() => openInvoice(p)}
+                    disabled={busy}
+                    style={[styles.payRow, i < payments.length - 1 && styles.payRowBorder]}
+                  >
                     <View style={styles.payLeft}>
                       <View style={[styles.methodDot, { backgroundColor: color }]} />
                       <View>
@@ -156,16 +212,20 @@
                       </View>
                     </View>
                     <View style={styles.payRight}>
-                      <Text
-  style={styles.payAmount}>₹{p.amount.toLocaleString('en-IN')}</Text>
-                      <View style={[styles.methodBadge, { backgroundColor: color +   
-  '18' }]}>
-                        <Text style={[styles.methodText, { color }]}>
-                          {methodLabel[p.method] ?? p.method.toUpperCase()}
-                        </Text>
+                      <Text style={styles.payAmount}>₹{p.amount.toLocaleString('en-IN')}</Text>
+                      <View style={styles.payRightMeta}>
+                        <View style={[styles.methodBadge, { backgroundColor: color + '18' }]}>
+                          <Text style={[styles.methodText, { color }]}>
+                            {methodLabel[p.method] ?? p.method.toUpperCase()}
+                          </Text>
+                        </View>
+                        <MaterialCommunityIcons
+                          name={busy ? 'progress-download' : 'file-download-outline'}
+                          size={16} color={Colors.accent}
+                        />
                       </View>
                     </View>
-                  </View>
+                  </AnimatedPressable>
                 );
               })}
             </View>
@@ -179,16 +239,20 @@
           </FadeInView>
         )}
 
-        {/* ── Download Button ───────────────── */}
-        <FadeInView delay={220}>
-          <AnimatedPressable
-            style={styles.downloadBtn}
-            scaleDown={0.97}
-            onPress={() => Alert.alert('Download', 'Payment receipts export coming soon!')}
-          >
-            <Text style={styles.downloadText}>DOWNLOAD ALL RECEIPTS</Text>
-          </AnimatedPressable>
-        </FadeInView>
+        {/* ── Download latest invoice ───────────────── */}
+        {payments.length > 0 && (
+          <FadeInView delay={220}>
+            <AnimatedPressable
+              style={styles.downloadBtn}
+              scaleDown={0.97}
+              disabled={sharingId !== null}
+              onPress={() => openInvoice(payments[0])}
+            >
+              <MaterialCommunityIcons name="file-download-outline" size={16} color={Colors.accent} />
+              <Text style={styles.downloadText}>DOWNLOAD LATEST INVOICE</Text>
+            </AnimatedPressable>
+          </FadeInView>
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -235,9 +299,10 @@
     payPlan: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.text },
     payDate: { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted,     
   marginTop: 2 },
-    payRight: { alignItems: 'flex-end', gap: 4 },
+    payRight: { alignItems: 'flex-end', gap: 5 },
+    payRightMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     payAmount: { fontFamily: Fonts.condensedBold, fontSize: 16, color: Colors.text },
-    methodBadge: { borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3 },      
+    methodBadge: { borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3 },
     methodText: { fontFamily: Fonts.bold, fontSize: 9, letterSpacing: 0.5 },
 
     empty: { alignItems: 'center', paddingVertical: 48 },
@@ -246,8 +311,8 @@
     emptyDesc: { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted,   
   marginTop: 6 },
 
-    downloadBtn: { borderRadius: 12, paddingVertical: 14, alignItems: 'center',      
-  borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard },      
-    downloadText: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.textMuted,   
+    downloadBtn: { flexDirection: 'row', gap: 8, borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
+  borderWidth: 1, borderColor: Colors.accent + '33', backgroundColor: Colors.accent + '10' },
+    downloadText: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.accent,
   letterSpacing: 1 },
   });

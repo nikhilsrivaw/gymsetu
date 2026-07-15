@@ -259,6 +259,7 @@ export default function AddMemberScreen() {
   const [credentials, setCredentials]       = useState<Credentials | null>(null);
   const [plans, setPlans]                   = useState<MembershipPlan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+  const [payMethod, setPayMethod]           = useState<'cash' | 'upi' | 'card'>('cash');
 
   const gymId = activeGymId === 'all' ? profile?.gym_id : (activeGymId ?? profile?.gym_id);
 
@@ -338,6 +339,21 @@ export default function AddMemberScreen() {
             created_by: profile?.id ?? null,
           });
           if (planError) throw new Error(`Member created but plan assignment failed: ${planError.message}`);
+
+          // Selecting a plan means the joining fee was collected — record it as
+          // the member's first payment (their first invoice), which then shows
+          // up in the member app's Invoices screen. Non-fatal on failure.
+          const { error: payError } = await supabase.from('payments').insert({
+            gym_id:         gymId,
+            member_id:      memberId,          // members.id — matches what the member app reads
+            amount:         plan.price,
+            payment_method: payMethod,
+            payment_date:   startDate,
+            payment_type:   'full',
+            notes:          plan.name,
+            created_by:     profile?.id ?? null,
+          });
+          if (payError) console.warn('[add member] first payment record failed:', payError.message);
         }
       }
 
@@ -628,6 +644,26 @@ export default function AddMemberScreen() {
                 })}
               </View>
             )}
+
+            {selectedPlanId ? (
+              <View style={s.payMethodWrap}>
+                <Text style={s.payMethodLabel}>PAID VIA</Text>
+                <View style={s.payMethodRow}>
+                  {(['cash', 'upi', 'card'] as const).map(m => {
+                    const on = payMethod === m;
+                    return (
+                      <Pressable key={m} style={[s.payChip, on && s.payChipActive]} onPress={() => setPayMethod(m)}>
+                        <Text style={[s.payChipTxt, on && s.payChipTxtActive]}>{m.toUpperCase()}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={s.payHint}>
+                  A receipt for ₹{(plans.find(p => p.id === selectedPlanId)?.price ?? 0).toLocaleString('en-IN')} will be
+                  saved to the member's Invoices.
+                </Text>
+              </View>
+            ) : null}
           </SectionCard>
         </FadeInView>
 
@@ -716,6 +752,16 @@ const s = StyleSheet.create({
   planPrice:      { fontFamily: Fonts.condensedBold, fontSize: 20, color: Colors.textSub },
   planPriceActive:{ color: Colors.green },
   planDuration:   { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted },
+
+  // ── Paid-via selector ────────────────────────────────────────
+  payMethodWrap:  { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: Colors.border },
+  payMethodLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 8 },
+  payMethodRow:   { flexDirection: 'row', gap: 8 },
+  payChip:        { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgInput },
+  payChipActive:  { borderColor: Colors.green, backgroundColor: Colors.green + '15' },
+  payChipTxt:     { fontFamily: Fonts.bold, fontSize: 11, color: Colors.textMuted, letterSpacing: 0.8 },
+  payChipTxtActive: { color: Colors.green },
+  payHint:        { fontFamily: Fonts.regular, fontSize: 10.5, color: Colors.textMuted, marginTop: 9, lineHeight: 15 },
 
   // ── Modal ────────────────────────────────────────────────────
   modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },

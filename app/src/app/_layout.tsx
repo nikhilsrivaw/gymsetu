@@ -1,3 +1,4 @@
+import '@/lib/webAlert'; // patch Alert.alert to work on web (PWA) — must run before any Alert use
 import { Slot, useSegments, useRouter } from 'expo-router';
 import { LogBox, Platform, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';

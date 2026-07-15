@@ -2,8 +2,9 @@
   import { useState, useCallback } from 'react';
   import {
     View, Text, StyleSheet, FlatList,
-    TouchableOpacity, ActivityIndicator, ScrollView,
+    TouchableOpacity, ActivityIndicator, ScrollView, Alert,
   } from 'react-native';
+  import { MaterialCommunityIcons } from '@expo/vector-icons';
   import { FAB, Portal, Modal, TextInput, SegmentedButtons } from 'react-native-paper';
   import { Stack, useFocusEffect } from 'expo-router';
   import { Colors } from '@/constants/colors';
@@ -14,6 +15,7 @@
   import { useAuthStore } from '@/store/authStore';
   import type { PaymentMethod } from '@/types/database';
   import LottieView from '@/components/AppLottie';
+  import { shareInvoice } from '@/lib/invoice';
 
   const methodIcon:  Record<string, string> = { cash: '💵', upi: '📱', card: '💳', bank_transfer: '🏦', other: '💸' }; 
   const methodColor: Record<string, string> = { cash: Colors.green, upi: '#4F6EF7', card: Colors.orange, bank_transfer:
@@ -22,8 +24,11 @@
   interface PaymentRow {
     id:             string;
     member_name:    string;
+    member_phone:   string | null;
     amount:         number;
     payment_date:   string;
+    date_raw:       string;
+    receipt_number: string | null;
     payment_method: PaymentMethod;
     notes:          string | null;
   }
@@ -66,7 +71,7 @@
       try {
         const { data, error } = await supabase
           .from('payments')
-          .select('id, amount, payment_date, payment_method, notes, member_id')
+          .select('id, amount, payment_date, payment_method, notes, member_id, receipt_number')
           .in('gym_id', gymIds)
           .order('payment_date', { ascending: false })
           .limit(50);
@@ -76,21 +81,25 @@
 
         const memberIds = [...new Set(data.map(p => p.member_id).filter(Boolean))];
         const nameMap: Record<string, string> = {};
+        const phoneMap: Record<string, string | null> = {};
 
         if (memberIds.length > 0) {
           const { data: profileData } = await supabase
             .from('profiles')
-            .select('id, full_name')
+            .select('id, full_name, phone')
             .in('id', memberIds);
-          (profileData ?? []).forEach(p => { nameMap[p.id] = p.full_name; });
+          (profileData ?? []).forEach(p => { nameMap[p.id] = p.full_name; phoneMap[p.id] = p.phone; });
         }
 
         setPayments(data.map((p: any) => ({
           id:             p.id,
           member_name:    nameMap[p.member_id] ?? 'Unknown',
+          member_phone:   phoneMap[p.member_id] ?? null,
           amount:         p.amount,
-          payment_date:   new Date(p.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 
+          payment_date:   new Date(p.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year:
   'numeric' }),
+          date_raw:       p.payment_date,
+          receipt_number: p.receipt_number ?? null,
           payment_method: p.payment_method,
           notes:          p.notes,
         })));
@@ -124,6 +133,34 @@
     }, [fetchPayments, fetchMembers]));
 
     const total = payments.reduce((s, p) => s + p.amount, 0);
+
+    const [sharingId, setSharingId] = useState<string | null>(null);
+    const handleShareReceipt = async (p: PaymentRow) => {
+      try {
+        setSharingId(p.id);
+        await shareInvoice({
+          gym: {
+            name:    gymProfile?.name ?? 'Your Gym',
+            address: gymProfile?.address ?? null,
+            phone:   gymProfile?.phone ?? null,
+            logoUrl: gymProfile?.logo_url ?? null,
+            gstin:   (gymProfile as any)?.gstin ?? null,
+          },
+          member:  { name: p.member_name, phone: p.member_phone, memberId: null },
+          payment: {
+            receiptNumber: p.receipt_number ?? p.id.slice(0, 8).toUpperCase(),
+            date:          p.date_raw,
+            method:        p.payment_method,
+            amount:        p.amount,
+            description:   p.notes,
+          },
+        });
+      } catch (e) {
+        Alert.alert('Could not create receipt', e instanceof Error ? e.message : 'Please try again.');
+      } finally {
+        setSharingId(null);
+      }
+    };
 
     const handleSave = async () => {
       setFormError('');
@@ -258,7 +295,22 @@
                         </Text>
                         {item.notes ? <Text style={styles.payNote}>{item.notes}</Text> : null}
                       </View>
-                      <Text style={styles.payAmount}>+₹{item.amount.toLocaleString('en-IN')}</Text>
+                      <View style={styles.payRight}>
+                        <Text style={styles.payAmount}>+₹{item.amount.toLocaleString('en-IN')}</Text>
+                        <TouchableOpacity
+                          onPress={() => handleShareReceipt(item)}
+                          disabled={sharingId === item.id}
+                          hitSlop={8}
+                          style={styles.receiptBtn}
+                        >
+                          {sharingId === item.id
+                            ? <ActivityIndicator size="small" color={Colors.accent} />
+                            : <>
+                                <MaterialCommunityIcons name="receipt-text-outline" size={12} color={Colors.accent} />
+                                <Text style={styles.receiptBtnText}>Receipt</Text>
+                              </>}
+                        </TouchableOpacity>
+                      </View>
                     </AnimatedPressable>
                   </FadeInView>
                 );
@@ -398,7 +450,14 @@
     payName:   { fontFamily: Fonts.bold,    fontSize: 14, color: Colors.text },
     payMeta:   { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted, marginTop: 2 },
     payNote:   { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted + '99', marginTop: 2 },
-    payAmount: { fontFamily: Fonts.condensedBold, fontSize: 18, color: Colors.green, marginRight: 14 },
+    payAmount: { fontFamily: Fonts.condensedBold, fontSize: 18, color: Colors.green },
+    payRight:  { alignItems: 'flex-end', gap: 7, marginRight: 12, paddingLeft: 6 },
+    receiptBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 24,
+      borderWidth: 1, borderColor: Colors.accent + '33', backgroundColor: Colors.accent + '12',
+      borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4,
+    },
+    receiptBtnText: { fontFamily: Fonts.bold, fontSize: 10, color: Colors.accent, letterSpacing: 0.3 },
 
     empty:      { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 60 },
     emptyEmoji: { fontSize: 44, marginBottom: 12 },

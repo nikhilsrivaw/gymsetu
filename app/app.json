@@ -69,7 +69,8 @@
           "locationAlwaysAndWhenInUsePermission": "GymSetu needs your location to verify you're at the gym for check-in.",
           "locationWhenInUsePermission": "GymSetu needs your location to verify you're at the gym for check-in."
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "extra": {
       "router": {

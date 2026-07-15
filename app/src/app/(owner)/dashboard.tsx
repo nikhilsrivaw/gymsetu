@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Alert, ActivityIndicator, Dimensions, RefreshControl, Modal, Linking,
+  useWindowDimensions,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import * as Location from 'expo-location';
@@ -156,6 +157,11 @@ export default function DashboardScreen() {
     if (subscription?.status !== 'trial' || !subscription?.trial_ends_at) return 0;
     return Math.max(0, Math.ceil((new Date(subscription.trial_ends_at).getTime() - Date.now()) / 86400000));
   })();
+
+  // Reliable on web (unlike Dimensions read once at module load). Two square
+  // tiles per row = (usable width − row gap) / 2, minus the 16px page padding.
+  const { width: winW } = useWindowDimensions();
+  const actionSize = Math.floor((Math.min(winW, 520) - 32 - 12) / 2);
 
   const hour        = new Date().getHours();
   const greeting    = hour < 12 ? 'GOOD MORNING' : hour < 17 ? 'GOOD AFTERNOON' : 'GOOD EVENING';
@@ -584,7 +590,7 @@ export default function DashboardScreen() {
                 {quickActions.slice(start, start + 2).map((a) => (
                   <AnimatedPressable
                     key={a.label}
-                    style={[s.actionCard, { borderColor: a.color + '22' }]}
+                    style={[s.actionCard, { width: actionSize, height: actionSize, borderColor: a.color + '22' }]}
                     scaleDown={0.94}
                     onPress={() => router.push(a.route as any)}
                   >
@@ -976,12 +982,10 @@ const s = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
-    gap:           10,
-    marginBottom:  10,
+    gap:           12,
+    marginBottom:  12,
   },
   actionCard: {
-    flex:            1,
-    aspectRatio:     1,
     justifyContent:  'space-between',
     backgroundColor: Colors.bgCard,
     borderRadius:    22,

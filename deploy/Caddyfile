@@ -10,6 +10,30 @@ api.gymsetu.it.com {
     reverse_proxy localhost:8000
 }
 
+# ── Biometric devices (ZKTeco / eSSL "ADMS" push) ──────────────────────────
+# Plain HTTP on a dedicated port, deliberately. These devices frequently cannot
+# do TLS at all, and older firmware has no Let's Encrypt root, so an HTTPS-only
+# endpoint fails SILENTLY — the gym just stops getting attendance with no error
+# anywhere. The payload is a PIN and a timestamp; the trade is worth it.
+#
+# The firmware hard-codes the /iclock/ path, so rewrite onto the edge function
+# and inject the apikey the device has no way to send.
+#
+# REQUIRED: open TCP 8090 in the EC2 security group, or devices cannot reach it.
+# Point the device at:  Comm. > Cloud Server > IP 13.234.60.18, Port 8090
+:8090 {
+    handle /iclock/* {
+        rewrite * /functions/v1/biometric-push{uri}
+        reverse_proxy localhost:8000 {
+            header_up apikey "<ANON_KEY>"
+            header_up Authorization "Bearer <ANON_KEY>"
+        }
+    }
+    handle {
+        respond "GymSetu biometric endpoint" 200
+    }
+}
+
 # ── Option B (fastest launch): Cloudflare Flexible, origin over HTTP ────────
 # Comment out Option A above and use this instead. Cloudflare (orange cloud)
 # terminates TLS; Caddy just serves plain HTTP on :80. SSL mode = Flexible.

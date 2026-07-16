@@ -1,3 +1,4 @@
+import { todayLocal } from '@/lib/date';
  import { useState, useCallback } from 'react';                                       import { View, Text, StyleSheet, FlatList, TouchableOpacity, Linking,                ActivityIndicator } from 'react-native';                                             import { MaterialCommunityIcons } from '@expo/vector-icons';                         import { Stack, useFocusEffect } from 'expo-router';                                 import { Colors } from '@/constants/colors';                                         import { Fonts } from '@/constants/fonts';                                           import { supabase } from '@/lib/supabase';                                         
   import { useAuthStore } from '@/store/authStore';                                    import FadeInView from '@/components/FadeInView';                                  
                                                                                        interface ExpiryMember {                                                           
@@ -19,7 +20,7 @@
       if (!profile?.gym_id) return;
       setLoading(true);
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = todayLocal();
 
       const { data: rows } = await supabase
         .from('members')

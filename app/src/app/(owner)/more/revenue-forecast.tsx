@@ -1,3 +1,4 @@
+import { toLocalDate } from '@/lib/date';
  
   import { useState, useCallback } from 'react';                                                                       
   import { View, Text, StyleSheet, ScrollView } from 'react-native';                                                     import { Stack, useFocusEffect } from 'expo-router';                                                                 
@@ -56,8 +57,8 @@
       const monthRanges: { label: string; start: string; end: string }[] = [];
       for (let i = 5; i >= 0; i--) {
         const d     = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const start = d.toISOString().split('T')[0];
-        const end   = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+        const start = toLocalDate(d);
+        const end   = toLocalDate(new Date(d.getFullYear(), d.getMonth() + 1, 0));
         monthRanges.push({
           label: d.toLocaleString('en-IN', { month: 'short', year: '2-digit' }),
           start, end,
@@ -89,8 +90,8 @@
       );
 
       const activeMembers  = (activePlans ?? []).length;
-      const day30Fwd       = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
-      const today          = now.toISOString().split('T')[0];
+      const day30Fwd       = toLocalDate(new Date(Date.now() + 30 * 86400000));
+      const today          = toLocalDate(now);
       const expiringNext30 = (activePlans ?? []).filter(p => p.end_date >= today && p.end_date <= day30Fwd).length;    
 
       const planCountMap: Record<string, number> = {};

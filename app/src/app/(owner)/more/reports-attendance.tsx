@@ -1,3 +1,4 @@
+import { toLocalDate } from '@/lib/date';
   import { useState, useCallback } from 'react';                                                                       
   import { View, Text, StyleSheet, ScrollView } from 'react-native';                                                     import { Stack, useFocusEffect } from 'expo-router';                                                                 
   import { MaterialCommunityIcons } from '@expo/vector-icons';                                                         
@@ -48,8 +49,8 @@
       const gymIds = activeGymId === 'all' ? branches.map(b => b.id) : [activeGymId ?? mainGymId];
 
       const now        = new Date();
-      const todayStr   = now.toISOString().split('T')[0];
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const todayStr   = toLocalDate(now);
+      const monthStart = toLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
 
       const { data: attData } = await supabase
         .from('attendance')
@@ -68,7 +69,7 @@
       const weekMap: Record<string, number> = {};
       for (let i = 6; i >= 0; i--) {
         const d   = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-        const key = d.toISOString().split('T')[0];
+        const key = toLocalDate(d);
         weekMap[key] = dayMap[key] || 0;
       }
       const weekBars  = Object.entries(weekMap).map(([date, count]) => ({ label: DAY_LABELS[new Date(date).getDay()],  
@@ -89,7 +90,7 @@
         for (let d = 0; d < 7; d++) {
           const day = new Date(now.getFullYear(), now.getMonth(), 1 + w * 7 + d);
           if (day.getMonth() !== now.getMonth()) break;
-          weekCount += dayMap[day.toISOString().split('T')[0]] || 0;
+          weekCount += dayMap[toLocalDate(day)] || 0;
         }
         monthBars.push({ label: `W${w + 1}`, value: weekCount });
       }

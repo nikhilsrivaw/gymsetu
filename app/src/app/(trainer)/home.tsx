@@ -15,6 +15,7 @@ import AnimatedPressable from '@/components/AnimatedPressable';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 
+import { todayLocal } from '@/lib/date';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 // ── Quick actions config ──────────────────────────────────────
@@ -60,7 +61,7 @@ export default function TrainerHome() {
   const [logsCount,     setLogsCount]     = useState(0);
   const [loading,       setLoading]       = useState(true);
 
-  const today      = new Date().toISOString().split('T')[0];
+  const today      = todayLocal();
   const monthStart = today.slice(0, 8) + '01';
 
   const hour     = new Date().getHours();

@@ -1,3 +1,4 @@
+import { todayLocal } from '@/lib/date';
 
   import { useState, useCallback } from 'react';
   import {
@@ -191,7 +192,7 @@
           member_id:      selectedMember.id,
           amount:         parsedAmount,
           payment_method: method as PaymentMethod,
-          payment_date:   new Date().toISOString().split('T')[0],
+          payment_date:   todayLocal(),
           payment_type:   'full',
           notes:          note.trim() || null,
           created_by:     profile?.id,

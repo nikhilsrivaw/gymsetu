@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import LottieView from '@/components/AppLottie';
 
+import { toLocalDate, todayLocal } from '@/lib/date';
 const CATEGORIES = [
   { label: 'Rent',        emoji: '🏢', color: '#4F6EF7' },
   { label: 'Electricity', emoji: '⚡', color: Colors.orange },
@@ -124,8 +125,8 @@ export default function ExpensesScreen() {
     setLoading(true);
     const now   = new Date();
     const start = period === 'month'
-      ? new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-      : new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+      ? toLocalDate(new Date(now.getFullYear(), now.getMonth(), 1))
+      : toLocalDate(new Date(now.getFullYear(), 0, 1));
     const { data, error } = await supabase
       .from('expenses').select('*')
       .in('gym_id', gymIds)
@@ -152,7 +153,7 @@ export default function ExpensesScreen() {
       gym_id: gymId, category: selectedCat,
       amount: parsed,
       description: description.trim() || null,
-      expense_date: new Date().toISOString().split('T')[0],
+      expense_date: todayLocal(),
       created_by: profile?.id,
     });
     setSaving(false);

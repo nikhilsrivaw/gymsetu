@@ -22,6 +22,7 @@ import { askAI } from '@/lib/ai';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 
+import { todayLocal } from '@/lib/date';
 const goalOptions = ['Weight Loss', 'Muscle Gain', 'Maintain', 'General Fitness'];
 
 interface WeightLog    { id: string; weight: number; logged_date: string; }
@@ -103,7 +104,7 @@ export default function BodyProgressScreen() {
     setLogSaving(true);
     setLogError(null);
     try {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = todayLocal();
       const { error } = await supabase.from('weight_logs').upsert(
         { member_id: profile?.id, gym_id: profile?.gym_id, weight: w, logged_date: todayStr },
         { onConflict: 'member_id,logged_date' }

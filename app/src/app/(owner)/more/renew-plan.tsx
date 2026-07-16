@@ -14,6 +14,7 @@ import AnimatedPressable from '@/components/AnimatedPressable';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 
+import { toLocalDate, todayLocal } from '@/lib/date';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 type ExpiringMember = {
@@ -79,10 +80,10 @@ export default function RenewPlanScreen() {
     if (!gymId) return;
     setFetchError(''); setLoading(true);
     try {
-      const today  = new Date().toISOString().split('T')[0];
+      const today  = todayLocal();
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() + 14);
-      const cutoffStr = cutoff.toISOString().split('T')[0];
+      const cutoffStr = toLocalDate(cutoff);
 
       // ── Step 1: expiring member_plans for this gym ──────────────
       const { data: expPlans, error: expErr } = await supabase
@@ -185,9 +186,8 @@ export default function RenewPlanScreen() {
     Keyboard.dismiss();
     setConfirmError(''); setConfirming(true);
     try {
-      const today   = new Date().toISOString().split('T')[0];
-      const endDate = new Date(Date.now() + activePlan.duration_days * 86_400_000)
-        .toISOString().split('T')[0];
+      const today   = todayLocal();
+      const endDate = toLocalDate(new Date(Date.now() + activePlan.duration_days * 86_400_000));
 
       // Mark previous active plan as expired
       await supabase.from('member_plans')

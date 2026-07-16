@@ -16,6 +16,7 @@ import FadeInView from '@/components/FadeInView';
 import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
 
+import { toLocalDate } from '@/lib/date';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 const CERTS = [
@@ -68,8 +69,7 @@ export default function TrainerProfileScreen() {
     if (!profile?.id || !profile?.gym_id) { setLoading(false); return; }
     setStatsError(''); setLoading(true);
     try {
-      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-        .toISOString().split('T')[0];
+      const monthStart = toLocalDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
       const [membersRes, allRes, monthRes] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact', head: true })
           .eq('gym_id', profile.gym_id).eq('role', 'member'),

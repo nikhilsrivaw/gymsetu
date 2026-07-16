@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import type { MembershipPlan } from '@/types/database';
 
+import { toLocalDate } from '@/lib/date';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 interface Credentials { code: string; password: string; name: string; phone: string; }
@@ -337,7 +338,7 @@ export default function TrainerAddMemberScreen() {
 
           const memberId = memberRow?.id ?? credData.userId;
           const today    = new Date();
-          const todayStr = today.toISOString().split('T')[0];
+          const todayStr = toLocalDate(today);
 
           // Pre-existing member (migration): record their REAL expiry. New
           // joiner: starts today.
@@ -346,10 +347,10 @@ export default function TrainerAddMemberScreen() {
           let planStatus = 'active';
           if (isExisting) {
             endDate   = parseDob(validTill) ?? todayStr;
-            startDate = new Date(new Date(endDate).getTime() - plan.duration_days * 86_400_000).toISOString().split('T')[0];
+            startDate = toLocalDate(new Date(new Date(endDate).getTime() - plan.duration_days * 86_400_000));
             planStatus = new Date(endDate).getTime() >= today.getTime() ? 'active' : 'expired';
           } else {
-            endDate = new Date(today.getTime() + plan.duration_days * 86_400_000).toISOString().split('T')[0];
+            endDate = toLocalDate(new Date(today.getTime() + plan.duration_days * 86_400_000));
           }
 
           const { data: planRow, error: planError } = await supabase.from('member_plans').insert({

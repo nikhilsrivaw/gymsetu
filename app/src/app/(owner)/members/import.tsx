@@ -11,6 +11,7 @@ import { Fonts } from '@/constants/fonts';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 
+import { toLocalDate } from '@/lib/date';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 interface GymPlan { id: string; name: string; duration_days: number; }
@@ -169,11 +170,11 @@ export default function ImportMembersScreen() {
           let startDate: string, endDate: string, status = 'active';
           if (iso) {
             endDate   = iso;
-            startDate = new Date(new Date(iso).getTime() - plan.duration_days * 86_400_000).toISOString().split('T')[0];
+            startDate = toLocalDate(new Date(new Date(iso).getTime() - plan.duration_days * 86_400_000));
             status    = new Date(iso).getTime() >= today.getTime() ? 'active' : 'expired';
           } else {
-            startDate = today.toISOString().split('T')[0];
-            endDate   = new Date(today.getTime() + plan.duration_days * 86_400_000).toISOString().split('T')[0];
+            startDate = toLocalDate(today);
+            endDate   = toLocalDate(new Date(today.getTime() + plan.duration_days * 86_400_000));
           }
           await supabase.from('member_plans').insert({
             member_id: memberId, gym_id: gymId, plan_id: plan.id,

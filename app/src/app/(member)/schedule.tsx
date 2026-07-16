@@ -20,6 +20,7 @@ import FadeInView from '@/components/FadeInView';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 
+import { toLocalDate } from '@/lib/date';
 const DAYS     = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const today    = new Date().getDay();
@@ -42,7 +43,7 @@ function getWeekStart(): string {
   const d = new Date();
   const diff = d.getDay() === 0 ? -6 : 1 - d.getDay();
   d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
+  return toLocalDate(d);
 }
 
 function getWeekDates(): string[] {

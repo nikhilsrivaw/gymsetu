@@ -12,6 +12,7 @@ import { askAI } from '@/lib/ai';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 
+import { todayLocal } from '@/lib/date';
 interface Meal {
   id: number;
   time: string;
@@ -116,7 +117,7 @@ export default function DietPlanScreen() {
   const [aiDietLoading, setAiDietLoading] = useState(false);
 
   const lottieRef = useRef<any>(null);
-  const todayStr  = new Date().toISOString().split('T')[0];
+  const todayStr  = todayLocal();
 
   // ── Fetch ──────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {

@@ -9,8 +9,7 @@ import FadeInView from '@/components/FadeInView';
 import AnimatedPressable from '@/components/AnimatedPressable';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { todayLocal } from '@/lib/date';
-
+import { toLocalDate, todayLocal } from '@/lib/date';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 interface MemberRow {
@@ -34,7 +33,7 @@ interface AssignedAnalytic {
 const today        = todayLocal();
 const todayLabel   = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 const monthName    = new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-const monthStart   = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+const monthStart   = toLocalDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 const WORKING_DAYS = 26;
 
 export default function AttendanceScreen() {

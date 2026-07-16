@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { toLocalDate } from '@/lib/date';
   import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
   import { Stack, useFocusEffect } from 'expo-router';
   import { Colors } from '@/constants/colors';
@@ -61,8 +62,7 @@ import { useState, useCallback } from 'react';
         : [activeGymId ?? mainGymId];
 
       const now        = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-        .toISOString().split('T')[0];
+      const monthStart = toLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
 
       const { data: attData } = await supabase
         .from('attendance')

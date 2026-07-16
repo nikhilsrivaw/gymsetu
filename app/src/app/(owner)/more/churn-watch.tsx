@@ -7,6 +7,7 @@ import { useState, useCallback } from 'react';
   import FadeInView from '@/components/FadeInView';
 import LottieView from '@/components/AppLottie';
 
+import { toLocalDate } from '@/lib/date';
   type RiskLevel = 'HIGH' | 'MEDIUM' | 'LOW';
 
   interface AtRiskMember {
@@ -44,13 +45,13 @@ import LottieView from '@/components/AppLottie';
         : [activeGymId ?? mainGymId];
 
       const now      = new Date();
-      const today    = now.toISOString().split('T')[0];
+      const today    = toLocalDate(now);
 
       // Date ranges
-      const day30Ago = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
-      const day14Ago = new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0];
-      const day7Ago  = new Date(Date.now() -  7 * 86400000).toISOString().split('T')[0];
-      const day7Fwd  = new Date(Date.now() +  7 * 86400000).toISOString().split('T')[0];
+      const day30Ago = toLocalDate(new Date(Date.now() - 30 * 86400000));
+      const day14Ago = toLocalDate(new Date(Date.now() - 14 * 86400000));
+      const day7Ago  = toLocalDate(new Date(Date.now() -  7 * 86400000));
+      const day7Fwd  = toLocalDate(new Date(Date.now() +  7 * 86400000));
 
       // Fetch active members
       const { data: profileData } = await supabase

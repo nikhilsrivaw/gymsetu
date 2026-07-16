@@ -16,8 +16,7 @@ import FadeInView from '@/components/FadeInView';
 import AnimatedPressable from '@/components/AnimatedPressable';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { todayLocal } from '@/lib/date';
-
+import { toLocalDate, todayLocal } from '@/lib/date';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -337,7 +336,7 @@ export default function MemberHome() {
             .from('attendance')
             .select('check_in_date')
             .eq('member_id', profile.id)
-            .gte('check_in_date', sixtyDaysAgo.toISOString().split('T')[0])
+            .gte('check_in_date', toLocalDate(sixtyDaysAgo))
             .order('check_in_date', { ascending: false }),
 
           // Announcements
@@ -380,7 +379,7 @@ export default function MemberHome() {
         const dateSet = new Set((attStreakRes.data ?? []).map((a: any) => a.check_in_date));
         let s = 0;
         const d = new Date();
-        while (dateSet.has(d.toISOString().split('T')[0])) { s++; d.setDate(d.getDate() - 1); }
+        while (dateSet.has(toLocalDate(d))) { s++; d.setDate(d.getDate() - 1); }
         setStreak(s);
 
         setNotices(noticesRes.data ?? []);

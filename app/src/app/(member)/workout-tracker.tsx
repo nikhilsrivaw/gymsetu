@@ -21,6 +21,7 @@ import { askAI } from '@/lib/ai';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 
+import { todayLocal } from '@/lib/date';
 interface Set       { reps: string; weight: string; done: boolean; }
 interface Exercise  { id: number; name: string; sets: Set[]; }
 interface PastSession { id: string; logged_date: string; sets_done: number; total_sets: number; }
@@ -157,7 +158,7 @@ export default function WorkoutTrackerScreen() {
         exercises,
         total_sets:  totalSets,
         sets_done:   totalDone,
-        logged_date: new Date().toISOString().split('T')[0],
+        logged_date: todayLocal(),
       });
       if (error) throw error;
       setJustSaved(true);

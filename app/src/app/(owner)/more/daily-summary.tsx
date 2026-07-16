@@ -1,3 +1,4 @@
+import { toLocalDate, todayLocal } from '@/lib/date';
  import { useState, useCallback } from 'react';                                                                       
   import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';                                   import { Stack, useFocusEffect } from 'expo-router';                                                                 
   import { MaterialCommunityIcons } from '@expo/vector-icons';                                                         
@@ -40,10 +41,10 @@
       if (gymIds.length === 0) return;
       setLoading(true);
 
-      const today      = new Date().toISOString().split('T')[0];
-      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];     
+      const today      = todayLocal();
+      const monthStart = toLocalDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));     
       const in7Days    = new Date(); in7Days.setDate(in7Days.getDate() + 7);
-      const in7Str     = in7Days.toISOString().split('T')[0];
+      const in7Str     = toLocalDate(in7Days);
 
       const [
         paymentsTodayRes,

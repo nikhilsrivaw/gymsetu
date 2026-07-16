@@ -11,6 +11,7 @@ import AnimatedPressable from '@/components/AnimatedPressable';
 import FadeInView from '@/components/FadeInView';
 import { useAuthStore } from '@/store/authStore';
 
+import { toLocalDate, todayLocal } from '@/lib/date';
 interface TrainerPlan {
   id: string;
   name: string;
@@ -167,7 +168,7 @@ export default function FitnessScreen() {
 
   const fetchStats = useCallback(async () => {
     if (!profile?.id) return;
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayLocal();
     try {
       const { data: sessions } = await supabase
         .from('workout_sessions')
@@ -183,7 +184,7 @@ export default function FitnessScreen() {
       let streak = 0;
       const check = new Date();
       check.setHours(0, 0, 0, 0);
-      while (dateSet.has(check.toISOString().split('T')[0])) {
+      while (dateSet.has(toLocalDate(check))) {
         streak++;
         check.setDate(check.getDate() - 1);
       }

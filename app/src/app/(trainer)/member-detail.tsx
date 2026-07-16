@@ -1,3 +1,4 @@
+import { toLocalDate } from '@/lib/date';
   import { useState, useCallback } from 'react';
   import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
   import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
@@ -37,7 +38,7 @@
   }
 
   const fmtDay   = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-  const dayKey   = (d: Date)   => d.toISOString().split('T')[0];
+  const dayKey   = (d: Date)   => toLocalDate(d);
 
   export default function MemberDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();   // profiles.id

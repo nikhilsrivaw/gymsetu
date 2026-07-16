@@ -14,6 +14,7 @@ import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
 import { confirmAction } from '@/lib/confirm';
 
+import { toLocalDate } from '@/lib/date';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 interface MenuItem {
@@ -170,7 +171,7 @@ export default function MoreScreen() {
 
         // Check today first, then go backwards
         for (let i = 0; i < 90; i++) {
-          const key = cursor.toISOString().split('T')[0];
+          const key = toLocalDate(cursor);
           if (dateSet.has(key)) {
             consecutiveDays++;
           } else {

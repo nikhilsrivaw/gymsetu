@@ -15,6 +15,7 @@ import FadeInView from '@/components/FadeInView';
 import AnimatedPressable from '@/components/AnimatedPressable';
 import LottieView from '@/components/AppLottie';
 
+import { toLocalDate } from '@/lib/date';
 interface BreakEvenData {
   totalExpenses:       number;
   totalRevenue:        number;
@@ -49,8 +50,8 @@ export default function BreakEvenScreen() {
       : [activeGymId ?? mainGymId];
 
     const now        = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const monthStart = toLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
+    const monthEnd   = toLocalDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
     const [expRes, payRes, planRes] = await Promise.all([
       supabase.from('expenses').select('amount').in('gym_id', gymIds).gte('expense_date', monthStart).lte('expense_date', monthEnd),

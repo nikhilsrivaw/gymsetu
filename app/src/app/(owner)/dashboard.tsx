@@ -20,6 +20,7 @@ import FadeInView from '@/components/FadeInView';
 import { supabase } from '@/lib/supabase';
 import { askAI } from '@/lib/ai';
 
+import { toLocalDate, todayLocal } from '@/lib/date';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -215,8 +216,8 @@ export default function DashboardScreen() {
   const fetchStats = useCallback(async () => {
     const gymIds = getGymIds();
     if (gymIds.length === 0) return;
-    const todayStr   = new Date().toISOString().split('T')[0];
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    const todayStr   = todayLocal();
+    const monthStart = toLocalDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     const [checkIns, revenue, expiredMembers, activeMembers, totalMembers] = await Promise.all([
       supabase.from('attendance').select('id', { count: 'exact', head: true }).in('gym_id', gymIds).eq('check_in_date', todayStr),
       supabase.from('payments').select('amount').in('gym_id', gymIds).gte('payment_date', monthStart),

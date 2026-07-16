@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import type { MembershipPlan } from '@/types/database';
 
+import { toLocalDate } from '@/lib/date';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 interface Credentials { code: string; password: string; name: string; phone: string; }
@@ -340,7 +341,7 @@ export default function AddMemberScreen() {
           const memberId = memberRow?.id ?? credData.userId;
 
           const today    = new Date();
-          const todayStr = today.toISOString().split('T')[0];
+          const todayStr = toLocalDate(today);
 
           // Pre-existing member (migration): record their REAL expiry so the
           // countdown is correct — start is back-computed from valid-till so the
@@ -350,10 +351,10 @@ export default function AddMemberScreen() {
           let planStatus = 'active';
           if (isExisting) {
             endDate   = parseDob(validTill) ?? todayStr;   // DD/MM/YYYY → ISO
-            startDate = new Date(new Date(endDate).getTime() - plan.duration_days * 86_400_000).toISOString().split('T')[0];
+            startDate = toLocalDate(new Date(new Date(endDate).getTime() - plan.duration_days * 86_400_000));
             planStatus = new Date(endDate).getTime() >= today.getTime() ? 'active' : 'expired';
           } else {
-            endDate = new Date(today.getTime() + plan.duration_days * 86_400_000).toISOString().split('T')[0];
+            endDate = toLocalDate(new Date(today.getTime() + plan.duration_days * 86_400_000));
           }
 
           // Keep the new plan's id so the payment can be linked to it — that

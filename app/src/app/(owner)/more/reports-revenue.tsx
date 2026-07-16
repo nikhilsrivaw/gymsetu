@@ -1,3 +1,4 @@
+import { toLocalDate } from '@/lib/date';
   import { useState, useCallback } from 'react';
   import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
   import { Stack, useFocusEffect } from 'expo-router';
@@ -51,7 +52,7 @@
       }
 
       const now          = new Date();
-      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().split('T')[0];
+      const sixMonthsAgo = toLocalDate(new Date(now.getFullYear(), now.getMonth() - 5, 1));
 
       const { data: payments } = await supabase
         .from('payments')

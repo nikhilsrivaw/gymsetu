@@ -14,6 +14,7 @@ import FadeInView from '@/components/FadeInView';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 
+import { toLocalDate } from '@/lib/date';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 // ── Date range helpers ──────────────────────────────────────────
@@ -27,11 +28,11 @@ type RangeKey = typeof RANGES[number]['key'];
 
 function getDateRange(range: RangeKey): { from: string; to: string } {
   const now  = new Date();
-  const to   = now.toISOString().split('T')[0];
+  const to   = toLocalDate(now);
   let from: string;
   switch (range) {
-    case 'month':   from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]; break;
-    case '3months': from = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().split('T')[0]; break;
+    case 'month':   from = toLocalDate(new Date(now.getFullYear(), now.getMonth(), 1)); break;
+    case '3months': from = toLocalDate(new Date(now.getFullYear(), now.getMonth() - 3, 1)); break;
     case 'year':    from = `${now.getFullYear()}-01-01`; break;
     default:        from = '2020-01-01';
   }

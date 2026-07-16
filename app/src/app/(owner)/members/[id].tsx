@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase';
 import { askAI } from '@/lib/ai';
 import { useAuthStore } from '@/store/authStore';
 
+import { toLocalDate, todayLocal } from '@/lib/date';
 interface GymPlan { id: string; name: string; price: number; duration_days: number; }
 
 type TabKey  = 'info' | 'plans' | 'payments' | 'attendance';
@@ -88,7 +89,7 @@ export default function MemberProfileScreen() {
   const [aiPlanLoading,    setAiPlanLoading]    = useState(false);
   const [aiPlanError,      setAiPlanError]      = useState('');
 
-  const today      = new Date().toISOString().split('T')[0];
+  const today      = todayLocal();
   const monthStart = today.slice(0, 8) + '01';
 
   useFocusEffect(useCallback(() => {
@@ -271,7 +272,7 @@ export default function MemberProfileScreen() {
     if (!member || !membersTableId || !currentPlan || balanceDue <= 0) return;
     setCollecting(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayLocal();
       const { error } = await supabase.from('payments').insert({
         gym_id: member.gym_id, member_id: membersTableId, member_plan_id: currentPlan.id,
         amount: balanceDue, payment_method: renewMethod, payment_date: today,
@@ -345,9 +346,9 @@ export default function MemberProfileScreen() {
       const now    = Date.now();
       const curEnd = activePlan?.rawEndDate ? new Date(activePlan.rawEndDate).getTime() : 0;
       const base   = curEnd > now ? curEnd : now;
-      const startDate = new Date(base).toISOString().split('T')[0];
-      const endDate   = new Date(base + plan.duration_days * 86_400_000).toISOString().split('T')[0];
-      const today     = new Date().toISOString().split('T')[0];
+      const startDate = toLocalDate(new Date(base));
+      const endDate   = toLocalDate(new Date(base + plan.duration_days * 86_400_000));
+      const today     = todayLocal();
 
       await supabase.from('member_plans').update({ status: 'expired' })
         .eq('member_id', membersTableId).eq('status', 'active');

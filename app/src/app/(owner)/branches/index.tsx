@@ -1,3 +1,4 @@
+import { toLocalDate, todayLocal } from '@/lib/date';
  import { useState, useCallback } from 'react';
   import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
   import { Stack, useRouter, useFocusEffect } from 'expo-router';
@@ -33,8 +34,8 @@
       setLoading(true);
 
       const mainGymId = (profile as any).gym_id;
-      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];   
-      const today      = new Date().toISOString().split('T')[0];
+      const monthStart = toLocalDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));   
+      const today      = todayLocal();
 
       // Fetch all gyms (main + branches)
       const { data: gyms } = await supabase

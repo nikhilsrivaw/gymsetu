@@ -1,3 +1,4 @@
+import { toLocalDate, todayLocal } from '@/lib/date';
  import { useState, useCallback } from 'react';                                                                       import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';                              
   import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';                                import { MaterialCommunityIcons } from '@expo/vector-icons';                                                         import { Colors } from '@/constants/colors';                                                                         import { Fonts } from '@/constants/fonts';                                                                           import AnimatedPressable from '@/components/AnimatedPressable';                                                      import FadeInView from '@/components/FadeInView';                                                                    import { supabase } from '@/lib/supabase';                                                                           import { useAuthStore } from '@/store/authStore';                                                                                                                                                                                         interface BranchDetail {                                                                                               id: string;                                                                                                      
     name: string;
@@ -34,8 +35,8 @@
       async function load() {
         setLoading(true);
 
-        const today      = new Date().toISOString().split('T')[0];
-        const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]; 
+        const today      = todayLocal();
+        const monthStart = toLocalDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1)); 
 
         const [gymRes, membersRes, activeMembersRes, expiredRes, trainersRes, checkInsRes, revenueRes] = await       
   Promise.all([

@@ -172,11 +172,17 @@ create table payments (
   created_at     timestamptz default now()
 );
 
--- 8. ATTENDANCE (member_id is profiles.id for GPS self check-in, members.id for owner marking)
+-- 8. ATTENDANCE
+-- member_id is ALWAYS profiles.id — for GPS self check-in, owner marking and
+-- trainer marking alike. This is one of the few member_id columns that DOES
+-- carry a hard FK (see database/attendance_fk.sql): the trainer's bulk screen
+-- used to write members.id here, which made trainer-marked check-ins invisible
+-- to the member and the owner and let one person hold two rows for one day —
+-- the unique constraint below cannot catch that when the ids differ.
 create table attendance (
   id            uuid primary key default uuid_generate_v4(),
   gym_id        uuid references gyms(id) on delete cascade not null,
-  member_id     uuid not null,
+  member_id     uuid not null references profiles(id) on delete cascade,
   check_in_date date not null default current_date,
   check_in_time time,
   method        text default 'gps',

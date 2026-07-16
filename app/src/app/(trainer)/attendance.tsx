@@ -50,11 +50,19 @@ export default function AttendanceScreen() {
     setLoading(true);
     setSaved(false);
 
+    // attendance.member_id is profiles.id everywhere else in the app (member
+    // GPS check-in, the owner's screen, member detail). This screen used to
+    // list from `members` and write members.id, so a trainer-marked check-in
+    // was invisible to the member and to the owner, and the same person could
+    // get two rows for one day -- unique(member_id, check_in_date) can't stop
+    // that when the two ids differ. Source from profiles so the id written
+    // here is the same id everything else reads.
     const [memberRes, attRes, monthAttRes] = await Promise.all([
       supabase
-        .from('members')
-        .select('id, full_name, member_plans(status, membership_plans(name))')
+        .from('profiles')
+        .select('id, full_name')
         .eq('gym_id', profile.gym_id)
+        .eq('role', 'member')
         .eq('status', 'active')
         .order('full_name'),
       supabase
@@ -69,6 +77,31 @@ export default function AttendanceScreen() {
         .gte('check_in_date', monthStart),
     ]);
 
+    // Plan names live on member_plans, which keys off members.id — resolve
+    // profiles.id -> members.id to label each row.
+    const profileIds = (memberRes.data ?? []).map((p: any) => p.id);
+    const planByProfile: Record<string, string> = {};
+    if (profileIds.length > 0) {
+      const { data: memberRows } = await supabase
+        .from('members').select('id, user_id').in('user_id', profileIds);
+      const memberIds = (memberRows ?? []).map((m: any) => m.id);
+      if (memberIds.length > 0) {
+        const { data: plans } = await supabase
+          .from('member_plans')
+          .select('member_id, status, membership_plans(name)')
+          .in('member_id', memberIds);
+        const nameByMemberId: Record<string, string> = {};
+        (plans ?? []).forEach((pl: any) => {
+          if (!nameByMemberId[pl.member_id] || pl.status === 'active') {
+            nameByMemberId[pl.member_id] = pl.membership_plans?.name ?? 'No plan';
+          }
+        });
+        (memberRows ?? []).forEach((m: any) => {
+          planByProfile[m.user_id] = nameByMemberId[m.id] ?? 'No plan';
+        });
+      }
+    }
+
     const attMap: Record<string, string> = Object.fromEntries(
       (attRes.data ?? []).map((a: any) => [a.member_id, a.id])
     );
@@ -78,13 +111,12 @@ export default function AttendanceScreen() {
     });
 
     const rows: MemberRow[] = (memberRes.data ?? []).map((m: any) => {
-      const activePlan = m.member_plans?.find((mp: any) => mp.status === 'active');
       const initials   = m.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
       const monthCount = monthMap[m.id] || 0;
       return {
-        id:            m.id,
+        id:            m.id,                       // profiles.id — what attendance keys on
         name:          m.full_name,
-        plan:          activePlan?.membership_plans?.name ?? 'No plan',
+        plan:          planByProfile[m.id] ?? 'No plan',
         initials,
         attendancePct: Math.min(Math.round((monthCount / WORKING_DAYS) * 100), 100),
         status:        attMap[m.id] ? 'present' : 'unmarked',
@@ -92,7 +124,9 @@ export default function AttendanceScreen() {
       };
     });
 
-    // trainer_id is on profiles, not members — 2-step lookup for assigned analytics
+    // Assigned-member analytics. monthMap is keyed by attendance.member_id,
+    // which is profiles.id — so no members.id translation here, that was the
+    // bug: it looked up attendance counts under an id attendance never uses.
     let analRows: AssignedAnalytic[] = [];
     const { data: assignedProfiles } = await supabase
       .from('profiles')
@@ -102,16 +136,10 @@ export default function AttendanceScreen() {
       .eq('role', 'member')
       .order('full_name');
     if (assignedProfiles?.length) {
-      const { data: assignedMemberRows } = await supabase
-        .from('members').select('id, user_id')
-        .in('user_id', assignedProfiles.map((p: any) => p.id));
-      const userToMemberId: Record<string, string> = {};
-      (assignedMemberRows ?? []).forEach((m: any) => { userToMemberId[m.user_id] = m.id; });
       analRows = assignedProfiles.map((p: any) => {
-        const membersId = userToMemberId[p.id] ?? p.id;
-        const days = monthMap[membersId] || 0;
+        const days = monthMap[p.id] || 0;
         return {
-          id:       membersId,
+          id:       p.id,
           name:     p.full_name,
           initials: p.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
           pct:      Math.min(Math.round((days / WORKING_DAYS) * 100), 100),

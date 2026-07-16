@@ -250,8 +250,11 @@ export default function MemberProfileScreen() {
   const totalSpend   = payments.reduce((sum, p) => sum + p.amount, 0);
 
   // Balance on the current plan = its price minus everything paid against it.
-  // Only payments carrying member_plan_id count; older rows predate the link
-  // and are deliberately ignored rather than guessed at.
+  // A plan with no linked payment at all is NOT treated as fully unpaid: that
+  // is exactly the shape of a member migrated from the gym's old system, who
+  // paid before GymSetu existed and gets no payment row by design. Showing
+  // them the full price as "due" would invent a debt. A balance is only
+  // claimed once at least one payment references this plan.
   const paidOnCurrent = currentPlan
     ? payments.filter(p => p.planId === currentPlan.id).reduce((s, p) => s + p.amount, 0)
     : 0;

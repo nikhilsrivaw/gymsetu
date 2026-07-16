@@ -28,7 +28,6 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-interface LbEntry { rank: number; member_id: string; name: string; days: number; isMe: boolean; }
 interface ActivePlanData {
   name: string;
   daysLeft: number;
@@ -52,8 +51,6 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-const MEDAL: Record<number, IconName> = { 1: 'trophy', 2: 'medal', 3: 'medal-outline' };
-const MEDAL_COLOR: Record<number, string> = { 1: '#F5C542', 2: '#B0B0B0', 3: '#CD7F32' };
 
 const MOTIVATIONS = [
   'Every rep counts. Show up today.',
@@ -256,7 +253,6 @@ export default function MemberHome() {
   const [activePlan, setActivePlan]     = useState<ActivePlanData | null>(null);
   const [daysThisMonth, setDaysThisMonth] = useState(0);
   const [streak, setStreak]             = useState(0);
-  const [leaderboard, setLeaderboard]   = useState<LbEntry[]>([]);
   const [notices, setNotices]           = useState<Notice[]>([]);
   const [loading, setLoading]           = useState(true);
   const [fetchError, setFetchError]     = useState('');
@@ -314,7 +310,7 @@ export default function MemberHome() {
         sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
         // ── 3. Parallel fetches using correct IDs ────────────────────
-        const [planRes, attMonthRes, attStreakRes, lbRes, noticesRes] = await Promise.all([
+        const [planRes, attMonthRes, attStreakRes, noticesRes] = await Promise.all([
           // Plan: use resolvedMembersId (local const, not stale state)
           // A frozen plan is still the member's plan — it is paused, not gone.
           resolvedMembersId
@@ -342,12 +338,6 @@ export default function MemberHome() {
             .eq('member_id', profile.id)
             .gte('check_in_date', sixtyDaysAgo.toISOString().split('T')[0])
             .order('check_in_date', { ascending: false }),
-
-          // Leaderboard: gym-wide monthly attendance, anonymised.
-          // Members cannot read other members, and attendance has no FK to
-          // profiles so the old profiles(full_name) embed always 400'd — the
-          // board was permanently empty. The RPC returns ranks and counts only.
-          supabase.rpc('gym_leaderboard', { p_month_start: monthStart }),
 
           // Announcements
           supabase
@@ -391,16 +381,6 @@ export default function MemberHome() {
         const d = new Date();
         while (dateSet.has(d.toISOString().split('T')[0])) { s++; d.setDate(d.getDate() - 1); }
         setStreak(s);
-
-        // ── Parse leaderboard ────────────────────────────────────────
-        const lb: LbEntry[] = ((lbRes.data ?? []) as any[]).map(r => ({
-          member_id: String(r.rank),
-          name:      r.is_me ? 'You' : `Member ${r.rank}`,
-          days:      r.days,
-          rank:      r.rank,
-          isMe:      !!r.is_me,
-        }));
-        setLeaderboard(lb);
 
         setNotices(noticesRes.data ?? []);
       } catch (e: any) {
@@ -886,52 +866,6 @@ export default function MemberHome() {
         </FadeInView>
       )}
 
-      {/* ── Leaderboard ───────────────────────────────────────────── */}
-      {leaderboard.length > 0 && (
-        <FadeInView delay={340}>
-          <View style={styles.sectionHeader}>
-            <View style={[styles.cardIconBox, { backgroundColor: '#F5C54214', borderColor: '#F5C54225' }]}>
-              <MaterialCommunityIcons name="trophy-outline" size={13} color="#F5C542" />
-            </View>
-            <Text style={styles.sectionTitle}>MONTHLY LEADERBOARD</Text>
-          </View>
-          <View style={styles.card}>
-            {leaderboard.map((l, i) => (
-              <View
-                key={l.member_id}
-                style={[
-                  styles.lbRow,
-                  l.isMe && styles.lbRowMe,
-                  i < leaderboard.length - 1 && styles.lbRowBorder,
-                ]}
-              >
-                {MEDAL[l.rank] ? (
-                  <View style={[styles.lbMedalBox, { backgroundColor: MEDAL_COLOR[l.rank] + '15' }]}>
-                    <MaterialCommunityIcons name={MEDAL[l.rank]} size={16} color={MEDAL_COLOR[l.rank]} />
-                  </View>
-                ) : (
-                  <View style={styles.lbRankBox}>
-                    <Text style={styles.lbRank}>{String(l.rank).padStart(2, '0')}</Text>
-                  </View>
-                )}
-                <Text style={[styles.lbName, l.isMe && { color: Colors.accent }]} numberOfLines={1}>
-                  {l.name}
-                </Text>
-                {l.isMe && (
-                  <View style={styles.youChip}>
-                    <Text style={styles.youChipText}>YOU</Text>
-                  </View>
-                )}
-                <View style={styles.lbDaysChip}>
-                  <MaterialCommunityIcons name="calendar-check" size={11} color={Colors.textMuted} />
-                  <Text style={styles.lbDaysText}>{l.days}d</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </FadeInView>
-      )}
-
       <View style={{ height: 32 }} />
     </ScrollView>
   );
@@ -1144,16 +1078,4 @@ const styles = StyleSheet.create({
   noticeBody:  { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted, lineHeight: 18 },
   noticeTime:  { fontFamily: Fonts.medium, fontSize: 10, color: Colors.textMuted, marginLeft: 8 },
 
-  // ── Leaderboard
-  lbRow:       { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
-  lbRowMe:     { backgroundColor: Colors.accentMuted, borderRadius: 10, paddingHorizontal: 10, marginHorizontal: -10 },
-  lbRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
-  lbMedalBox:  { width: 30, height: 30, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
-  lbRankBox:   { width: 30, height: 30, borderRadius: 9, backgroundColor: Colors.bgElevated, justifyContent: 'center', alignItems: 'center' },
-  lbRank:      { fontFamily: Fonts.condensedBold, fontSize: 14, color: Colors.textMuted },
-  lbName:      { flex: 1, fontFamily: Fonts.bold, fontSize: 13, color: Colors.text },
-  youChip:     { backgroundColor: Colors.accentMuted, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: Colors.accent + '40' },
-  youChipText: { fontFamily: Fonts.bold, fontSize: 8, color: Colors.accent, letterSpacing: 0.5 },
-  lbDaysChip:  { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.bgElevated, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  lbDaysText:  { fontFamily: Fonts.bold, fontSize: 11, color: Colors.textMuted },
 });

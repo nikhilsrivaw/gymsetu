@@ -424,11 +424,18 @@ export default function MemberHome() {
       setCheckInMsg('Verifying you\'re at the gym...');
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const { latitude, longitude } = pos.coords;
+      // Android reports when a fake-GPS app supplied the fix. Free to check,
+      // and it catches the casual spoofer. Not available on iOS/web.
+      if ((pos as any).mocked === true) {
+        setCheckInMsg('Your phone is reporting a fake location. Turn off any mock-location app, or ask the gym to mark you present.');
+        setCheckInState('error');
+        return;
+      }
 
       // Fetch gym location from gyms table
       const { data: gymData } = await supabase
         .from('gyms')
-        .select('lat, lng, name')
+        .select('lat, lng, name, checkin_radius_m')
         .eq('id', gymId)
         .single();
 
@@ -438,10 +445,30 @@ export default function MemberHome() {
         return;
       }
 
-      const dist = haversineDistance(latitude, longitude, gymData.lat, gymData.lng);
+      const dist   = haversineDistance(latitude, longitude, gymData.lat, gymData.lng);
+      const radius = gymData.checkin_radius_m ?? 150;
+      // A GPS fix is a distance ± an uncertainty, not a point. Indoors — which
+      // is where every gym is — that uncertainty is often larger than the
+      // radius itself. The old code compared dist against a flat 100m and so
+      // rejected members standing at the squat rack.
+      const acc = pos.coords.accuracy ?? 0;
 
-      if (dist > 100) {
-        setCheckInMsg(`You're ${Math.round(dist)}m away from the gym.\nYou need to be within 100m to check in.`);
+      // Too vague to judge either way. Don't accept (that would let someone a
+      // kilometre away in), and don't accuse them of being absent — say so and
+      // offer the staff fallback.
+      if (acc > 200) {
+        setCheckInMsg(`Can't get a reliable location fix (±${Math.round(acc)}m). Step near a window or ask the gym to mark you present.`);
+        setCheckInState('error');
+        return;
+      }
+
+      // Accept when it's *possible* the member is inside the radius once the
+      // fix's own margin of error is allowed for. A member at the gym reading
+      // "180m away ±120m" is far more likely to be standing inside than to be
+      // two streets over, and a false rejection is the failure that makes
+      // people give up on the app.
+      if (dist - acc > radius) {
+        setCheckInMsg(`You're about ${Math.round(dist)}m from ${gymData.name ?? 'the gym'}.\nCome inside and try again — or ask the gym to mark you present.`);
         setCheckInState('error');
         return;
       }

@@ -151,6 +151,22 @@ export default function DashboardScreen() {
   }, [getGymIds]);
 
   const handleSetGymLocation = async () => {
+    // This pins the gym to wherever the phone is standing RIGHT NOW. An owner
+    // who taps it while setting up at home silently pins the gym to their
+    // house, and then every member's check-in fails with no clue why. Confirm
+    // before reading the position, not after.
+    const proceed = await new Promise<boolean>(resolve => {
+      Alert.alert(
+        'Are you at the gym?',
+        'This saves your phone\'s current position as the gym\'s location. Stand inside the gym (or at its entrance) before saving — if you do this from home, members won\'t be able to check in.',
+        [
+          { text: 'Not now', style: 'cancel', onPress: () => resolve(false) },
+          { text: "I'm at the gym", onPress: () => resolve(true) },
+        ],
+      );
+    });
+    if (!proceed) return;
+
     setLocationSaving(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -159,7 +175,18 @@ export default function DashboardScreen() {
         return;
       }
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      const { latitude, longitude } = loc.coords;
+      const { latitude, longitude, accuracy } = loc.coords;
+
+      // Saving a vague fix as the gym's centre poisons every future check-in,
+      // so refuse rather than bake in the error.
+      if ((accuracy ?? 0) > 50) {
+        Alert.alert(
+          'Location not precise enough',
+          `Your phone is only accurate to about ${Math.round(accuracy ?? 0)}m right now. Step near a window or just outside the entrance and try again — saving this would make check-ins unreliable for everyone.`,
+        );
+        return;
+      }
+
       const gymId = profile?.gym_id;
       if (!gymId) return;
       const { error } = await supabase

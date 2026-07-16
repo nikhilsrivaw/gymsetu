@@ -40,6 +40,7 @@ create table gyms (
   branch_address text,
   lat            double precision,
   lng            double precision,
+  checkin_radius_m integer default 150,  -- GPS check-in radius; see database/gps_radius.sql
   gstin          text,          -- set => invoices render as GST Tax Invoice (database/gst.sql)
   gst_rate       numeric default 18,
   created_at     timestamptz default now()

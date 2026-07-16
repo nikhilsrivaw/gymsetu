@@ -1,24 +1,27 @@
-# GymSetu edge-function secrets for self-hosted Supabase.
-# Copy this file into  supabase/docker/  (next to docker-compose.yml).
-# docker compose automatically merges docker-compose.override.yml.
-#
-# NOTE: confirm the edge-functions service name with `docker compose ps`.
-# In current Supabase self-host it is `functions` (image supabase/edge-runtime).
-# If yours differs, rename the key below to match.
-#
-# Add the actual values to supabase/docker/.env (see .env.gymsetu.example).
+# GymSetu overrides for self-hosted Supabase.
+# Copy into supabase/docker/ (next to docker-compose.yml). Auto-merged by compose
+# (we also pin COMPOSE_FILE in .env so it always loads).
 services:
+  # ── Google OAuth on the auth service ──
+  auth:
+    environment:
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: "true"
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOOGLE_SECRET}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: https://13.234.60.18.nip.io/auth/v1/callback
+
+  # ── Edge-function secrets ──
   functions:
     environment:
-      # --- app functions (ai-assistant, send-whatsapp) ---
+      # app functions
       GROQ_API_KEY: ${GROQ_API_KEY}
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
       WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
-      # --- website functions (payu-initiate, payu-callback) ---
+      # website functions (PayU)
       PAYU_MERCHANT_KEY: ${PAYU_MERCHANT_KEY}
       PAYU_SALT: ${PAYU_SALT}
       PAYU_MODE: ${PAYU_MODE}
       APP_URL: ${APP_URL}
-      # --- website AI (Gemini) ---
+      # website AI (Gemini)
       GEMINI_API_KEY: ${GEMINI_API_KEY}

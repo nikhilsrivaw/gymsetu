@@ -509,6 +509,16 @@ export default function MembersListScreen() {
           />
         )}
 
+        {/* ── Import (secondary FAB) ── */}
+        <AnimatedPressable
+          style={s.fabImport}
+          scaleDown={0.92}
+          onPress={() => router.push('/(owner)/members/import')}
+        >
+          <MaterialCommunityIcons name="table-arrow-up" size={18} color={Colors.accent} />
+          <Text style={s.fabImportText}>IMPORT</Text>
+        </AnimatedPressable>
+
         {/* ── FAB ── */}
         <AnimatedPressable
           style={s.fab}
@@ -690,4 +700,10 @@ const s = StyleSheet.create({
   // ── FAB ───────────────────────────────────────────────────────────
   fab:     { position: 'absolute', right: 20, bottom: 28, borderRadius: 30, elevation: 8 },
   fabGrad: { width: 58, height: 58, borderRadius: 29, justifyContent: 'center', alignItems: 'center' },
+  fabImport: {
+    position: 'absolute', right: 20, bottom: 96, flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.accent + '40',
+    borderRadius: 22, paddingHorizontal: 14, paddingVertical: 10, elevation: 6,
+  },
+  fabImportText: { fontFamily: Fonts.bold, fontSize: 11, color: Colors.accent, letterSpacing: 0.8 },
 });

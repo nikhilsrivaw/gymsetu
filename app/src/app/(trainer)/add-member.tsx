@@ -256,6 +256,8 @@ export default function TrainerAddMemberScreen() {
   const [plans, setPlans]                   = useState<MembershipPlan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [payMethod, setPayMethod]           = useState<'cash' | 'upi' | 'card'>('cash');
+  const [isExisting, setIsExisting]         = useState(false);
+  const [validTill,  setValidTill]          = useState('');
 
   // Trainer always belongs to exactly one gym
   const gymId = profile?.gym_id;
@@ -285,6 +287,9 @@ export default function TrainerAddMemberScreen() {
     if (!trimmedPhone)              { setError('Phone number is required.'); return; }
     if (!PHONE_RE.test(trimmedPhone)){ setError('Enter a valid phone number (10–15 digits).'); return; }
     if (dob && !DOB_RE.test(dob))   { setError('Date of birth must be DD/MM/YYYY.'); return; }
+    if (selectedPlanId && isExisting && !DOB_RE.test(validTill)) {
+      setError('Enter the plan valid-till date as DD/MM/YYYY.'); return;
+    }
     if (!gymId)                     { setError('No gym found. Please try again.'); return; }
 
     Keyboard.dismiss();
@@ -326,8 +331,21 @@ export default function TrainerAddMemberScreen() {
             .maybeSingle();
 
           const memberId = memberRow?.id ?? credData.userId;
-          const startDate = new Date().toISOString().split('T')[0];
-          const endDate   = new Date(Date.now() + plan.duration_days * 86_400_000).toISOString().split('T')[0];
+          const today    = new Date();
+          const todayStr = today.toISOString().split('T')[0];
+
+          // Pre-existing member (migration): record their REAL expiry. New
+          // joiner: starts today.
+          let startDate = todayStr;
+          let endDate: string;
+          let planStatus = 'active';
+          if (isExisting) {
+            endDate   = parseDob(validTill) ?? todayStr;
+            startDate = new Date(new Date(endDate).getTime() - plan.duration_days * 86_400_000).toISOString().split('T')[0];
+            planStatus = new Date(endDate).getTime() >= today.getTime() ? 'active' : 'expired';
+          } else {
+            endDate = new Date(today.getTime() + plan.duration_days * 86_400_000).toISOString().split('T')[0];
+          }
 
           const { error: planError } = await supabase.from('member_plans').insert({
             member_id:  memberId,
@@ -335,24 +353,27 @@ export default function TrainerAddMemberScreen() {
             plan_id:    selectedPlanId,
             start_date: startDate,
             end_date:   endDate,
-            status:     'active',
+            status:     planStatus,
             created_by: profile?.id ?? null,
           });
           if (planError) throw new Error(`Member created but plan assignment failed: ${planError.message}`);
 
-          // Selecting a plan means the joining fee was collected — record it as
-          // the member's first payment (their first invoice). Non-fatal.
-          const { error: payError } = await supabase.from('payments').insert({
-            gym_id:         gymId,
-            member_id:      memberId,
-            amount:         plan.price,
-            payment_method: payMethod,
-            payment_date:   startDate,
-            payment_type:   'full',
-            notes:          plan.name,
-            created_by:     profile?.id ?? null,
-          });
-          if (payError) console.warn('[trainer add member] first payment record failed:', payError.message);
+          if (!isExisting) {
+            // New joiner — record the fee as their first payment (first invoice).
+            const { error: payError } = await supabase.from('payments').insert({
+              gym_id:         gymId,
+              member_id:      memberId,
+              amount:         plan.price,
+              payment_method: payMethod,
+              payment_date:   todayStr,
+              payment_type:   'full',
+              notes:          plan.name,
+              created_by:     profile?.id ?? null,
+            });
+            if (payError) console.warn('[trainer add member] first payment record failed:', payError.message);
+          } else if (planStatus === 'expired') {
+            await supabase.from('profiles').update({ status: 'expired' }).eq('id', credData.userId);
+          }
         }
       }
 
@@ -650,21 +671,50 @@ export default function TrainerAddMemberScreen() {
 
             {selectedPlanId ? (
               <View style={s.payMethodWrap}>
-                <Text style={s.payMethodLabel}>PAID VIA</Text>
-                <View style={s.payMethodRow}>
-                  {(['cash', 'upi', 'card'] as const).map(m => {
-                    const on = payMethod === m;
-                    return (
-                      <Pressable key={m} style={[s.payChip, on && s.payChipActive]} onPress={() => setPayMethod(m)}>
-                        <Text style={[s.payChipTxt, on && s.payChipTxtActive]}>{m.toUpperCase()}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                <Text style={s.payHint}>
-                  A receipt for ₹{(plans.find(p => p.id === selectedPlanId)?.price ?? 0).toLocaleString('en-IN')} will be
-                  saved to the member's Invoices.
-                </Text>
+                <Pressable style={s.existingRow} onPress={() => { setIsExisting(v => !v); setError(''); }}>
+                  <MaterialCommunityIcons
+                    name={isExisting ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                    size={20} color={isExisting ? Colors.accent : Colors.textMuted}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.existingTitle}>Existing member (already on a plan)</Text>
+                    <Text style={s.existingSub}>Migrating from your old system — set their real expiry, no new receipt</Text>
+                  </View>
+                </Pressable>
+
+                {isExisting ? (
+                  <View style={{ marginTop: 12 }}>
+                    <Field
+                      icon="calendar-clock"
+                      label="Plan valid till"
+                      value={validTill}
+                      onChange={(v) => { setValidTill(v); setError(''); }}
+                      keyboardType="numeric"
+                      placeholder="DD/MM/YYYY"
+                    />
+                    <Text style={s.payHint}>
+                      Their current plan is recorded as valid till this date. No payment or receipt is created — they paid before GymSetu.
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={{ marginTop: 12 }}>
+                    <Text style={s.payMethodLabel}>PAID VIA</Text>
+                    <View style={s.payMethodRow}>
+                      {(['cash', 'upi', 'card'] as const).map(m => {
+                        const on = payMethod === m;
+                        return (
+                          <Pressable key={m} style={[s.payChip, on && s.payChipActive]} onPress={() => setPayMethod(m)}>
+                            <Text style={[s.payChipTxt, on && s.payChipTxtActive]}>{m.toUpperCase()}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                    <Text style={s.payHint}>
+                      A receipt for ₹{(plans.find(p => p.id === selectedPlanId)?.price ?? 0).toLocaleString('en-IN')} will be
+                      saved to the member's Invoices.
+                    </Text>
+                  </View>
+                )}
               </View>
             ) : null}
           </SectionCard>
@@ -766,6 +816,9 @@ const s = StyleSheet.create({
   planDuration:   { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted },
 
   payMethodWrap:  { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: Colors.border },
+  existingRow:    { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  existingTitle:  { fontFamily: Fonts.bold, fontSize: 12.5, color: Colors.text },
+  existingSub:    { fontFamily: Fonts.regular, fontSize: 10.5, color: Colors.textMuted, marginTop: 2, lineHeight: 14 },
   payMethodLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 8 },
   payMethodRow:   { flexDirection: 'row', gap: 8 },
   payChip:        { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgInput },

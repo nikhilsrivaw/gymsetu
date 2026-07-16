@@ -292,6 +292,11 @@ export default function TrainerAddMemberScreen() {
     }
     if (!gymId)                     { setError('No gym found. Please try again.'); return; }
 
+    // Prevent duplicates — a member with this phone already in the gym.
+    const { data: dupe } = await supabase.from('members')
+      .select('full_name').eq('gym_id', gymId).eq('phone', trimmedPhone).limit(1).maybeSingle();
+    if (dupe) { setError(`A member with this phone already exists: ${dupe.full_name}.`); return; }
+
     Keyboard.dismiss();
     setSaving(true);
     try {

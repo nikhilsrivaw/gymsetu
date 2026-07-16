@@ -66,6 +66,7 @@ export default function ImportMembersScreen() {
   const gymId = profile?.gym_id;
 
   const [plans, setPlans]       = useState<GymPlan[]>([]);
+  const [existingPhones, setExistingPhones] = useState<Set<string>>(new Set());
   const [text, setText]         = useState('');
   const [step, setStep]         = useState<'input' | 'preview' | 'done'>('input');
   const [rows, setRows]         = useState<ParsedRow[]>([]);
@@ -84,6 +85,8 @@ export default function ImportMembersScreen() {
         setPlans(gp);
         if (gp[0]) setDefaultPlan(gp[0].id);
       });
+    supabase.from('members').select('phone').eq('gym_id', gymId)
+      .then(({ data }) => setExistingPhones(new Set((data ?? []).map((m: any) => cleanPhone(m.phone || '')).filter(Boolean))));
   }, [gymId]);
 
   // ── Parse + validate ─────────────────────────────────────────
@@ -109,6 +112,7 @@ export default function ImportMembersScreen() {
       till: col(['till', 'expir', 'valid', 'end'], 3),
     };
 
+    const seen = new Set<string>();
     const parsed: ParsedRow[] = body.map((r, idx) => {
       const name = (r[ci.name] ?? '').trim();
       const phone = (r[ci.phone] ?? '').trim();
@@ -117,12 +121,16 @@ export default function ImportMembersScreen() {
       const planId = planText
         ? (plans.find(p => p.name.toLowerCase() === planText.toLowerCase())?.id ?? null)
         : (defaultPlan || null);
+      const cp = cleanPhone(phone);
 
       let error: string | null = null;
       if (!name) error = 'Missing name';
       else if (!phone || !validPhone(phone)) error = 'Invalid phone';
+      else if (existingPhones.has(cp)) error = 'Already a member';
+      else if (seen.has(cp)) error = 'Duplicate in list';
       else if (validTill && !parseDate(validTill)) error = 'Bad date (use DD/MM/YYYY)';
       else if (planText && !planId) error = `Unknown plan "${planText}"`;
+      if (!error && cp) seen.add(cp);
 
       return { raw: idx + 1, name, phone, planText, validTill, planId, error };
     });

@@ -101,23 +101,28 @@ export default function ProgressLogScreen() {
       }));
       setGymMembers(gymMemberList);
 
-      // 2. Progress notes this trainer has logged
+      // 2. Progress notes this trainer has logged.
+      // progress_logs.member_id has no FK to profiles, so it cannot be embedded —
+      // names come from the gym member list fetched above.
       const { data: logsData } = await supabase
         .from('progress_logs')
-        .select('id, member_id, mood, tags, note, weight, logged_at, profiles!progress_logs_member_id_fkey(full_name)')
+        .select('id, member_id, mood, tags, note, weight, created_at')
         .eq('trainer_id', profile.id)
-        .order('logged_at', { ascending: false });
+        .order('created_at', { ascending: false });
+
+      const nameById: Record<string, string> = {};
+      gymMemberList.forEach(m => { nameById[m.id] = m.name; });
 
       // Group notes by member
       const notesByMember: Record<string, { name: string; notes: NoteEntry[] }> = {};
       (logsData ?? []).forEach((l: any) => {
         const mid = l.member_id;
         if (!notesByMember[mid]) {
-          notesByMember[mid] = { name: l.profiles?.full_name ?? 'Unknown', notes: [] };
+          notesByMember[mid] = { name: nameById[mid] ?? 'Unknown', notes: [] };
         }
         notesByMember[mid].notes.push({
           id: l.id, mood: l.mood ?? '😊', tags: l.tags ?? [],
-          note: l.note, weight: l.weight ?? '', logged_at: l.logged_at,
+          note: l.note, weight: l.weight ?? '', logged_at: l.created_at,
         });
       });
 

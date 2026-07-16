@@ -1,72 +1,217 @@
-  import { useState } from 'react';
-  import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
-  import { useLocalSearchParams } from 'expo-router';
+  import { useState, useCallback } from 'react';
+  import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+  import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
   import { MaterialCommunityIcons } from '@expo/vector-icons';
   import { Colors } from '@/constants/colors';
   import { Fonts } from '@/constants/fonts';
   import FadeInView from '@/components/FadeInView';
-  import AnimatedPressable from '@/components/AnimatedPressable';                                                                   import { askAI } from '@/lib/ai';
-                                                                                                                                  
-  const members = [
-    { id: 1, name: 'Amit Singh',   goal: 'Muscle Gain',    plan: 'Premium 3M',    daysLeft: 22,  attendance: 26, lastSeen:
-  'Today',     emoji: '💪', status: 'active',   progress: 75, phone: '+91 98765 00001', joinDate: 'Jan 1, 2025',   weight: '82',  
-  height: '178', age: 28, streak: 6  },
-    { id: 2, name: 'Priya Nair',   goal: 'Weight Loss',    plan: 'Standard 3M',   daysLeft: 14,  attendance: 24, lastSeen:        
-  'Today',     emoji: '🏃', status: 'expiring', progress: 90, phone: '+91 98765 00002', joinDate: 'Dec 1, 2024',   weight: '61',  
-  height: '162', age: 25, streak: 10 },
-    { id: 3, name: 'Rahul Mehta',  goal: 'Weight Loss',    plan: 'Premium 3M',    daysLeft: 18,  attendance: 14, lastSeen:        
-  'Yesterday', emoji: '🎯', status: 'active',   progress: 45, phone: '+91 98765 00003', joinDate: 'Jan 15, 2025',  weight: '79',  
-  height: '175', age: 30, streak: 2  },
-    { id: 4, name: 'Sneha Patel',  goal: 'Flexibility',    plan: 'Basic Monthly', daysLeft: 5,   attendance: 12, lastSeen: '2 days ago',emoji: '🧘', status: 'expiring', progress: 60, phone: '+91 98765 00004', joinDate: 'Feb 1, 2025',   weight: '55', height: 
-  '158', age: 27, streak: 0  },
-    { id: 5, name: 'Vikram Rao',   goal: 'Muscle Gain',    plan: 'Annual Gold',   daysLeft: 180, attendance: 20, lastSeen:        
-  'Today',     emoji: '🏋️', status: 'active',   progress: 55, phone: '+91 98765 00005', joinDate: 'Mar 1, 2024',   weight: '88',  
-  height: '182', age: 32, streak: 4  },
-    { id: 6, name: 'Meena Joshi',  goal: 'Cardio Fitness', plan: 'Standard 3M',   daysLeft: 45,  attendance: 8,  lastSeen: '5 day ago',emoji: '🚴', status: 'inactive', progress: 30, phone: '+91 98765 00006', joinDate: 'Nov 15, 2024',  weight: '68', height: 
-  '160', age: 35, streak: 0  },
-    { id: 7, name: 'Arjun Sharma', goal: 'Muscle Gain',    plan: 'Premium 3M',    daysLeft: 60,  attendance: 22, lastSeen:        
-  'Today',     emoji: '💥', status: 'active',   progress: 80, phone: '+91 98765 00007', joinDate: 'Dec 15, 2024',  weight: '76',  
-  height: '176', age: 24, streak: 8  },
-    { id: 8, name: 'Kavita Desai', goal: 'Weight Loss',    plan: 'Basic Monthly', daysLeft: 8,   attendance: 10, lastSeen: '3 day ago',emoji: '🌟', status: 'expiring', progress: 40, phone: '+91 98765 00008', joinDate: 'Feb 5, 2025',   weight: '72', height: 
-  '165', age: 29, streak: 1  },
-  ];
+  import AnimatedPressable from '@/components/AnimatedPressable';
+  import { askAI } from '@/lib/ai';
+  import { supabase } from '@/lib/supabase';
+  import { useAuthStore } from '@/store/authStore';
 
   const statusColor: Record<string, string> = {
-    active: Colors.green, expiring: Colors.orange, inactive: Colors.red,
+    active: Colors.green, expiring: Colors.orange, expired: Colors.red,
   };
 
   const tabs = ['Overview', 'Progress', 'Attendance', 'Notes', 'AI'];
 
-  const weekAttendance = [
-    { day: 'M', present: true  },
-    { day: 'T', present: true  },
-    { day: 'W', present: false },
-    { day: 'T', present: true  },
-    { day: 'F', present: true  },
-    { day: 'S', present: false },
-    { day: 'S', present: false },
-  ];
+  interface NoteRow   { id: string; date: string; note: string; weight: string | null; mood: string | null }
+  interface WeightRow { label: string; value: number }
 
-  const progressHistory = [
-    { month: 'Oct', value: 20 },
-    { month: 'Nov', value: 35 },
-    { month: 'Dec', value: 52 },
-    { month: 'Jan', value: 68 },
-    { month: 'Feb', value: 75 },
-  ];
+  interface MemberDetail {
+    name:     string;
+    goal:     string | null;
+    plan:     string;
+    daysLeft: number;
+    status:   'active' | 'expiring' | 'expired';
+    phone:    string | null;
+    joinDate: string;
+    weight:   string | null;
+    height:   string | null;
+    age:      number | null;
+    initials: string;
+    lastSeen: string;
+    attendance: number;   // check-ins this month
+    streak:     number;   // consecutive days up to today
+  }
+
+  const fmtDay   = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  const dayKey   = (d: Date)   => d.toISOString().split('T')[0];
 
   export default function MemberDetailScreen() {
-    const { id } = useLocalSearchParams<{ id: string }>();
+    const { id } = useLocalSearchParams<{ id: string }>();   // profiles.id
+    const router = useRouter();
+    const { profile: me } = useAuthStore();
     const [activeTab, setActiveTab] = useState('Overview');
+
+    const [member,  setMember]  = useState<MemberDetail | null>(null);
+    const [notes,   setNotes]   = useState<NoteRow[]>([]);
+    const [weights, setWeights] = useState<WeightRow[]>([]);
+    const [week,    setWeek]    = useState<{ day: string; present: boolean }[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [marking, setMarking] = useState(false);
 
     // AI states
     const [aiAssessment, setAiAssessment] = useState<string | null>(null);
     const [aiLoading, setAiLoading]       = useState(false);
 
-    const member        = members.find(m => m.id === Number(id)) ?? members[0];
+    const fetchDetail = useCallback(async () => {
+      if (!id) return;
+      try {
+        // Profile — the trainer list passes profiles.id
+        const { data: p } = await supabase
+          .from('profiles')
+          .select('id, full_name, goal, phone, height_cm, weight_kg, date_of_birth, join_date')
+          .eq('id', id)
+          .single();
+        if (!p) { setMember(null); setLoading(false); return; }
+
+        // member_plans keys off members.id, not profiles.id
+        const { data: mRow } = await supabase
+          .from('members').select('id').eq('user_id', id).maybeSingle();
+
+        let planName = 'No plan';
+        let daysLeft = -1;
+        if (mRow?.id) {
+          const { data: plans } = await supabase
+            .from('member_plans')
+            .select('end_date, status, membership_plans(name)')
+            .eq('member_id', mRow.id)
+            .order('end_date', { ascending: false });
+          const plan = (plans ?? []).find((x: any) => x.status === 'active') ?? (plans ?? [])[0];
+          if (plan?.end_date) {
+            planName = (plan as any).membership_plans?.name ?? 'No plan';
+            daysLeft = Math.round(
+              (new Date(plan.end_date).getTime() - new Date().setHours(0, 0, 0, 0)) / 86_400_000,
+            );
+          }
+        }
+
+        // Attendance — keyed by profiles.id
+        const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        const { data: att } = await supabase
+          .from('attendance')
+          .select('check_in_date')
+          .eq('member_id', id)
+          .gte('check_in_date', dayKey(new Date(Date.now() - 60 * 86_400_000)))
+          .order('check_in_date', { ascending: false });
+        const attDates = new Set((att ?? []).map((a: any) => a.check_in_date));
+        const monthCount = (att ?? []).filter((a: any) => new Date(a.check_in_date) >= monthStart).length;
+
+        // Streak — walk back from today until a gap. Today not yet marked is not
+        // a break, so start counting from yesterday in that case.
+        let streak = 0;
+        const cursor = new Date();
+        if (!attDates.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
+        while (attDates.has(dayKey(cursor))) { streak++; cursor.setDate(cursor.getDate() - 1); }
+
+        // This week, Monday-first
+        const monday = new Date();
+        monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+        const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+        setWeek(labels.map((lbl, i) => {
+          const d = new Date(monday); d.setDate(monday.getDate() + i);
+          return { day: lbl, present: attDates.has(dayKey(d)) };
+        }));
+
+        const lastDate = (att ?? [])[0]?.check_in_date;
+        const lastSeen = !lastDate ? 'Never'
+          : lastDate === dayKey(new Date()) ? 'Today'
+          : lastDate === dayKey(new Date(Date.now() - 86_400_000)) ? 'Yesterday'
+          : fmtDay(lastDate);
+
+        const age = p.date_of_birth
+          ? Math.floor((Date.now() - new Date(p.date_of_birth).getTime()) / (365.25 * 86_400_000))
+          : null;
+
+        setMember({
+          name: p.full_name,
+          goal: p.goal,
+          plan: planName,
+          daysLeft,
+          status: daysLeft < 0 ? 'expired' : daysLeft <= 7 ? 'expiring' : 'active',
+          phone: p.phone,
+          joinDate: p.join_date ? fmtDay(p.join_date) : '—',
+          weight: p.weight_kg ? String(p.weight_kg) : null,
+          height: p.height_cm ? String(p.height_cm) : null,
+          age,
+          initials: p.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
+          lastSeen,
+          attendance: monthCount,
+          streak,
+        });
+
+        // Trainer notes (progress_logs.member_id is profiles.id, no FK to embed)
+        const { data: logs } = await supabase
+          .from('progress_logs')
+          .select('id, note, weight, mood, created_at')
+          .eq('member_id', id)
+          .order('created_at', { ascending: false })
+          .limit(20);
+        setNotes((logs ?? []).map((l: any) => ({
+          id: l.id, date: fmtDay(l.created_at), note: l.note, weight: l.weight, mood: l.mood,
+        })));
+
+        // Weight trend — self-logged weights, oldest first for the chart
+        const { data: wl } = await supabase
+          .from('weight_logs')
+          .select('weight, logged_date')
+          .eq('member_id', id)
+          .order('logged_date', { ascending: false })
+          .limit(6);
+        setWeights((wl ?? []).reverse().map((w: any) => ({
+          label: fmtDay(w.logged_date), value: Number(w.weight),
+        })).filter(w => !Number.isNaN(w.value)));
+      } catch (e) {
+        console.error('[MemberDetail]', e);
+      }
+      setLoading(false);
+    }, [id]);
+
+    useFocusEffect(useCallback(() => { fetchDetail(); }, [fetchDetail]));
+
+    const handleMarkAttendance = async () => {
+      if (!id || !me?.gym_id) return;
+      setMarking(true);
+      try {
+        const { error } = await supabase.from('attendance').insert({
+          gym_id: me.gym_id, member_id: id,
+          check_in_date: dayKey(new Date()),
+          check_in_time: new Date().toTimeString().slice(0, 8),
+          method: 'manual', marked_by: me.id,
+        });
+        // unique (member_id, check_in_date) — a repeat tap is already-marked, not an error
+        if (error && !error.message.includes('duplicate')) throw error;
+        Alert.alert('Attendance', error ? 'Already marked present today.' : 'Marked present for today.');
+        await fetchDetail();
+      } catch (e: any) {
+        Alert.alert('Error', e.message ?? 'Could not mark attendance.');
+      }
+      setMarking(false);
+    };
+
+    if (loading) {
+      return (
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={Colors.accent} />
+        </View>
+      );
+    }
+
+    if (!member) {
+      return (
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 32, gap: 8 }]}>
+          <MaterialCommunityIcons name="account-question-outline" size={40} color={Colors.textMuted} />
+          <Text style={styles.memberName}>Member not found</Text>
+          <Text style={styles.lastSeen}>This member may have been removed.</Text>
+        </View>
+      );
+    }
+
     const statusCol     = statusColor[member.status];
-    const progressColor = member.progress >= 70 ? Colors.green : member.progress >= 40 ? Colors.orange : Colors.red;
-    const fitnessLevel  = member.progress >= 70 ? 'Advanced' : member.progress >= 40 ? 'Intermediate' : 'Beginner';
+    const latestWeight  = weights.length ? weights[weights.length - 1].value : Number(member.weight ?? 0);
+    const fitnessLevel  = member.attendance >= 16 ? 'Advanced' : member.attendance >= 8 ? 'Intermediate' : 'Beginner';
 
     const handleAIAssessment = async () => {
       setAiLoading(true);
@@ -96,7 +241,7 @@
             <View style={styles.heroAccentBar} />
             <View style={styles.heroInner}>
               <View style={styles.avatarRing}>
-                <Text style={styles.avatarEmoji}>{member.emoji}</Text>
+                <Text style={styles.avatarInitials}>{member.initials}</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.memberName}>{member.name}</Text>
@@ -109,7 +254,7 @@
                 </View>
               </View>
               <View style={styles.daysBox}>
-                <Text style={styles.daysVal}>{member.daysLeft}</Text>
+                <Text style={styles.daysVal}>{member.daysLeft < 0 ? '—' : member.daysLeft}</Text>
                 <Text style={styles.daysLabel}>DAYS{'\n'}LEFT</Text>
               </View>
             </View>
@@ -119,22 +264,43 @@
         {/* Action Buttons */}
         <FadeInView delay={60}>
           <View style={styles.actionsRow}>
-            <AnimatedPressable style={styles.actionBtn} scaleDown={0.95} onPress={() => Alert.alert('Call', `Calling
-  ${member.phone}`)}>
+            <AnimatedPressable
+              style={styles.actionBtn}
+              scaleDown={0.95}
+              onPress={() => member.phone
+                ? Linking.openURL(`tel:${member.phone.replace(/\s/g, '')}`)
+                : Alert.alert('No phone', 'This member has no phone number saved.')}
+            >
               <Text style={styles.actionBtnEmoji}>📞</Text>
               <Text style={styles.actionBtnText}>CALL</Text>
             </AnimatedPressable>
-            <AnimatedPressable style={styles.actionBtn} scaleDown={0.95} onPress={() => Alert.alert('Message', 'Messaging coming   soon!')}>
+            <AnimatedPressable
+              style={styles.actionBtn}
+              scaleDown={0.95}
+              onPress={() => member.phone
+                ? Linking.openURL(`https://wa.me/91${member.phone.replace(/\D/g, '').slice(-10)}`)
+                : Alert.alert('No phone', 'This member has no phone number saved.')}
+            >
               <Text style={styles.actionBtnEmoji}>💬</Text>
               <Text style={styles.actionBtnText}>MESSAGE</Text>
             </AnimatedPressable>
-            <AnimatedPressable style={[styles.actionBtn, styles.actionBtnPrimary]} scaleDown={0.95} onPress={() =>
-  Alert.alert('Log Progress', 'Progress logging coming soon!')}>
+            <AnimatedPressable
+              style={[styles.actionBtn, styles.actionBtnPrimary]}
+              scaleDown={0.95}
+              onPress={() => router.push('/(trainer)/progress-log' as any)}
+            >
               <Text style={styles.actionBtnEmoji}>📈</Text>
               <Text style={[styles.actionBtnText, { color: Colors.accent }]}>LOG</Text>
             </AnimatedPressable>
-            <AnimatedPressable style={styles.actionBtn} scaleDown={0.95} onPress={() => Alert.alert('Attendance', 'Mark attendanc coming soon!')}>
-              <Text style={styles.actionBtnEmoji}>✅</Text>
+            <AnimatedPressable
+              style={styles.actionBtn}
+              scaleDown={0.95}
+              onPress={handleMarkAttendance}
+              disabled={marking}
+            >
+              {marking
+                ? <ActivityIndicator size="small" color={Colors.textMuted} />
+                : <Text style={styles.actionBtnEmoji}>✅</Text>}
               <Text style={styles.actionBtnText}>MARK</Text>
             </AnimatedPressable>
           </View>
@@ -167,7 +333,7 @@
                 {[
                   { label: 'ATTENDANCE', val: `${member.attendance}`, unit: 'days/mo' },
                   { label: 'STREAK',     val: `${member.streak}`,     unit: 'days'    },
-                  { label: 'PROGRESS',   val: `${member.progress}`,   unit: '%'       },
+                  { label: 'WEIGHT',     val: latestWeight ? `${latestWeight}` : '—', unit: latestWeight ? 'kg' : '' },
                 ].map(s => (
                   <View key={s.label} style={styles.statBox}>
                     <Text style={styles.statVal}>{s.val}<Text style={styles.statUnit}>{s.unit}</Text></Text>
@@ -181,12 +347,12 @@
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>PERSONAL INFO</Text>
                 {[
-                  { label: 'GOAL',   val: member.goal              },
-                  { label: 'HEIGHT', val: `${member.height} cm`    },
-                  { label: 'WEIGHT', val: `${member.weight} kg`    },
-                  { label: 'AGE',    val: `${member.age} yrs`      },
-                  { label: 'PHONE',  val: member.phone             },
-                  { label: 'JOINED', val: member.joinDate          },
+                  { label: 'GOAL',   val: member.goal   ?? 'Not set'              },
+                  { label: 'HEIGHT', val: member.height ? `${member.height} cm` : '—' },
+                  { label: 'WEIGHT', val: member.weight ? `${member.weight} kg` : '—' },
+                  { label: 'AGE',    val: member.age    ? `${member.age} yrs`    : '—' },
+                  { label: 'PHONE',  val: member.phone  ?? '—'                   },
+                  { label: 'JOINED', val: member.joinDate                        },
                 ].map((row, i, arr) => (
                   <View key={row.label} style={[styles.infoRow, i < arr.length - 1 && styles.infoRowBorder]}>
                     <Text style={styles.infoLabel}>{row.label}</Text>
@@ -202,31 +368,50 @@
         {activeTab === 'Progress' && (
           <FadeInView delay={140}>
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>GOAL PROGRESS</Text>
+              <Text style={styles.cardTitle}>GOAL</Text>
               <View style={styles.progressHeader}>
-                <Text style={styles.progressGoal}>{member.goal}</Text>
-                <Text style={[styles.progressPct, { color: progressColor }]}>{member.progress}%</Text>
-              </View>
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${member.progress}%` as any, backgroundColor: progressColor }]} />   
+                <Text style={styles.progressGoal}>{member.goal ?? 'No goal set'}</Text>
+                {latestWeight > 0 && (
+                  <Text style={[styles.progressPct, { color: Colors.accent }]}>{latestWeight} kg</Text>
+                )}
               </View>
 
-              <Text style={[styles.cardTitle, { marginTop: 16 }]}>MONTHLY TREND</Text>
-              <View style={styles.barChart}>
-                {progressHistory.map((p, i) => {
-                  const isLatest = i === progressHistory.length - 1;
-                  return (
-                    <View key={p.month} style={styles.barCol}>
-                      <Text style={[styles.barVal, isLatest && { color: progressColor }]}>{p.value}%</Text>
-                      <View style={styles.barTrack}>
-                        <View style={[styles.barFill, { height: `${p.value}%` as any, backgroundColor: isLatest ? progressColor : 
-  progressColor + '40' }]} />
-                      </View>
-                      <Text style={[styles.barDay, isLatest && { color: progressColor }]}>{p.month}</Text>
-                    </View>
-                  );
-                })}
-              </View>
+              <Text style={[styles.cardTitle, { marginTop: 16 }]}>WEIGHT TREND</Text>
+              {weights.length < 2 ? (
+                <View style={styles.emptyBox}>
+                  <MaterialCommunityIcons name="chart-line" size={26} color={Colors.textMuted} />
+                  <Text style={styles.emptyText}>
+                    {weights.length === 0
+                      ? 'No weight logged yet. Weight entries appear here once the member or you log them.'
+                      : 'Need at least two entries to show a trend.'}
+                  </Text>
+                </View>
+              ) : (() => {
+                // Scale bars across the observed range so small changes stay visible.
+                const vals = weights.map(w => w.value);
+                const min  = Math.min(...vals), max = Math.max(...vals);
+                const span = max - min || 1;
+                return (
+                  <View style={styles.barChart}>
+                    {weights.map((p, i) => {
+                      const isLatest = i === weights.length - 1;
+                      const pct      = 30 + ((p.value - min) / span) * 70;
+                      return (
+                        <View key={`${p.label}-${i}`} style={styles.barCol}>
+                          <Text style={[styles.barVal, isLatest && { color: Colors.accent }]}>{p.value}</Text>
+                          <View style={styles.barTrack}>
+                            <View style={[styles.barFill, {
+                              height: `${pct}%` as any,
+                              backgroundColor: isLatest ? Colors.accent : Colors.accent + '40',
+                            }]} />
+                          </View>
+                          <Text style={[styles.barDay, isLatest && { color: Colors.accent }]}>{p.label}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                );
+              })()}
             </View>
           </FadeInView>
         )}
@@ -237,7 +422,7 @@
             <View style={styles.card}>
               <Text style={styles.cardTitle}>THIS WEEK</Text>
               <View style={styles.weekRow}>
-                {weekAttendance.map((w, i) => (
+                {week.map((w, i) => (
                   <View key={i} style={styles.dayCol}>
                     <View style={[styles.dayDot, { backgroundColor: w.present ? Colors.green : Colors.border }]}>
                       {w.present && <Text style={styles.dayCheck}>✓</Text>}
@@ -253,8 +438,7 @@
                 </View>
                 <View style={styles.attendDivider} />
                 <View style={styles.attendStat}>
-                  <Text style={[styles.attendVal, { color: Colors.green }]}>{weekAttendance.filter(w =>
-  w.present).length}/7</Text>
+                  <Text style={[styles.attendVal, { color: Colors.green }]}>{week.filter(w => w.present).length}/7</Text>
                   <Text style={styles.attendLabel}>THIS WEEK</Text>
                 </View>
                 <View style={styles.attendDivider} />
@@ -272,17 +456,24 @@
           <FadeInView delay={140}>
             <View style={styles.card}>
               <Text style={styles.cardTitle}>TRAINER NOTES</Text>
-              {[
-                { date: 'Feb 28', note: 'Good form on deadlifts today. Increase weight next session.' },
-                { date: 'Feb 25', note: 'Struggling with shoulder mobility. Added stretching routine.' },
-                { date: 'Feb 20', note: 'Hit a new PR on bench press — 80 kg. Great progress!' },
-              ].map((n, i) => (
-                <View key={i} style={[styles.noteRow, i < 2 && styles.noteRowBorder]}>
-                  <Text style={styles.noteDate}>{n.date}</Text>
+              {notes.length === 0 ? (
+                <View style={styles.emptyBox}>
+                  <MaterialCommunityIcons name="note-text-outline" size={26} color={Colors.textMuted} />
+                  <Text style={styles.emptyText}>No notes logged for {member.name.split(' ')[0]} yet.</Text>
+                </View>
+              ) : notes.map((n, i) => (
+                <View key={n.id} style={[styles.noteRow, i < notes.length - 1 && styles.noteRowBorder]}>
+                  <Text style={styles.noteDate}>
+                    {n.mood ? `${n.mood}  ` : ''}{n.date}{n.weight ? `  ·  ${n.weight} kg` : ''}
+                  </Text>
                   <Text style={styles.noteText}>{n.note}</Text>
                 </View>
               ))}
-              <AnimatedPressable style={styles.addNoteBtn} scaleDown={0.97} onPress={() => Alert.alert('Add Note', 'Note adding   coming soon!')}>
+              <AnimatedPressable
+                style={styles.addNoteBtn}
+                scaleDown={0.97}
+                onPress={() => router.push('/(trainer)/progress-log' as any)}
+              >
                 <Text style={styles.addNoteBtnText}>+ ADD NOTE</Text>
               </AnimatedPressable>
             </View>
@@ -295,11 +486,15 @@
             {/* Client snapshot */}
             <View style={styles.aiSnapshotCard}>
               <View style={styles.aiSnapshotRow}>
-                <Text style={styles.aiSnapshotEmoji}>{member.emoji}</Text>
+                <View style={styles.aiSnapshotAvatar}>
+                  <Text style={styles.aiSnapshotInitials}>{member.initials}</Text>
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.aiSnapshotName}>{member.name}</Text>
-                  <Text style={styles.aiSnapshotSub}>{member.goal}  ·  {fitnessLevel}  ·  {member.age} yrs  ·  {member.weight}    
-  kg</Text>
+                  <Text style={styles.aiSnapshotSub}>
+                    {[member.goal ?? 'No goal', fitnessLevel, member.age ? `${member.age} yrs` : null,
+                      member.weight ? `${member.weight} kg` : null].filter(Boolean).join('  ·  ')}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -350,7 +545,7 @@
     heroInner:     { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
     avatarRing:    { width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.bgElevated, justifyContent: 'center',       
   alignItems: 'center', borderWidth: 2, borderColor: Colors.accent + '40' },
-    avatarEmoji:   { fontSize: 26 },
+    avatarInitials:{ fontSize: 18, fontFamily: Fonts.condensedBold, color: Colors.accent, letterSpacing: 0.5 },
     memberName:    { fontSize: 17, fontFamily: Fonts.bold, color: Colors.text },
     memberPlan:    { fontSize: 11, fontFamily: Fonts.regular, color: Colors.textMuted, marginTop: 1 },
     heroMeta:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5 },
@@ -399,6 +594,9 @@
     progressTrack:  { height: 6, backgroundColor: Colors.border, borderRadius: 3, overflow: 'hidden' },
     progressFill:   { height: 6, borderRadius: 3 },
 
+    emptyBox:  { alignItems: 'center', gap: 8, paddingVertical: 22, paddingHorizontal: 12 },
+    emptyText: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 },
+
     barChart: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 100 },
     barCol:   { flex: 1, alignItems: 'center', gap: 4 },
     barVal:   { fontSize: 9, fontFamily: Fonts.bold, color: Colors.textMuted },
@@ -431,7 +629,8 @@
     aiSnapshotCard: { backgroundColor: Colors.bgCard, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: Colors.orange + 
   '30', marginBottom: 0 },
     aiSnapshotRow:  { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    aiSnapshotEmoji:{ fontSize: 30 },
+    aiSnapshotAvatar:  { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.bgElevated, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.orange + '40' },
+    aiSnapshotInitials:{ fontSize: 15, fontFamily: Fonts.condensedBold, color: Colors.orange },
     aiSnapshotName: { fontFamily: Fonts.bold, fontSize: 16, color: Colors.text },
     aiSnapshotSub:  { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, marginTop: 3 },
 

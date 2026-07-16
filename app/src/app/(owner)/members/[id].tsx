@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Linking,
-  ActivityIndicator, TouchableOpacity, Share, Modal, Pressable,
+  ActivityIndicator, TouchableOpacity, Share, Modal, Pressable, Alert,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +13,9 @@ import AnimatedPressable from '@/components/AnimatedPressable';
 import FadeInView from '@/components/FadeInView';
 import { supabase } from '@/lib/supabase';
 import { askAI } from '@/lib/ai';
+import { useAuthStore } from '@/store/authStore';
+
+interface GymPlan { id: string; name: string; price: number; duration_days: number; }
 
 type TabKey  = 'info' | 'plans' | 'payments' | 'attendance';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -50,7 +53,16 @@ const fmtMoney = (n: number) =>
 export default function MemberProfileScreen() {
   const { id }  = useLocalSearchParams<{ id: string }>();
   const router  = useRouter();
+  const { profile } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabKey>('info');
+
+  // Renew / upgrade
+  const [membersTableId, setMembersTableId] = useState<string | null>(null);
+  const [gymPlans,   setGymPlans]   = useState<GymPlan[]>([]);
+  const [showRenew,  setShowRenew]  = useState(false);
+  const [renewPlanId, setRenewPlanId] = useState('');
+  const [renewMethod, setRenewMethod] = useState<'cash' | 'upi' | 'card'>('cash');
+  const [renewing,   setRenewing]   = useState(false);
 
   const [member,         setMember]         = useState<MemberProfile | null>(null);
   const [plans,          setPlans]          = useState<PlanRow[]>([]);
@@ -89,6 +101,7 @@ export default function MemberProfileScreen() {
           .eq('user_id', id)
           .maybeSingle();
         const membersTableId = memberRow?.id ?? id; // fallback to profiles.id
+        if (active) setMembersTableId(membersTableId);
 
         const [memberRes, plansRes, paymentsRes, attRes, attCountRes] = await Promise.all([
           supabase.from('profiles').select('*').eq('id', id).single(),
@@ -112,13 +125,16 @@ export default function MemberProfileScreen() {
 
           // Fetch gym trainers + assigned trainer in parallel
           const [gymPlansRes, trainersRes] = await Promise.all([
-            supabase.from('membership_plans').select('name, price, duration_days')
-              .eq('gym_id', m.gym_id).eq('is_active', true),
+            supabase.from('membership_plans').select('id, name, price, duration_days')
+              .eq('gym_id', m.gym_id).eq('is_active', true).order('price', { ascending: true }),
             supabase.from('profiles').select('id, full_name, specialization, status')
               .eq('gym_id', m.gym_id).eq('role', 'trainer').eq('status', 'active'),
           ]);
-          setAvailablePlans((gymPlansRes.data ?? []).map((p: any) =>
-            `${p.name} (Rs.${p.price}, ${p.duration_days} days)`).join(', '));
+          const gp: GymPlan[] = (gymPlansRes.data ?? []).map((p: any) => ({
+            id: p.id, name: p.name, price: p.price, duration_days: p.duration_days,
+          }));
+          if (active) setGymPlans(gp);
+          setAvailablePlans(gp.map(p => `${p.name} (Rs.${p.price}, ${p.duration_days} days)`).join(', '));
 
           const trainerList: GymTrainer[] = (trainersRes.data ?? []).map((t: any) => ({
             id: t.id, name: t.full_name, specialization: t.specialization, status: t.status,
@@ -221,6 +237,64 @@ export default function MemberProfileScreen() {
   const joinDate     = member.join_date ?? member.created_at;
   const activePlan   = plans.find(p => p.status === 'active');
   const totalSpend   = payments.reduce((sum, p) => sum + p.amount, 0);
+
+  const fmtDay = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  const handleRenew = async () => {
+    if (!member || !membersTableId) return;
+    const plan = gymPlans.find(p => p.id === renewPlanId);
+    if (!plan) { Alert.alert('Select a plan', 'Please choose a plan to continue.'); return; }
+    setRenewing(true);
+    try {
+      // Renewal: if the current plan hasn't lapsed yet, extend from its end date;
+      // otherwise (or on upgrade of an expired member) start today.
+      const now    = Date.now();
+      const curEnd = activePlan?.rawEndDate ? new Date(activePlan.rawEndDate).getTime() : 0;
+      const base   = curEnd > now ? curEnd : now;
+      const startDate = new Date(base).toISOString().split('T')[0];
+      const endDate   = new Date(base + plan.duration_days * 86_400_000).toISOString().split('T')[0];
+      const today     = new Date().toISOString().split('T')[0];
+
+      await supabase.from('member_plans').update({ status: 'expired' })
+        .eq('member_id', membersTableId).eq('status', 'active');
+
+      const { error: planErr } = await supabase.from('member_plans').insert({
+        member_id: membersTableId, gym_id: member.gym_id, plan_id: plan.id,
+        start_date: startDate, end_date: endDate, status: 'active', created_by: profile?.id ?? null,
+      });
+      if (planErr) throw new Error(planErr.message);
+
+      // Records the payment → shows up as the member's invoice.
+      const { error: payErr } = await supabase.from('payments').insert({
+        gym_id: member.gym_id, member_id: membersTableId, amount: plan.price,
+        payment_method: renewMethod, payment_date: today, payment_type: 'full',
+        notes: plan.name, created_by: profile?.id ?? null,
+      });
+      if (payErr) console.warn('[renew] payment record failed:', payErr.message);
+
+      await supabase.from('profiles').update({ status: 'active' }).eq('id', id);
+
+      // Reflect immediately.
+      setPlans(prev => [
+        { id: `tmp-${now}`, planName: plan.name, startDate: fmtDay(startDate), endDate: fmtDay(endDate),
+          rawEndDate: endDate, status: 'active', price: plan.price },
+        ...prev.map(p => (p.status === 'active' ? { ...p, status: 'expired' } : p)),
+      ]);
+      setPayments(prev => [
+        { id: `tmp-pay-${now}`, date: fmtDay(today), planName: plan.name, amount: plan.price, method: renewMethod },
+        ...prev,
+      ]);
+
+      setShowRenew(false);
+      setRenewPlanId('');
+      Alert.alert('Plan updated', `${member.full_name} is now on ${plan.name}. A receipt was saved to their Invoices.`);
+    } catch (e) {
+      Alert.alert('Could not update plan', e instanceof Error ? e.message : 'Please try again.');
+    } finally {
+      setRenewing(false);
+    }
+  };
 
   // ── Tab content renderer ──────────────────────────────────────
   const renderContent = () => {
@@ -485,10 +559,10 @@ export default function MemberProfileScreen() {
             </AnimatedPressable>
           </View>
 
-          {/* Row 2: Renew (full width primary) */}
+          {/* Row 2: Renew / Upgrade (full width primary) */}
           <AnimatedPressable
             style={s.renewBtn} scaleDown={0.97}
-            onPress={() => router.push({ pathname: '/(owner)/more/renew-plan', params: { memberId: id, memberName: member.full_name } })}
+            onPress={() => { setRenewPlanId(''); setRenewMethod('cash'); setShowRenew(true); }}
           >
             <LinearGradient
               colors={[Colors.accent, '#C55A00']}
@@ -497,7 +571,7 @@ export default function MemberProfileScreen() {
             />
             <MaterialCommunityIcons name="autorenew" size={20} color="#fff" />
             <View>
-              <Text style={s.renewBtnTitle}>Renew Membership</Text>
+              <Text style={s.renewBtnTitle}>Renew / Upgrade Plan</Text>
               <Text style={s.renewBtnSub}>
                 {activePlan ? `Expires ${activePlan.endDate}` : 'No active plan'}
               </Text>
@@ -722,6 +796,87 @@ export default function MemberProfileScreen() {
           </ScrollView>
         </View>
       </Modal>
+
+      {/* ── Renew / Upgrade Plan Modal ── */}
+      <Modal visible={showRenew} transparent animationType="slide">
+        <Pressable style={s.backdrop} onPress={() => !renewing && setShowRenew(false)} />
+        <View style={s.trainerSheet}>
+          <View style={s.sheetHandle} />
+
+          <View style={s.sheetTopRow}>
+            <View style={s.sheetTitleRow}>
+              <View style={s.sheetIconBox}>
+                <MaterialCommunityIcons name="autorenew" size={18} color={Colors.accent} />
+              </View>
+              <View>
+                <Text style={s.sheetTitle}>RENEW / UPGRADE PLAN</Text>
+                <Text style={s.sheetSub}>Renew or move {member?.full_name?.split(' ')[0]} to a new plan</Text>
+              </View>
+            </View>
+            <Pressable style={s.closeBtn} onPress={() => !renewing && setShowRenew(false)}>
+              <MaterialCommunityIcons name="close" size={16} color={Colors.textMuted} />
+            </Pressable>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+            {gymPlans.length === 0 ? (
+              <View style={s.noTrainersBox}>
+                <MaterialCommunityIcons name="clipboard-alert-outline" size={28} color={Colors.textMuted} />
+                <Text style={s.noTrainersText}>No active plans found.</Text>
+                <Text style={s.noTrainersSubText}>Create plans first in the Plans tab.</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={s.rnLabel}>CHOOSE PLAN</Text>
+                <View style={s.rnPlanGrid}>
+                  {gymPlans.map(p => {
+                    const on = renewPlanId === p.id;
+                    const isCurrent = activePlan?.planName === p.name;
+                    return (
+                      <Pressable key={p.id} style={[s.rnPlanCard, on && s.rnPlanCardOn]} onPress={() => setRenewPlanId(p.id)}>
+                        <View style={s.rnPlanTop}>
+                          <MaterialCommunityIcons name={on ? 'check-circle' : 'circle-outline'} size={15} color={on ? Colors.accent : Colors.textMuted} />
+                          <Text style={[s.rnPlanName, on && { color: Colors.text }]} numberOfLines={1}>{p.name}</Text>
+                        </View>
+                        <Text style={[s.rnPlanPrice, on && { color: Colors.accent }]}>₹{p.price.toLocaleString('en-IN')}</Text>
+                        <Text style={s.rnPlanDays}>{p.duration_days} days{isCurrent ? ' · current' : ''}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Text style={[s.rnLabel, { marginTop: 16 }]}>PAID VIA</Text>
+                <View style={s.rnPayRow}>
+                  {(['cash', 'upi', 'card'] as const).map(m => {
+                    const on = renewMethod === m;
+                    return (
+                      <Pressable key={m} style={[s.rnChip, on && s.rnChipOn]} onPress={() => setRenewMethod(m)}>
+                        <Text style={[s.rnChipTxt, on && { color: Colors.green }]}>{m.toUpperCase()}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Pressable
+                  style={[s.rnConfirm, (!renewPlanId || renewing) && { opacity: 0.5 }]}
+                  disabled={!renewPlanId || renewing}
+                  onPress={handleRenew}
+                >
+                  {renewing
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <>
+                        <MaterialCommunityIcons name="check" size={17} color="#fff" />
+                        <Text style={s.rnConfirmTxt}>
+                          Confirm{renewPlanId ? ` · ₹${(gymPlans.find(p => p.id === renewPlanId)?.price ?? 0).toLocaleString('en-IN')}` : ''} &amp; save invoice
+                        </Text>
+                      </>}
+                </Pressable>
+                <Text style={s.rnFoot}>Records the payment and saves a receipt to the member's Invoices.</Text>
+              </>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -859,6 +1014,23 @@ const s = StyleSheet.create({
   },
   renewBtnTitle: { fontFamily: Fonts.bold, fontSize: 15, color: '#fff' },
   renewBtnSub:   { fontFamily: Fonts.regular, fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+
+  // Renew / upgrade modal
+  rnLabel:     { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 10 },
+  rnPlanGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  rnPlanCard:  { width: '48%', backgroundColor: Colors.bgInput, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 12 },
+  rnPlanCardOn:{ borderColor: Colors.accent, backgroundColor: Colors.accent + '10' },
+  rnPlanTop:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  rnPlanName:  { fontFamily: Fonts.bold, fontSize: 12, color: Colors.textSub, flex: 1 },
+  rnPlanPrice: { fontFamily: Fonts.condensedBold, fontSize: 20, color: Colors.text },
+  rnPlanDays:  { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted, marginTop: 1 },
+  rnPayRow:    { flexDirection: 'row', gap: 8 },
+  rnChip:      { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgInput },
+  rnChipOn:    { borderColor: Colors.green, backgroundColor: Colors.green + '15' },
+  rnChipTxt:   { fontFamily: Fonts.bold, fontSize: 11, color: Colors.textMuted, letterSpacing: 0.8 },
+  rnConfirm:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 15, marginTop: 20 },
+  rnConfirmTxt:{ fontFamily: Fonts.bold, fontSize: 14, color: '#fff', letterSpacing: 0.3 },
+  rnFoot:      { fontFamily: Fonts.regular, fontSize: 10.5, color: Colors.textMuted, textAlign: 'center', marginTop: 12, lineHeight: 15 },
 
   editBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 14,

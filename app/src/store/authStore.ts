@@ -22,6 +22,7 @@ export interface GymProfile {
   address: string | null;
   lat: number | null;
   lng: number | null;
+  gstin: string | null;   // set ⇒ invoices render as Tax Invoice, not Receipt
 }
 
 export interface TokenBalance {
@@ -180,7 +181,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       const { data, error } = await supabase
         .from('gyms')
-        .select('id, name, logo_url, phone, email, address')
+        .select('id, name, logo_url, phone, email, address, gstin')
         .eq('id', gymId)
         .maybeSingle();
 

@@ -57,7 +57,7 @@
           setMe({ name: prof.full_name ?? 'Member', phone: prof.phone ?? null });
           if (prof.gym_id) {
             const { data: g } = await supabase
-              .from('gyms').select('name, address, phone, logo_url').eq('id', prof.gym_id).maybeSingle();
+              .from('gyms').select('name, address, phone, logo_url, gstin').eq('id', prof.gym_id).maybeSingle();
             if (active && g) setGym({ name: g.name, address: g.address, phone: g.phone, logo_url: g.logo_url, gstin: (g as any).gstin ?? null });
           }
         }

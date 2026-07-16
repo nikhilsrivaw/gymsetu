@@ -70,6 +70,9 @@ export default function GymProfileScreen() {
   const [phone, setPhone]             = useState('');
   const [email, setEmail]             = useState('');
   const [address, setAddress]         = useState('');
+  // Set ⇒ receipts become GST tax invoices. Blank is correct for gyms below
+  // the registration threshold, so this stays optional.
+  const [gstin, setGstin]             = useState('');
   const [description, setDescription] = useState('');
   const [newLogoUri, setNewLogoUri]   = useState<string | null>(null);
 
@@ -116,6 +119,7 @@ export default function GymProfileScreen() {
           setPhone(g.phone ?? '');
           setEmail(g.email ?? '');
           setAddress(g.address ?? '');
+          setGstin((g as any).gstin ?? '');
           setDescription(g.description ?? '');
 
           if (g.timings?.length)  setTimings(g.timings);
@@ -163,6 +167,13 @@ export default function GymProfileScreen() {
   const handleSave = async () => {
     if (!gym) return;
     if (!name.trim()) { setSaveError('Gym name cannot be empty'); return; }
+    // Catch a malformed GSTIN here so the owner sees a readable message rather
+    // than the database's check-constraint error.
+    const cleanGstin = gstin.trim().toUpperCase();
+    if (cleanGstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(cleanGstin)) {
+      setSaveError('That GSTIN doesn\'t look right. It should be 15 characters, e.g. 27AAPFU0939F1ZV.');
+      return;
+    }
     Keyboard.dismiss();
     setSaveError('');
     setSaving(true);
@@ -182,6 +193,7 @@ export default function GymProfileScreen() {
           phone:        phone.trim()       || null,
           email:        email.trim()       || null,
           address:      address.trim()     || null,
+          gstin:        cleanGstin         || null,
           description:  description.trim() || null,
           logo_url:     logoUrl,
           social_links: editSocial,
@@ -401,6 +413,7 @@ export default function GymProfileScreen() {
                 { label: 'PHONE',               value: phone,       setter: setPhone,       placeholder: '9876543210',        kb: 'phone-pad'     },
                 { label: 'EMAIL',               value: email,       setter: setEmail,       placeholder: 'gym@email.com',     kb: 'email-address' },
                 { label: 'ADDRESS',             value: address,     setter: setAddress,     placeholder: 'Full address',      kb: 'default'       },
+                { label: 'GSTIN (OPTIONAL)',    value: gstin,       setter: setGstin,       placeholder: '27AAPFU0939F1ZV',   kb: 'default'       },
               ] as const).map(f => (
                 <View key={f.label} style={styles.fieldWrap}>
                   <Text style={styles.fieldLabel}>{f.label}</Text>

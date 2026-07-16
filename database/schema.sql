@@ -40,6 +40,8 @@ create table gyms (
   branch_address text,
   lat            double precision,
   lng            double precision,
+  gstin          text,          -- set => invoices render as GST Tax Invoice (database/gst.sql)
+  gst_rate       numeric default 18,
   created_at     timestamptz default now()
 );
 

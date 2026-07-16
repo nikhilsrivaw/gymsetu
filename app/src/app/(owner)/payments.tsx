@@ -83,12 +83,15 @@
         const nameMap: Record<string, string> = {};
         const phoneMap: Record<string, string | null> = {};
 
+        // payments.member_id holds members.id, not profiles.id. Resolving it
+        // against profiles matched nothing, so every row read "Unknown" — and
+        // members added by import have no profiles row at all.
         if (memberIds.length > 0) {
-          const { data: profileData } = await supabase
-            .from('profiles')
+          const { data: memberData } = await supabase
+            .from('members')
             .select('id, full_name, phone')
             .in('id', memberIds);
-          (profileData ?? []).forEach(p => { nameMap[p.id] = p.full_name; phoneMap[p.id] = p.phone; });
+          (memberData ?? []).forEach(m => { nameMap[m.id] = m.full_name; phoneMap[m.id] = m.phone; });
         }
 
         setPayments(data.map((p: any) => ({
@@ -114,12 +117,15 @@
       const gymIds = getGymIds();
       if (gymIds.length === 0) return;
       try {
+        // Must come from members: the id chosen here is written to
+        // payments.member_id, which the member's Invoices screen reads by
+        // members.id. A profiles.id here would file the payment under an id
+        // that matches no member.
         const { data } = await supabase
-          .from('profiles')
+          .from('members')
           .select('id, full_name, phone')
           .in('gym_id', gymIds)
-          .eq('role', 'member')
-          .eq('status', 'active')
+          .neq('status', 'inactive')
           .order('full_name');
         if (data) setMembers(data);
       } catch (err) {

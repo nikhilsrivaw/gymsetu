@@ -343,12 +343,11 @@ export default function MemberHome() {
             .gte('check_in_date', sixtyDaysAgo.toISOString().split('T')[0])
             .order('check_in_date', { ascending: false }),
 
-          // Leaderboard: gym-wide monthly attendance
-          supabase
-            .from('attendance')
-            .select('member_id, profiles(full_name)')
-            .eq('gym_id', profile.gym_id)
-            .gte('check_in_date', monthStart),
+          // Leaderboard: gym-wide monthly attendance, anonymised.
+          // Members cannot read other members, and attendance has no FK to
+          // profiles so the old profiles(full_name) embed always 400'd — the
+          // board was permanently empty. The RPC returns ranks and counts only.
+          supabase.rpc('gym_leaderboard', { p_month_start: monthStart }),
 
           // Announcements
           supabase
@@ -394,18 +393,13 @@ export default function MemberHome() {
         setStreak(s);
 
         // ── Parse leaderboard ────────────────────────────────────────
-        const lbMap = new Map<string, { name: string; days: number }>();
-        for (const row of (lbRes.data ?? [])) {
-          const key = (row as any).member_id;
-          if (!lbMap.has(key)) lbMap.set(key, { name: (row as any).profiles?.full_name ?? '?', days: 0 });
-          lbMap.get(key)!.days++;
-        }
-        const myLbId = profile.id; // attendance.member_id = profiles.id
-        const lb: LbEntry[] = Array.from(lbMap.entries())
-          .map(([id, v]) => ({ member_id: id, name: v.name, days: v.days, rank: 0, isMe: id === myLbId }))
-          .sort((a, b) => b.days - a.days)
-          .slice(0, 5)
-          .map((e, i) => ({ ...e, rank: i + 1 }));
+        const lb: LbEntry[] = ((lbRes.data ?? []) as any[]).map(r => ({
+          member_id: String(r.rank),
+          name:      r.is_me ? 'You' : `Member ${r.rank}`,
+          days:      r.days,
+          rank:      r.rank,
+          isMe:      !!r.is_me,
+        }));
         setLeaderboard(lb);
 
         setNotices(noticesRes.data ?? []);

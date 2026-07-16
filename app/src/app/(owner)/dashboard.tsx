@@ -211,13 +211,24 @@ export default function DashboardScreen() {
   const fetchFeed = useCallback(async () => {
     const gymIds = getGymIds();
     if (gymIds.length === 0) return;
+    // payments.member_id has no FK to profiles, so `profiles(full_name)` cannot
+    // be embedded — that query 400'd and the feed silently showed no payments.
+    // Names come from members, which is what member_id actually points at.
     const [paymentsRes, newMembersRes] = await Promise.all([
-      supabase.from('payments').select('amount, payment_method, payment_date, profiles(full_name)').in('gym_id', gymIds).order('payment_date', { ascending: false }).limit(4),
+      supabase.from('payments').select('amount, payment_method, payment_date, member_id').in('gym_id', gymIds).order('payment_date', { ascending: false }).limit(4),
       supabase.from('profiles').select('full_name, created_at').in('gym_id', gymIds).eq('role', 'member').order('created_at', { ascending: false }).limit(3),
     ]);
+
+    const payerIds = [...new Set((paymentsRes.data ?? []).map((p: any) => p.member_id).filter(Boolean))];
+    const payerNames: Record<string, string> = {};
+    if (payerIds.length > 0) {
+      const { data: payers } = await supabase.from('members').select('id, full_name').in('id', payerIds);
+      (payers ?? []).forEach((m: any) => { payerNames[m.id] = m.full_name; });
+    }
+
     const feed: FeedItem[] = [];
     (paymentsRes.data ?? []).forEach((p: any) => {
-      feed.push({ icon: 'credit-card-check-outline', title: p.profiles?.full_name ?? 'Member', hint: `paid ₹${p.amount?.toLocaleString('en-IN')} · ${(p.payment_method ?? 'cash').replace('_', ' ').toUpperCase()}`, time: timeAgo(p.payment_date), color: Colors.green });
+      feed.push({ icon: 'credit-card-check-outline', title: payerNames[p.member_id] ?? 'Member', hint: `paid ₹${p.amount?.toLocaleString('en-IN')} · ${(p.payment_method ?? 'cash').replace('_', ' ').toUpperCase()}`, time: timeAgo(p.payment_date), color: Colors.green });
     });
     (newMembersRes.data ?? []).forEach((m: any) => {
       feed.push({ icon: 'account-plus-outline', title: m.full_name ?? 'New Member', hint: 'joined the gym', time: timeAgo(m.created_at), color: Colors.accent });

@@ -115,13 +115,22 @@ export default function ExportScreen() {
 
       // ── Payments ───────────────────────────────────────────
       if (selectedTypes.has('payments')) {
+        // No FK from payments to profiles, so the name cannot be embedded —
+        // that query failed and took the whole payments export with it.
         const { data: payments } = await supabase
           .from('payments')
-          .select('amount, payment_date, payment_method, payment_type, receipt_number, profiles(full_name)')
+          .select('amount, payment_date, payment_method, payment_type, receipt_number, member_id')
           .in('gym_id', gymIds)
           .gte('payment_date', from)
           .lte('payment_date', to)
           .order('payment_date', { ascending: false });
+
+        const payerIds = [...new Set((payments ?? []).map((p: any) => p.member_id).filter(Boolean))];
+        const payerNames: Record<string, string> = {};
+        if (payerIds.length > 0) {
+          const { data: payers } = await supabase.from('members').select('id, full_name').in('id', payerIds);
+          (payers ?? []).forEach((m: any) => { payerNames[m.id] = m.full_name; });
+        }
 
         if (payments && payments.length > 0) {
           const total = payments.reduce((s, p) => s + (p.amount ?? 0), 0);
@@ -129,7 +138,7 @@ export default function ExportScreen() {
             ['Date', 'Member', 'Amount (₹)', 'Method', 'Type', 'Receipt'],
             ...payments.map((p: any) => [
               p.payment_date,
-              p.profiles?.full_name ?? '',
+              payerNames[p.member_id] ?? '',
               String(p.amount),
               p.payment_method,
               p.payment_type,
@@ -145,20 +154,29 @@ export default function ExportScreen() {
 
       // ── Attendance ─────────────────────────────────────────
       if (selectedTypes.has('attendance')) {
+        // attendance.member_id is profiles.id but carries no FK, so the name
+        // cannot be embedded — resolve it with a second lookup.
         const { data: attendance } = await supabase
           .from('attendance')
-          .select('check_in_date, check_in_time, method, profiles(full_name)')
+          .select('check_in_date, check_in_time, method, member_id')
           .in('gym_id', gymIds)
           .gte('check_in_date', from)
           .lte('check_in_date', to)
           .order('check_in_date', { ascending: false });
+
+        const attIds = [...new Set((attendance ?? []).map((a: any) => a.member_id).filter(Boolean))];
+        const attNames: Record<string, string> = {};
+        if (attIds.length > 0) {
+          const { data: people } = await supabase.from('profiles').select('id, full_name').in('id', attIds);
+          (people ?? []).forEach((p: any) => { attNames[p.id] = p.full_name; });
+        }
 
         if (attendance && attendance.length > 0) {
           const rows: string[][] = [
             ['Date', 'Member', 'Check-in Time', 'Method'],
             ...attendance.map((a: any) => [
               a.check_in_date,
-              a.profiles?.full_name ?? '',
+              attNames[a.member_id] ?? '',
               a.check_in_time ?? '',
               a.method ?? 'manual',
             ]),

@@ -145,7 +145,9 @@ create table member_plans (
   plan_id    uuid references membership_plans(id) on delete restrict not null,
   start_date date not null,
   end_date   date not null,
-  status     text not null default 'active' check (status in ('active','expired','cancelled')),
+  status     text not null default 'active' check (status in ('active','expired','cancelled','frozen')),
+  frozen_at   date,              -- set while paused; see database/freeze_membership.sql
+  frozen_days integer default 0, -- cumulative days paused, for audit
   created_by uuid references auth.users(id),
   created_at timestamptz default now()
 );

@@ -1,6 +1,6 @@
 export type UserRole = 'gym_owner' | 'staff' | 'member' | 'trainer';
 
-export type MemberStatus = 'active' | 'expired' | 'suspended' | 'inactive';
+export type MemberStatus = 'active' | 'expired' | 'suspended' | 'inactive' | 'frozen';
 
 export type MemberGoal = 'weight_loss' | 'muscle_gain' | 'general_fitness' | 'other';
 

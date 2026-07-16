@@ -16,8 +16,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { askAI } from '@/lib/ai';
 
-type FilterType   = 'all' | 'active' | 'expired' | 'suspended';
-type MemberStatus = 'active' | 'expired' | 'suspended' | 'inactive';
+type FilterType   = 'all' | 'active' | 'expired' | 'frozen';
+type MemberStatus = 'active' | 'expired' | 'suspended' | 'inactive' | 'frozen';
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -25,12 +25,13 @@ const filters: { label: string; value: FilterType; color: string; icon: IconName
   { label: 'All',       value: 'all',       color: '#A0A0B0',    icon: 'account-group-outline' },
   { label: 'Active',    value: 'active',    color: Colors.green, icon: 'check-circle-outline'  },
   { label: 'Expired',   value: 'expired',   color: Colors.red,   icon: 'clock-alert-outline'   },
-  { label: 'Suspended', value: 'suspended', color: Colors.orange,icon: 'pause-circle-outline'  },
+  { label: 'Frozen',    value: 'frozen',    color: '#3B82F6',   icon: 'pause-circle-outline'  },
 ];
 
 const statusColors: Record<MemberStatus, string> = {
   active:    Colors.green,
   expired:   Colors.red,
+  frozen:    '#3B82F6',
   suspended: Colors.orange,
   inactive:  Colors.textMuted,
 };
@@ -38,6 +39,7 @@ const statusColors: Record<MemberStatus, string> = {
 const statusIcons: Record<MemberStatus, IconName> = {
   active:    'check-circle',
   expired:   'clock-alert',
+  frozen:    'pause-circle',
   suspended: 'pause-circle',
   inactive:  'minus-circle',
 };
@@ -63,6 +65,8 @@ const getRisk = (m: MemberRow): 'high' | 'medium' | null => {
 
 const deriveStatus = (plans: any[]): MemberStatus => {
   if (!plans || plans.length === 0) return 'inactive';
+  // A frozen plan outranks history: the member is paused, not lapsed.
+  if (plans.some(p => p.status === 'frozen')) return 'frozen';
   const active = plans.find(p => p.status === 'active');
   if (active) return 'active';
   const latest = plans[0];
@@ -151,7 +155,8 @@ export default function MembersListScreen() {
       const rows: MemberRow[] = profileData.map((m: any) => {
         const membersId  = profileToMemberId[m.id] ?? m.id;
         const plans      = (planData ?? []).filter((p: any) => p.member_id === membersId);
-        const activePlan = plans.find((p: any) => p.status === 'active');
+        // A frozen plan is the member's current plan, just paused.
+        const activePlan = plans.find((p: any) => p.status === 'active' || p.status === 'frozen');
         const plan       = activePlan ?? plans[0];
         const status     = deriveStatus(plans);
         return {
@@ -308,7 +313,7 @@ export default function MembersListScreen() {
                 f.value === 'all'       ? members.length :
                 f.value === 'active'    ? members.filter(m => m.status === 'active').length :
                 f.value === 'expired'   ? members.filter(m => m.status === 'expired').length :
-                members.filter(m => m.status === 'suspended').length;
+                members.filter(m => m.status === 'frozen').length;
               return (
                 <AnimatedPressable
                   key={f.value}

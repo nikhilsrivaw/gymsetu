@@ -63,6 +63,7 @@ export default function MemberProfileScreen() {
   const [renewPlanId, setRenewPlanId] = useState('');
   const [renewMethod, setRenewMethod] = useState<'cash' | 'upi' | 'card'>('cash');
   const [renewing,   setRenewing]   = useState(false);
+  const [freezing,   setFreezing]   = useState(false);
 
   const [member,         setMember]         = useState<MemberProfile | null>(null);
   const [plans,          setPlans]          = useState<PlanRow[]>([]);
@@ -232,14 +233,65 @@ export default function MemberProfileScreen() {
   );
 
   const memberStatus = member.status ?? 'inactive';
-  const statusColor  = memberStatus === 'active' ? Colors.green : memberStatus === 'expired' ? Colors.red : Colors.orange;
+  const statusColor  = memberStatus === 'active' ? Colors.green
+                     : memberStatus === 'expired' ? Colors.red
+                     : memberStatus === 'frozen'  ? '#3B82F6'
+                     : Colors.orange;
   const initials     = member.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
   const joinDate     = member.join_date ?? member.created_at;
+  // A frozen plan is still the member's current plan — it is just paused.
   const activePlan   = plans.find(p => p.status === 'active');
+  const frozenPlan   = plans.find(p => p.status === 'frozen');
+  const currentPlan  = activePlan ?? frozenPlan;
+  const isFrozen     = !!frozenPlan;
   const totalSpend   = payments.reduce((sum, p) => sum + p.amount, 0);
 
   const fmtDay = (iso: string) =>
     new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  // Freeze pauses the countdown; resume pushes end_date out by the days paused.
+  // Both go through RPCs so member_plans/members/profiles can't drift apart —
+  // the daily WhatsApp cron reads members.status, so a half-applied freeze
+  // would keep nudging someone who is away.
+  const handleFreezeToggle = async () => {
+    const plan = currentPlan;
+    if (!plan) return;
+    if (isFrozen) {
+      setFreezing(true);
+      try {
+        const { data, error } = await supabase.rpc('resume_member_plan', { p_plan_id: plan.id });
+        if (error) throw new Error(error.message);
+        const newEnd = typeof data === 'string' ? data : plan.rawEndDate;
+        setPlans(prev => prev.map(p => p.id === plan.id
+          ? { ...p, status: 'active', rawEndDate: newEnd, endDate: fmtDay(newEnd) } : p));
+        setMember(prev => (prev ? { ...prev, status: 'active' } : prev));
+        Alert.alert('Membership resumed', `${member.full_name}'s plan now runs to ${fmtDay(newEnd)}.`);
+      } catch (e) {
+        Alert.alert('Could not resume', e instanceof Error ? e.message : 'Please try again.');
+      } finally { setFreezing(false); }
+      return;
+    }
+
+    Alert.alert(
+      'Freeze membership?',
+      `${member.full_name}'s plan stops counting down from today. When you resume, the paused days are added back to their expiry. They won't get expiry or attendance reminders while frozen.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Freeze', onPress: async () => {
+          setFreezing(true);
+          try {
+            const { error } = await supabase.rpc('freeze_member_plan', { p_plan_id: plan.id });
+            if (error) throw new Error(error.message);
+            setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, status: 'frozen' } : p));
+            setMember(prev => (prev ? { ...prev, status: 'frozen' } : prev));
+            Alert.alert('Membership frozen', `${member.full_name}'s plan is paused. Resume it any time.`);
+          } catch (e) {
+            Alert.alert('Could not freeze', e instanceof Error ? e.message : 'Please try again.');
+          } finally { setFreezing(false); }
+        } },
+      ],
+    );
+  };
 
   const handleRenew = async () => {
     if (!member || !membersTableId) return;
@@ -357,7 +409,9 @@ export default function MemberProfileScreen() {
       return (
         <View style={s.tabContent}>
           {plans.map(p => {
-            const c = p.status === 'active' ? Colors.green : Colors.textMuted;
+            const c = p.status === 'active' ? Colors.green
+                    : p.status === 'frozen' ? '#3B82F6'
+                    : Colors.textMuted;
             return (
               <View key={p.id} style={s.planCard}>
                 <LinearGradient
@@ -573,12 +627,42 @@ export default function MemberProfileScreen() {
             <View>
               <Text style={s.renewBtnTitle}>Renew / Upgrade Plan</Text>
               <Text style={s.renewBtnSub}>
-                {activePlan ? `Expires ${activePlan.endDate}` : 'No active plan'}
+                {isFrozen        ? 'Paused — resume to continue'
+                  : currentPlan  ? `Expires ${currentPlan.endDate}`
+                  : 'No active plan'}
               </Text>
             </View>
             <View style={{ flex: 1 }} />
             <MaterialCommunityIcons name="chevron-right" size={20} color="#fff" />
           </AnimatedPressable>
+
+          {/* Row 2b: Freeze / Resume — only meaningful with a plan to pause */}
+          {currentPlan && (
+            <AnimatedPressable
+              style={[s.freezeBtn, isFrozen && s.freezeBtnActive]}
+              scaleDown={0.97}
+              onPress={handleFreezeToggle}
+              disabled={freezing}
+            >
+              {freezing
+                ? <ActivityIndicator size="small" color="#3B82F6" />
+                : <MaterialCommunityIcons
+                    name={isFrozen ? 'play-circle-outline' : 'pause-circle-outline'}
+                    size={20} color="#3B82F6" />}
+              <View>
+                <Text style={s.freezeBtnTitle}>
+                  {isFrozen ? 'Resume Membership' : 'Freeze Membership'}
+                </Text>
+                <Text style={s.freezeBtnSub}>
+                  {isFrozen
+                    ? 'Paused days get added back to expiry'
+                    : 'Pause the plan for travel or injury'}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }} />
+              <MaterialCommunityIcons name="chevron-right" size={20} color="#3B82F6" />
+            </AnimatedPressable>
+          )}
 
           {/* Row 3: Edit */}
           <AnimatedPressable
@@ -1014,6 +1098,16 @@ const s = StyleSheet.create({
   },
   renewBtnTitle: { fontFamily: Fonts.bold, fontSize: 15, color: '#fff' },
   renewBtnSub:   { fontFamily: Fonts.regular, fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+
+  freezeBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.bgCard, borderRadius: 14,
+    borderWidth: 1, borderColor: '#3B82F640',
+    paddingHorizontal: 16, paddingVertical: 14, overflow: 'hidden',
+  },
+  freezeBtnActive: { backgroundColor: '#3B82F612', borderColor: '#3B82F6' },
+  freezeBtnTitle:  { fontFamily: Fonts.bold, fontSize: 15, color: Colors.text },
+  freezeBtnSub:    { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, marginTop: 2 },
 
   // Renew / upgrade modal
   rnLabel:     { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 10 },

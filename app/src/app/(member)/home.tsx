@@ -35,6 +35,7 @@ interface ActivePlanData {
   totalDays: number;
   startDate: string;
   endDate: string;
+  frozen: boolean;
 }
 interface Notice { id: string; title: string; body: string; emoji: string; created_at: string; }
 
@@ -315,12 +316,13 @@ export default function MemberHome() {
         // ── 3. Parallel fetches using correct IDs ────────────────────
         const [planRes, attMonthRes, attStreakRes, lbRes, noticesRes] = await Promise.all([
           // Plan: use resolvedMembersId (local const, not stale state)
+          // A frozen plan is still the member's plan — it is paused, not gone.
           resolvedMembersId
             ? supabase
                 .from('member_plans')
-                .select('start_date, end_date, membership_plans(name, duration_days)')
+                .select('start_date, end_date, status, membership_plans(name, duration_days)')
                 .eq('member_id', resolvedMembersId)
-                .eq('status', 'active')
+                .in('status', ['active', 'frozen'])
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .maybeSingle()
@@ -375,6 +377,7 @@ export default function MemberHome() {
             totalDays,
             startDate: pd.start_date ?? '',
             endDate:   pd.end_date,
+            frozen:    pd.status === 'frozen',
           });
         } else {
           setActivePlan(null);
@@ -499,17 +502,18 @@ export default function MemberHome() {
     ? Math.min(100, Math.round((daysUsed / activePlan.totalDays) * 100))
     : 0;
 
-  const planColor = activePlan
-    ? activePlan.daysLeft <= 3  ? Colors.red
-      : activePlan.daysLeft <= 7 ? Colors.orange
-        : Colors.green
-    : Colors.textMuted;
+  // A frozen plan isn't counting down, so it is never "expiring soon".
+  const planColor = !activePlan      ? Colors.textMuted
+    : activePlan.frozen              ? '#3B82F6'
+    : activePlan.daysLeft <= 3       ? Colors.red
+    : activePlan.daysLeft <= 7       ? Colors.orange
+    : Colors.green;
 
-  const urgency = activePlan
-    ? activePlan.daysLeft <= 3  ? 'critical'
-      : activePlan.daysLeft <= 7 ? 'warning'
-        : 'ok'
-    : 'none';
+  const urgency = !activePlan   ? 'none'
+    : activePlan.frozen         ? 'ok'
+    : activePlan.daysLeft <= 3  ? 'critical'
+    : activePlan.daysLeft <= 7  ? 'warning'
+    : 'ok';
 
   // ── Loading ──────────────────────────────────────────────────────
   if (loading) return (
@@ -657,6 +661,7 @@ export default function MemberHome() {
               </View>
               <Text style={styles.memberCardPlan} numberOfLines={1}>
                 {activePlan ? activePlan.name.toUpperCase() : 'NO ACTIVE PLAN'}
+                {activePlan?.frozen ? '  ·  PAUSED' : ''}
               </Text>
 
               {activePlan && (
@@ -673,10 +678,19 @@ export default function MemberHome() {
 
             {/* Right: days left badge */}
             <View style={[styles.expiryBadge, { backgroundColor: planColor + '14', borderColor: planColor + '35' }]}>
-              <Text style={[styles.expiryNum, { color: planColor }]}>
-                {activePlan?.daysLeft ?? 0}
-              </Text>
-              <Text style={[styles.expiryUnit, { color: planColor }]}>DAYS{'\n'}LEFT</Text>
+              {activePlan?.frozen ? (
+                <>
+                  <MaterialCommunityIcons name="pause-circle-outline" size={22} color={planColor} />
+                  <Text style={[styles.expiryUnit, { color: planColor }]}>ON{'\n'}HOLD</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={[styles.expiryNum, { color: planColor }]}>
+                    {activePlan?.daysLeft ?? 0}
+                  </Text>
+                  <Text style={[styles.expiryUnit, { color: planColor }]}>DAYS{'\n'}LEFT</Text>
+                </>
+              )}
             </View>
           </View>
 
@@ -691,7 +705,11 @@ export default function MemberHome() {
             </View>
             <View style={styles.progressLabels}>
               <Text style={styles.planProgressText}>{usedPercent}% used</Text>
-              <Text style={styles.planProgressText}>{activePlan?.daysLeft ?? 0} days left</Text>
+              <Text style={styles.planProgressText}>
+                {activePlan?.frozen
+                  ? 'Paused — countdown stopped'
+                  : `${activePlan?.daysLeft ?? 0} days left`}
+              </Text>
             </View>
           </View>
 

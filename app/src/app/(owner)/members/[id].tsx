@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Linking,
+  View, Text, StyleSheet, ScrollView, Linking, TextInput,
   ActivityIndicator, TouchableOpacity, Share, Modal, Pressable, Alert,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
@@ -37,7 +37,7 @@ interface MemberProfile {
 }
 interface GymTrainer { id: string; name: string; specialization: string | null; status: string; }
 interface PlanRow    { id: string; planName: string; startDate: string; endDate: string; rawEndDate: string; status: string; price: number; }
-interface PaymentRow { id: string; date: string; planName: string; amount: number; method: string; }
+interface PaymentRow { id: string; date: string; planName: string; amount: number; method: string; planId: string | null; }
 interface AttendRow  { id: string; date: string; time: string; }
 
 const goalLabel: Record<string, string> = {
@@ -62,8 +62,11 @@ export default function MemberProfileScreen() {
   const [showRenew,  setShowRenew]  = useState(false);
   const [renewPlanId, setRenewPlanId] = useState('');
   const [renewMethod, setRenewMethod] = useState<'cash' | 'upi' | 'card'>('cash');
+  // Blank = collecting the full plan price; less leaves a balance due.
+  const [renewAmount, setRenewAmount] = useState('');
   const [renewing,   setRenewing]   = useState(false);
   const [freezing,   setFreezing]   = useState(false);
+  const [collecting, setCollecting] = useState(false);
 
   const [member,         setMember]         = useState<MemberProfile | null>(null);
   const [plans,          setPlans]          = useState<PlanRow[]>([]);
@@ -110,7 +113,7 @@ export default function MemberProfileScreen() {
             .select('id, start_date, end_date, status, membership_plans(name, price)')
             .eq('member_id', membersTableId).order('created_at', { ascending: false }),
           supabase.from('payments')
-            .select('id, amount, payment_date, payment_method, member_plans(membership_plans(name))')
+            .select('id, amount, payment_date, payment_method, member_plan_id, payment_type, member_plans(membership_plans(name))')
             .eq('member_id', membersTableId).order('payment_date', { ascending: false }),
           supabase.from('attendance')
             .select('id, check_in_date, check_in_time')
@@ -156,7 +159,7 @@ export default function MemberProfileScreen() {
         setPayments((paymentsRes.data ?? []).map((p: any) => ({
           id: p.id, date: new Date(p.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
           planName: p.member_plans?.membership_plans?.name ?? 'Membership',
-          amount: p.amount, method: p.payment_method,
+          amount: p.amount, method: p.payment_method, planId: p.member_plan_id ?? null,
         })));
         setAttendance((attRes.data ?? []).map((a: any) => ({
           id: a.id,
@@ -246,8 +249,43 @@ export default function MemberProfileScreen() {
   const isFrozen     = !!frozenPlan;
   const totalSpend   = payments.reduce((sum, p) => sum + p.amount, 0);
 
+  // Balance on the current plan = its price minus everything paid against it.
+  // Only payments carrying member_plan_id count; older rows predate the link
+  // and are deliberately ignored rather than guessed at.
+  const paidOnCurrent = currentPlan
+    ? payments.filter(p => p.planId === currentPlan.id).reduce((s, p) => s + p.amount, 0)
+    : 0;
+  const balanceDue = currentPlan && payments.some(p => p.planId === currentPlan.id)
+    ? Math.max(0, currentPlan.price - paidOnCurrent)
+    : 0;
+
   const fmtDay = (iso: string) =>
     new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  // Collect an outstanding balance: another payment row against the same plan,
+  // so the dues arithmetic stays a simple sum rather than a mutable field.
+  const handleCollectDue = async () => {
+    if (!member || !membersTableId || !currentPlan || balanceDue <= 0) return;
+    setCollecting(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { error } = await supabase.from('payments').insert({
+        gym_id: member.gym_id, member_id: membersTableId, member_plan_id: currentPlan.id,
+        amount: balanceDue, payment_method: renewMethod, payment_date: today,
+        payment_type: 'full', notes: `${currentPlan.planName} — balance`,
+        created_by: profile?.id ?? null,
+      });
+      if (error) throw new Error(error.message);
+      setPayments(prev => [
+        { id: `tmp-due-${Date.now()}`, date: fmtDay(today), planName: `${currentPlan.planName} — balance`,
+          amount: balanceDue, method: renewMethod, planId: currentPlan.id },
+        ...prev,
+      ]);
+      Alert.alert('Balance collected', `₹${balanceDue.toLocaleString('en-IN')} recorded. A receipt was saved to their Invoices.`);
+    } catch (e) {
+      Alert.alert('Could not record payment', e instanceof Error ? e.message : 'Please try again.');
+    } finally { setCollecting(false); }
+  };
 
   // Freeze pauses the countdown; resume pushes end_date out by the days paused.
   // Both go through RPCs so member_plans/members/profiles can't drift apart —
@@ -311,16 +349,20 @@ export default function MemberProfileScreen() {
       await supabase.from('member_plans').update({ status: 'expired' })
         .eq('member_id', membersTableId).eq('status', 'active');
 
-      const { error: planErr } = await supabase.from('member_plans').insert({
+      const { data: planRow, error: planErr } = await supabase.from('member_plans').insert({
         member_id: membersTableId, gym_id: member.gym_id, plan_id: plan.id,
         start_date: startDate, end_date: endDate, status: 'active', created_by: profile?.id ?? null,
-      });
+      }).select('id').single();
       if (planErr) throw new Error(planErr.message);
 
-      // Records the payment → shows up as the member's invoice.
+      // Records the payment → shows up as the member's invoice. member_plan_id
+      // ties it to this plan so any balance is computable.
+      const collected = renewAmount.trim() === '' ? plan.price : Number(renewAmount) || 0;
       const { error: payErr } = await supabase.from('payments').insert({
-        gym_id: member.gym_id, member_id: membersTableId, amount: plan.price,
-        payment_method: renewMethod, payment_date: today, payment_type: 'full',
+        gym_id: member.gym_id, member_id: membersTableId, member_plan_id: planRow?.id ?? null,
+        amount: collected,
+        payment_method: renewMethod, payment_date: today,
+        payment_type: collected < plan.price ? 'partial' : 'full',
         notes: plan.name, created_by: profile?.id ?? null,
       });
       if (payErr) console.warn('[renew] payment record failed:', payErr.message);
@@ -329,17 +371,21 @@ export default function MemberProfileScreen() {
 
       // Reflect immediately.
       setPlans(prev => [
-        { id: `tmp-${now}`, planName: plan.name, startDate: fmtDay(startDate), endDate: fmtDay(endDate),
+        // Use the real inserted id so the payment below links to it and the
+        // balance-due arithmetic works before the next refetch.
+        { id: planRow?.id ?? `tmp-${now}`, planName: plan.name, startDate: fmtDay(startDate), endDate: fmtDay(endDate),
           rawEndDate: endDate, status: 'active', price: plan.price },
         ...prev.map(p => (p.status === 'active' ? { ...p, status: 'expired' } : p)),
       ]);
       setPayments(prev => [
-        { id: `tmp-pay-${now}`, date: fmtDay(today), planName: plan.name, amount: plan.price, method: renewMethod },
+        { id: `tmp-pay-${now}`, date: fmtDay(today), planName: plan.name, amount: collected,
+          method: renewMethod, planId: planRow?.id ?? null },
         ...prev,
       ]);
 
       setShowRenew(false);
       setRenewPlanId('');
+      setRenewAmount('');
       Alert.alert('Plan updated', `${member.full_name} is now on ${plan.name}. A receipt was saved to their Invoices.`);
     } catch (e) {
       Alert.alert('Could not update plan', e instanceof Error ? e.message : 'Please try again.');
@@ -613,10 +659,33 @@ export default function MemberProfileScreen() {
             </AnimatedPressable>
           </View>
 
+          {/* Row 1b: Outstanding balance on the current plan */}
+          {balanceDue > 0 && (
+            <View style={s.dueBanner}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={20} color={Colors.orange} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.dueTitle}>₹{balanceDue.toLocaleString('en-IN')} due</Text>
+                <Text style={s.dueSub}>
+                  Paid ₹{paidOnCurrent.toLocaleString('en-IN')} of ₹{currentPlan!.price.toLocaleString('en-IN')} for {currentPlan!.planName}
+                </Text>
+              </View>
+              <AnimatedPressable
+                style={s.dueBtn}
+                scaleDown={0.93}
+                onPress={handleCollectDue}
+                disabled={collecting}
+              >
+                {collecting
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={s.dueBtnText}>COLLECT</Text>}
+              </AnimatedPressable>
+            </View>
+          )}
+
           {/* Row 2: Renew / Upgrade (full width primary) */}
           <AnimatedPressable
             style={s.renewBtn} scaleDown={0.97}
-            onPress={() => { setRenewPlanId(''); setRenewMethod('cash'); setShowRenew(true); }}
+            onPress={() => { setRenewPlanId(''); setRenewMethod('cash'); setRenewAmount(''); setShowRenew(true); }}
           >
             <LinearGradient
               colors={[Colors.accent, '#C55A00']}
@@ -941,21 +1010,44 @@ export default function MemberProfileScreen() {
                   })}
                 </View>
 
-                <Pressable
-                  style={[s.rnConfirm, (!renewPlanId || renewing) && { opacity: 0.5 }]}
-                  disabled={!renewPlanId || renewing}
-                  onPress={handleRenew}
-                >
-                  {renewing
-                    ? <ActivityIndicator size="small" color="#fff" />
-                    : <>
-                        <MaterialCommunityIcons name="check" size={17} color="#fff" />
-                        <Text style={s.rnConfirmTxt}>
-                          Confirm{renewPlanId ? ` · ₹${(gymPlans.find(p => p.id === renewPlanId)?.price ?? 0).toLocaleString('en-IN')}` : ''} &amp; save invoice
-                        </Text>
-                      </>}
-                </Pressable>
-                <Text style={s.rnFoot}>Records the payment and saves a receipt to the member's Invoices.</Text>
+                <Text style={[s.rnLabel, { marginTop: 16 }]}>AMOUNT COLLECTED</Text>
+                <TextInput
+                  style={s.rnAmountInput}
+                  value={renewAmount}
+                  onChangeText={(t: string) => setRenewAmount(t.replace(/[^0-9]/g, ''))}
+                  keyboardType="numeric"
+                  placeholder={String(gymPlans.find(p => p.id === renewPlanId)?.price ?? 0)}
+                  placeholderTextColor={Colors.textMuted}
+                />
+
+                {(() => {
+                  const price     = gymPlans.find(p => p.id === renewPlanId)?.price ?? 0;
+                  const collected = renewAmount.trim() === '' ? price : Number(renewAmount) || 0;
+                  const due       = Math.max(0, price - collected);
+                  return (
+                    <>
+                      <Pressable
+                        style={[s.rnConfirm, (!renewPlanId || renewing) && { opacity: 0.5 }]}
+                        disabled={!renewPlanId || renewing}
+                        onPress={handleRenew}
+                      >
+                        {renewing
+                          ? <ActivityIndicator size="small" color="#fff" />
+                          : <>
+                              <MaterialCommunityIcons name="check" size={17} color="#fff" />
+                              <Text style={s.rnConfirmTxt}>
+                                Confirm{renewPlanId ? ` · ₹${collected.toLocaleString('en-IN')}` : ''} &amp; save invoice
+                              </Text>
+                            </>}
+                      </Pressable>
+                      <Text style={s.rnFoot}>
+                        {due > 0
+                          ? `Part payment — ₹${due.toLocaleString('en-IN')} stays due on this plan. You can collect it later from this screen.`
+                          : "Records the payment and saves a receipt to the member's Invoices."}
+                      </Text>
+                    </>
+                  );
+                })()}
               </>
             )}
           </ScrollView>
@@ -1098,6 +1190,28 @@ const s = StyleSheet.create({
   },
   renewBtnTitle: { fontFamily: Fonts.bold, fontSize: 15, color: '#fff' },
   renewBtnSub:   { fontFamily: Fonts.regular, fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+
+  rnAmountInput: {
+    backgroundColor: Colors.bgElevated, borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 12, marginTop: 8,
+    fontFamily: Fonts.bold, fontSize: 15, color: Colors.text,
+  },
+
+  dueBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.orange + '12', borderRadius: 14,
+    borderWidth: 1, borderColor: Colors.orange + '40',
+    paddingHorizontal: 16, paddingVertical: 14,
+  },
+  dueTitle:   { fontFamily: Fonts.bold, fontSize: 15, color: Colors.orange },
+  dueSub:     { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  dueBtn: {
+    backgroundColor: Colors.orange, borderRadius: 9,
+    paddingHorizontal: 14, paddingVertical: 9, minWidth: 78,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  dueBtnText: { fontFamily: Fonts.bold, fontSize: 10, color: '#fff', letterSpacing: 0.5 },
 
   freezeBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

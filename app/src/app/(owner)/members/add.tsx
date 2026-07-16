@@ -260,6 +260,8 @@ export default function AddMemberScreen() {
   const [plans, setPlans]                   = useState<MembershipPlan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [payMethod, setPayMethod]           = useState<'cash' | 'upi' | 'card'>('cash');
+  // Blank = collected the full plan price. A smaller number leaves a balance.
+  const [amountPaid, setAmountPaid]         = useState('');
   const [isExisting, setIsExisting]         = useState(false);   // migrating a pre-existing member
   const [validTill,  setValidTill]          = useState('');      // their current plan's expiry (DD/MM/YYYY)
 
@@ -354,7 +356,9 @@ export default function AddMemberScreen() {
             endDate = new Date(today.getTime() + plan.duration_days * 86_400_000).toISOString().split('T')[0];
           }
 
-          const { error: planError } = await supabase.from('member_plans').insert({
+          // Keep the new plan's id so the payment can be linked to it — that
+          // link is what makes an outstanding balance computable.
+          const { data: planRow, error: planError } = await supabase.from('member_plans').insert({
             member_id:  memberId,
             gym_id:     gymId,
             plan_id:    selectedPlanId,
@@ -362,19 +366,21 @@ export default function AddMemberScreen() {
             end_date:   endDate,
             status:     planStatus,
             created_by: profile?.id ?? null,
-          });
+          }).select('id').single();
           if (planError) throw new Error(`Member created but plan assignment failed: ${planError.message}`);
 
           if (!isExisting) {
-            // New joiner — selecting a plan means the fee was collected now, so
-            // record it as their first payment (first invoice) in the member app.
+            // New joiner — record what was actually collected. Gyms often take
+            // part of the fee up front, so this may be less than the price.
+            const collected = amountPaid.trim() === '' ? plan.price : Number(amountPaid);
             const { error: payError } = await supabase.from('payments').insert({
               gym_id:         gymId,
               member_id:      memberId,          // members.id — matches what the member app reads
-              amount:         plan.price,
+              member_plan_id: planRow?.id ?? null,
+              amount:         collected,
               payment_method: payMethod,
               payment_date:   todayStr,
-              payment_type:   'full',
+              payment_type:   collected < plan.price ? 'partial' : 'full',
               notes:          plan.name,
               created_by:     profile?.id ?? null,
             });
@@ -715,10 +721,30 @@ export default function AddMemberScreen() {
                         );
                       })}
                     </View>
-                    <Text style={s.payHint}>
-                      A receipt for ₹{(plans.find(p => p.id === selectedPlanId)?.price ?? 0).toLocaleString('en-IN')} will be
-                      saved to the member's Invoices.
-                    </Text>
+                    {(() => {
+                      const price     = plans.find(p => p.id === selectedPlanId)?.price ?? 0;
+                      const collected = amountPaid.trim() === '' ? price : Number(amountPaid) || 0;
+                      const due       = Math.max(0, price - collected);
+                      return (
+                        <>
+                          <View style={{ marginTop: 4 }}>
+                            <Field
+                              icon="cash"
+                              label="Amount collected"
+                              value={amountPaid}
+                              onChange={(v) => { setAmountPaid(v.replace(/[^0-9]/g, '')); setError(''); }}
+                              keyboardType="numeric"
+                              placeholder={String(price)}
+                            />
+                          </View>
+                          <Text style={s.payHint}>
+                            {due > 0
+                              ? `Part payment — ₹${due.toLocaleString('en-IN')} will stay due on this plan. The receipt records ₹${collected.toLocaleString('en-IN')}.`
+                              : `A receipt for ₹${collected.toLocaleString('en-IN')} will be saved to the member's Invoices.`}
+                          </Text>
+                        </>
+                      );
+                    })()}
                   </View>
                 )}
               </View>

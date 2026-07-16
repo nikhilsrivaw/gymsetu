@@ -352,7 +352,7 @@ export default function TrainerAddMemberScreen() {
             endDate = new Date(today.getTime() + plan.duration_days * 86_400_000).toISOString().split('T')[0];
           }
 
-          const { error: planError } = await supabase.from('member_plans').insert({
+          const { data: planRow, error: planError } = await supabase.from('member_plans').insert({
             member_id:  memberId,
             gym_id:     gymId,
             plan_id:    selectedPlanId,
@@ -360,14 +360,17 @@ export default function TrainerAddMemberScreen() {
             end_date:   endDate,
             status:     planStatus,
             created_by: profile?.id ?? null,
-          });
+          }).select('id').single();
           if (planError) throw new Error(`Member created but plan assignment failed: ${planError.message}`);
 
           if (!isExisting) {
             // New joiner — record the fee as their first payment (first invoice).
+            // Trainers always collect the full fee; part payment is a billing
+            // decision, handled by the owner from the member's detail screen.
             const { error: payError } = await supabase.from('payments').insert({
               gym_id:         gymId,
               member_id:      memberId,
+              member_plan_id: planRow?.id ?? null,
               amount:         plan.price,
               payment_method: payMethod,
               payment_date:   todayStr,

@@ -129,24 +129,21 @@ export default function GymInfoScreen() {
     setFetchError(null);
 
     try {
-      const [gymRes, ownerRes, trainersRes] = await Promise.all([
+      // Members cannot read other profiles directly (they hold phones, emails
+      // and login passwords). gym_staff_directory() returns only the public
+      // columns for this member's own gym.
+      const [gymRes, dirRes] = await Promise.all([
         supabase
           .from('gyms')
           .select('established, timings, amenities, rules')
           .eq('id', profile.gym_id)
           .single(),
-        supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('gym_id', profile.gym_id)
-          .eq('role', 'gym_owner')
-          .maybeSingle(),
-        supabase
-          .from('profiles')
-          .select('id, full_name, specialty, experience_years')
-          .eq('gym_id', profile.gym_id)
-          .eq('role', 'trainer'),
+        supabase.rpc('gym_staff_directory'),
       ]);
+
+      const directory = (dirRes.data ?? []) as any[];
+      const ownerRes    = { data: directory.find(p => p.role === 'gym_owner') ?? null };
+      const trainersRes = { data: directory.filter(p => p.role === 'trainer') };
 
       if (gymRes.error) throw gymRes.error;
 

@@ -60,17 +60,13 @@ export default function MemberLoginScreen() {
     Keyboard.dismiss();
     setLoadingGym(true);
 
-    // Await gym branding lookup before transitioning
+    // Await gym branding lookup before transitioning.
+    // Logged-out callers cannot read profiles (that table holds login
+    // passwords); this RPC returns gym name + logo for a code and nothing else.
     try {
-      const { data: profile } = await supabase
-        .from('profiles').select('gym_id')
-        .eq('member_code', cleanCode).maybeSingle();
-      if (profile?.gym_id) {
-        const { data: gym } = await supabase
-          .from('gyms').select('name, logo_url')
-          .eq('id', profile.gym_id).single();
-        if (gym) setGymBranding(gym);
-      }
+      const { data } = await supabase.rpc('gym_branding_for_code', { code: cleanCode });
+      const gym = Array.isArray(data) ? data[0] : data;
+      if (gym?.gym_name) setGymBranding({ name: gym.gym_name, logo_url: gym.logo_url });
     } catch {}
 
     setLoadingGym(false);
@@ -98,13 +94,9 @@ export default function MemberLoginScreen() {
     }
     // Fetch gym branding now that session is active
     try {
-      const { data: profile } = await supabase
-        .from('profiles').select('gym_id').eq('member_code', cleanCode).maybeSingle();
-      if (profile?.gym_id) {
-        const { data: gym } = await supabase
-          .from('gyms').select('name, logo_url').eq('id', profile.gym_id).single();
-        if (gym) setGymBranding(gym);
-      }
+      const { data } = await supabase.rpc('gym_branding_for_code', { code: cleanCode });
+      const gym = Array.isArray(data) ? data[0] : data;
+      if (gym?.gym_name) setGymBranding({ name: gym.gym_name, logo_url: gym.logo_url });
     } catch {}
     setLoadingLogin(false);
     router.replace('/(member)/home');

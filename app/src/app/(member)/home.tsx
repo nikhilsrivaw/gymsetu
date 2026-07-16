@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  Image, Animated, Modal,
+  Image, Animated, Modal, Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { useNavigation, useRouter, useFocusEffect } from 'expo-router';
@@ -414,6 +414,22 @@ export default function MemberHome() {
     setCheckInMsg('Getting your location...');
 
     try {
+      // On web, expo-location is just navigator.geolocation, and browsers
+      // refuse it outright on a non-HTTPS origin. Expo surfaces that as
+      // PERMISSION_DENIED, so the app used to tell the member to "enable it in
+      // settings" — advice that can never work, because nothing was denied.
+      // Say what's actually wrong instead.
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && !window.isSecureContext) {
+        setCheckInMsg('Check-in needs a secure (https) connection. Open GymSetu over https, or use the mobile app.');
+        setCheckInState('error');
+        return;
+      }
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && !('geolocation' in navigator)) {
+        setCheckInMsg('This browser can\'t share your location. Use the mobile app, or ask the gym to mark you present.');
+        setCheckInState('error');
+        return;
+      }
+
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setCheckInMsg('Location permission denied. Please enable it in settings.');

@@ -122,6 +122,7 @@ export default function DashboardScreen() {
   }, [activeGymId, branches, profile?.gym_id]);
 
   const [gymHasLocation, setGymHasLocation]   = useState<boolean | null>(null);
+  const [planCount, setPlanCount]             = useState<number | null>(null);
   const [locationSaving, setLocationSaving]   = useState(false);
   const [locationSuccessModal, setLocationSuccessModal] = useState(false);
   const [savedCoords, setSavedCoords]         = useState<{ lat: number; lng: number } | null>(null);
@@ -139,6 +140,15 @@ export default function DashboardScreen() {
       setGymHasLocation(false);
     }
   }, [profile?.gym_id]);
+
+  // Plans are the first thing a new gym needs — members can't be added without one.
+  const fetchPlanCount = useCallback(async () => {
+    const gymIds = getGymIds();
+    if (gymIds.length === 0) return;
+    const { count } = await supabase
+      .from('membership_plans').select('id', { count: 'exact', head: true }).in('gym_id', gymIds).eq('is_active', true);
+    setPlanCount(count ?? 0);
+  }, [getGymIds]);
 
   const handleSetGymLocation = async () => {
     setLocationSaving(true);
@@ -225,7 +235,22 @@ export default function DashboardScreen() {
     setRefreshing(false);
   }, [fetchStats, fetchFeed]);
 
-  useFocusEffect(useCallback(() => { fetchStats(); fetchFeed(); checkGymLocation(); }, [fetchStats, fetchFeed, checkGymLocation]));
+  useFocusEffect(useCallback(() => { fetchStats(); fetchFeed(); checkGymLocation(); fetchPlanCount(); }, [fetchStats, fetchFeed, checkGymLocation, fetchPlanCount]));
+
+  // ── First-run setup ───────────────────────────────────────────
+  // Only render once every check has resolved, so a fresh gym never sees
+  // steps flip from done → pending while the queries land.
+  const setupResolved = planCount !== null && gymHasLocation !== null;
+  const setupSteps: { key: string; label: string; hint: string; done: boolean; cta: string; onPress: () => void }[] = [
+    { key: 'plans',   label: 'Create your plans',  hint: 'Monthly, quarterly, yearly — set your pricing',
+      done: (planCount ?? 0) > 0,       cta: 'ADD PLAN',  onPress: () => router.push('/(owner)/plans' as any) },
+    { key: 'members', label: 'Add your members',   hint: 'Add one by one, or bulk import your existing list',
+      done: stats.totalMembers > 0,     cta: 'ADD',       onPress: () => router.push('/(owner)/members/add' as any) },
+    { key: 'gps',     label: 'Set gym location',   hint: 'Needed for member GPS check-in',
+      done: gymHasLocation === true,    cta: 'SET NOW',   onPress: handleSetGymLocation },
+  ];
+  const setupDone = setupSteps.filter(st => st.done).length;
+  const showSetup = setupResolved && setupDone < setupSteps.length;
 
   const handleAIInsights = async () => {
     setAiLoading(true); setAiInsights(null);
@@ -333,37 +358,56 @@ export default function DashboardScreen() {
           </FadeInView>
         )}
 
-        {/* ── GPS Setup Banner ── */}
-        {gymHasLocation === false && (
+        {/* ── First-run setup checklist ── */}
+        {showSetup && (
           <FadeInView delay={45}>
-            <View style={s.gpsBanner}>
+            <View style={s.setupCard}>
               <LinearGradient
-                colors={['#3B82F615', 'transparent']}
+                colors={['rgba(255,77,0,0.10)', 'transparent']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
                 pointerEvents="none"
               />
-              <View style={s.gpsIconBox}>
-                <MaterialCommunityIcons name="map-marker-alert-outline" size={18} color="#3B82F6" />
+
+              <View style={s.setupHead}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.setupTitle}>FINISH SETTING UP</Text>
+                  <Text style={s.setupSub}>{setupDone} of {setupSteps.length} done · takes 2 minutes</Text>
+                </View>
+                <View style={s.setupCountBox}>
+                  <Text style={s.setupCountText}>{setupDone}/{setupSteps.length}</Text>
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.gpsBannerTitle}>GYM LOCATION NOT SET</Text>
-                <Text style={s.gpsBannerSub}>Required for member GPS check-in to work</Text>
+
+              <View style={s.setupBarTrack}>
+                <View style={[s.setupBarFill, { width: `${(setupDone / setupSteps.length) * 100}%` }]} />
               </View>
-              <AnimatedPressable
-                style={s.gpsSetBtn}
-                scaleDown={0.93}
-                onPress={handleSetGymLocation}
-                disabled={locationSaving}
-              >
-                {locationSaving
-                  ? <ActivityIndicator size="small" color="#fff" />
-                  : <>
-                      <MaterialCommunityIcons name="crosshairs-gps" size={13} color="#fff" />
-                      <Text style={s.gpsSetBtnText}>SET NOW</Text>
-                    </>
-                }
-              </AnimatedPressable>
+
+              {setupSteps.map(st => (
+                <View key={st.key} style={s.setupRow}>
+                  <MaterialCommunityIcons
+                    name={st.done ? 'check-circle' : 'circle-outline'}
+                    size={20}
+                    color={st.done ? Colors.green : Colors.textMuted}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.setupStepLabel, st.done && s.setupStepLabelDone]}>{st.label}</Text>
+                    {!st.done && <Text style={s.setupStepHint}>{st.hint}</Text>}
+                  </View>
+                  {!st.done && (
+                    <AnimatedPressable
+                      style={s.setupStepBtn}
+                      scaleDown={0.93}
+                      onPress={st.onPress}
+                      disabled={st.key === 'gps' && locationSaving}
+                    >
+                      {st.key === 'gps' && locationSaving
+                        ? <ActivityIndicator size="small" color="#fff" />
+                        : <Text style={s.setupStepBtnText}>{st.cta}</Text>}
+                    </AnimatedPressable>
+                  )}
+                </View>
+              ))}
             </View>
           </FadeInView>
         )}
@@ -999,26 +1043,39 @@ const s = StyleSheet.create({
   feedTime:    { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted },
 
   // ── GPS banner ────────────────────────────────────────────────
-  gpsBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+  // ── First-run setup checklist ─────────────────────────────────
+  setupCard: {
     backgroundColor: Colors.bgCard, borderRadius: 16,
-    borderWidth: 1, borderColor: '#3B82F630',
+    borderWidth: 1, borderColor: Colors.accent + '30',
     padding: 14, marginBottom: 12, overflow: 'hidden',
   },
-  gpsIconBox: {
-    width: 38, height: 38, borderRadius: 11,
-    backgroundColor: '#3B82F614',
-    borderWidth: 1, borderColor: '#3B82F630',
-    justifyContent: 'center', alignItems: 'center',
+  setupHead:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  setupTitle:     { fontFamily: Fonts.condensedBold, fontSize: 15, color: Colors.text, letterSpacing: 0.6 },
+  setupSub:       { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted, marginTop: 2 },
+  setupCountBox: {
+    backgroundColor: Colors.accent + '18', borderRadius: 8,
+    borderWidth: 1, borderColor: Colors.accent + '30',
+    paddingHorizontal: 9, paddingVertical: 5,
   },
-  gpsBannerTitle: { fontFamily: Fonts.bold, fontSize: 11, color: '#3B82F6', letterSpacing: 0.5 },
-  gpsBannerSub:   { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted, marginTop: 2 },
-  gpsSetBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: '#3B82F6', borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 9, minWidth: 72, justifyContent: 'center',
+  setupCountText: { fontFamily: Fonts.bold, fontSize: 11, color: Colors.accent, letterSpacing: 0.5 },
+  setupBarTrack: {
+    height: 3, borderRadius: 2, backgroundColor: Colors.border,
+    marginTop: 12, marginBottom: 4, overflow: 'hidden',
   },
-  gpsSetBtnText: { fontFamily: Fonts.bold, fontSize: 10, color: '#fff', letterSpacing: 0.5 },
+  setupBarFill:  { height: 3, borderRadius: 2, backgroundColor: Colors.accent },
+  setupRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border + '60',
+  },
+  setupStepLabel:     { fontFamily: Fonts.bold, fontSize: 12, color: Colors.text },
+  setupStepLabelDone: { color: Colors.textMuted, textDecorationLine: 'line-through' },
+  setupStepHint:      { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted, marginTop: 2 },
+  setupStepBtn: {
+    backgroundColor: Colors.accent, borderRadius: 9,
+    paddingHorizontal: 12, paddingVertical: 8, minWidth: 68,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  setupStepBtnText: { fontFamily: Fonts.bold, fontSize: 10, color: '#fff', letterSpacing: 0.5 },
 
   // ── GPS location success modal ────────────────────────────────
   locModalOverlay:  { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 28 },

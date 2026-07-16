@@ -19,6 +19,7 @@
     phone:         string | null;
     checked_in:    boolean;
     attendance_id: string | null;
+    status:        string;
   }
 
   export default function AttendanceScreen() {
@@ -50,12 +51,16 @@
 
       try {
         const [memberRes, attRes] = await Promise.all([
+          // Not just active members: an expired member walking in is the whole
+          // point of this screen — the owner marks them present and asks them
+          // to renew on the spot. Filtering them out hid the walk-ins worth
+          // the most money. Frozen members can turn up early off a break too.
           supabase
             .from('profiles')
-            .select('id, full_name, phone')
+            .select('id, full_name, phone, status')
             .in('gym_id', gymIds)
             .eq('role', 'member')
-            .eq('status', 'active')
+            .in('status', ['active', 'expired', 'frozen'])
             .order('full_name'),
           supabase
             .from('attendance')
@@ -73,6 +78,7 @@
           phone:         m.phone,
           checked_in:    checkedInIds.has(m.id),
           attendance_id: attMap[m.id] ?? null,
+          status:        m.status ?? 'active',
         })));
       } catch (err) {
         console.error('[Attendance] fetchData error:', err);
@@ -112,6 +118,9 @@
             member_id:     member.id,
             check_in_date: today,
             check_in_time: new Date().toTimeString().slice(0, 5),
+            // The column defaults to 'gps', so a staff-marked check-in was
+            // being filed as if the member had checked themselves in.
+            method:        'manual',
             marked_by:     profile?.id,
           });
           if (error) throw error;
@@ -220,7 +229,19 @@
                         </Text>
                       </View>
                       <View style={styles.rowInfo}>
-                        <Text style={styles.rowName}>{item.full_name}</Text>
+                        <View style={styles.rowNameLine}>
+                          <Text style={styles.rowName}>{item.full_name}</Text>
+                          {item.status === 'expired' && (
+                            <View style={styles.rowTagExpired}>
+                              <Text style={styles.rowTagExpiredText}>EXPIRED</Text>
+                            </View>
+                          )}
+                          {item.status === 'frozen' && (
+                            <View style={styles.rowTagFrozen}>
+                              <Text style={styles.rowTagFrozenText}>PAUSED</Text>
+                            </View>
+                          )}
+                        </View>
                         <Text style={styles.rowSub}>{item.phone ?? 'No phone'}</Text>
                       </View>
                       {isLoading ? (
@@ -289,6 +310,19 @@
     avatarText: { fontFamily: Fonts.condensedBold, fontSize: 15 },
     rowInfo:    { flex: 1 },
     rowName:    { fontFamily: Fonts.bold, fontSize: 15, color: Colors.text },
+    rowNameLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    rowTagExpired: {
+      backgroundColor: Colors.red + '18', borderRadius: 5,
+      borderWidth: 1, borderColor: Colors.red + '40',
+      paddingHorizontal: 5, paddingVertical: 1,
+    },
+    rowTagExpiredText: { fontFamily: Fonts.bold, fontSize: 8, color: Colors.red, letterSpacing: 0.5 },
+    rowTagFrozen: {
+      backgroundColor: '#3B82F618', borderRadius: 5,
+      borderWidth: 1, borderColor: '#3B82F640',
+      paddingHorizontal: 5, paddingVertical: 1,
+    },
+    rowTagFrozenText: { fontFamily: Fonts.bold, fontSize: 8, color: '#3B82F6', letterSpacing: 0.5 },
     rowSub:     { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, marginTop: 2 },
 
     empty:      { alignItems: 'center', paddingVertical: 60 },

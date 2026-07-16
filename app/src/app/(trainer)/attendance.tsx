@@ -58,12 +58,14 @@ export default function AttendanceScreen() {
     // that when the two ids differ. Source from profiles so the id written
     // here is the same id everything else reads.
     const [memberRes, attRes, monthAttRes] = await Promise.all([
+      // Include expired/frozen members: they still walk in, and a trainer
+      // marking them present is how the owner learns to ask for a renewal.
       supabase
         .from('profiles')
         .select('id, full_name')
         .eq('gym_id', profile.gym_id)
         .eq('role', 'member')
-        .eq('status', 'active')
+        .in('status', ['active', 'expired', 'frozen'])
         .order('full_name'),
       supabase
         .from('attendance')
@@ -175,6 +177,9 @@ export default function AttendanceScreen() {
       const inserts = presentMembers.map(m => ({
         gym_id: profile.gym_id, member_id: m.id,
         check_in_date: today, check_in_time: new Date().toTimeString().slice(0, 5),
+        // Default is 'gps'; without this a trainer-marked check-in is
+        // indistinguishable from one the member made themselves.
+        method: 'manual',
         marked_by: profile.id,
       }));
       const deleteIds = absentMembers.map(m => m.attendance_id!);

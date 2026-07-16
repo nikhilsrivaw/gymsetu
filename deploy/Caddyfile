@@ -1,13 +1,65 @@
-# Reverse proxy: HTTPS  ->  Kong (Supabase API gateway on :8000)
-# Put at /etc/caddy/Caddyfile, then: sudo systemctl restart caddy
+# /etc/caddy/Caddyfile  —  after editing: sudo caddy validate --config /etc/caddy/Caddyfile
+#                                        sudo systemctl reload caddy
 #
-# Pick ONE option depending on how Cloudflare is set for api.gymsetu.it.com.
+# This file MIRRORS what is actually running on 13.234.60.18. Keep it that way:
+# the live config and this file drifted apart once already (the repo said
+# api.gymsetu.it.com while the box was serving nip.io), which makes the repo
+# actively misleading during an incident. Edit here, then push to the server.
+#
+# Live hostnames today (both get real Let's Encrypt certs, no DNS work needed —
+# nip.io resolves any *.13.234.60.18.nip.io name straight to the Elastic IP):
+#   https://13.234.60.18.nip.io       -> Supabase API (Kong)
+#   https://app.13.234.60.18.nip.io   -> the GymSetu PWA
+#
+# The gymsetu.it.com blocks are the intended permanent names. They stay in the
+# config while their DNS is still missing: Caddy retries issuance for 30 days,
+# so the cert appears on its own once the A record exists. Until then the nip.io
+# hostnames keep serving — which is exactly why each name gets its OWN block
+# rather than being listed together. In a shared block, one unresolvable name's
+# failed ACME challenge takes the whole block's certificate down with it.
 
-# ── Option A (recommended): Caddy gets its own Let's Encrypt cert ───────────
-# Set the Cloudflare DNS record to "DNS only" (grey cloud) until the cert
-# issues, then flip to "Proxied" (orange) with SSL mode = Full (strict).
+# ── Supabase API -> Kong ───────────────────────────────────────────────────
+13.234.60.18.nip.io {
+    reverse_proxy localhost:8000
+}
+
 api.gymsetu.it.com {
     reverse_proxy localhost:8000
+}
+
+# ── GymSetu PWA (expo export --platform web, SPA "single" output) ───────────
+# Deploy with:
+#   cd app && npx expo export --platform web
+#   tar -czf /tmp/gymsetu-app.tgz -C dist .
+#   scp -i gynmsetu.pem /tmp/gymsetu-app.tgz ubuntu@13.234.60.18:/tmp/
+#   ssh ... 'sudo rm -rf /var/www/gymsetu-app/* &&
+#            sudo tar -xzf /tmp/gymsetu-app.tgz -C /var/www/gymsetu-app &&
+#            sudo chown -R caddy:caddy /var/www/gymsetu-app'
+# No Caddy reload needed for a redeploy — it serves from disk.
+(gymsetu_app) {
+    root * /var/www/gymsetu-app
+    encode gzip zstd
+
+    # Filenames are content-hashed, so they can never go stale.
+    @immutable path /_expo/* /assets/*
+    header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+    # index.html is the ONE file that must not be cached: it names the current
+    # bundle hash, so a cached copy pins clients to a deleted bundle.
+    header /index.html Cache-Control "no-cache, must-revalidate"
+
+    # expo-router owns routing; unknown paths must render the SPA, not 404,
+    # or a hard refresh on a deep link like /members/123 breaks.
+    try_files {path} /index.html
+    file_server
+}
+
+app.13.234.60.18.nip.io {
+    import gymsetu_app
+}
+
+app.gymsetu.it.com {
+    import gymsetu_app
 }
 
 # ── Biometric devices (ZKTeco / eSSL "ADMS" push) ──────────────────────────
@@ -33,10 +85,3 @@ api.gymsetu.it.com {
         respond "GymSetu biometric endpoint" 200
     }
 }
-
-# ── Option B (fastest launch): Cloudflare Flexible, origin over HTTP ────────
-# Comment out Option A above and use this instead. Cloudflare (orange cloud)
-# terminates TLS; Caddy just serves plain HTTP on :80. SSL mode = Flexible.
-# :80 {
-#     reverse_proxy localhost:8000
-# }

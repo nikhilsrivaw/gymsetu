@@ -16,6 +16,7 @@ import FadeInView from '@/components/FadeInView';
 import AnimatedPressable from '@/components/AnimatedPressable';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
+import { todayLocal } from '@/lib/date';
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -257,7 +258,7 @@ export default function MemberHome() {
   const [loading, setLoading]           = useState(true);
   const [fetchError, setFetchError]     = useState('');
 
-  const today      = new Date().toISOString().split('T')[0];
+  const today      = todayLocal();
   const monthStart = today.slice(0, 8) + '01';
   const hour       = new Date().getHours();
   const greeting   = hour < 12 ? 'GOOD MORNING' : hour < 17 ? 'GOOD AFTERNOON' : 'GOOD EVENING';
@@ -490,7 +491,7 @@ export default function MemberHome() {
       }
 
       // Insert attendance
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = todayLocal();
       const now = new Date();
       const timeStr = now.toTimeString().slice(0, 8); // "HH:MM:SS"
       // attendance.member_id FK references profiles.id (auth user id), not members.id

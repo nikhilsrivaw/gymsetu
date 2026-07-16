@@ -12,6 +12,7 @@
   import AnimatedPressable from '@/components/AnimatedPressable';
   import { supabase } from '@/lib/supabase';
   import { useAuthStore } from '@/store/authStore';
+  import { todayLocal } from '@/lib/date';
 
   interface AttendanceRow {
     id:            string;
@@ -31,7 +32,7 @@
     const [error, setError]     = useState('');
     const errorTimer            = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayLocal();
 
     const showError = (msg: string) => {
       setError(msg);

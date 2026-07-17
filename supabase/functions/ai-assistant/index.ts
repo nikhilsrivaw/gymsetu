@@ -148,7 +148,8 @@ const prompts: Record<string, (d: any) => string> = {
     ` Under 55 words, friendly, first person, 1-2 emojis. Output ONLY the message text.`,
 
   renewal_script: (d) =>
-    `Help a gym owner make a warm renewal phone call. Give 3-4 short talking points as a bullet list, in Hinglish (Roman Hindi mixed with English). Member: ${d.memberName}. Plan: ${d.plan}. Expiring in ${d.daysLeft} days. Member for ${d.monthsActive} months.` +
+    `Help a gym owner make a warm renewal phone call. Give 3-4 short talking points as a bullet list, in Hinglish (Roman Hindi mixed with English). Member: ${d.memberName}. Plan: ${d.plan}. Expiring in ${d.daysLeft} days.` +
+    (d.monthsActive ? ` Member for ${d.monthsActive} months.` : "") +
     (d.goal ? ` Goal: ${d.goal}.` : "") +
     (d.progress ? ` Progress so far: ${d.progress}.` : "") +
     ` Reference their journey, keep it personal, end with a confident renewal ask. Each point one line. Output ONLY the bullet points.`,
@@ -157,7 +158,7 @@ const prompts: Record<string, (d: any) => string> = {
   // The app pre-computes a small snapshot; we never send raw member lists, so
   // input tokens stay small regardless of gym size.
   ask_gym: (d) =>
-    `You are the gym owner's business assistant. Answer using ONLY the data snapshot below — do not invent numbers. Answer in Hinglish (Roman Hindi mixed with English), short and direct, max 55 words, cite concrete numbers from the data. If the snapshot doesn't contain the answer, say so honestly in one line. Question: "${d.question}". Data snapshot (JSON): ${d.snapshot}`,
+    `You are the gym owner's business assistant for an Indian gym. All money values in the data are in Indian Rupees (INR) — always write amounts with the rupee symbol (e.g. ₹6,700) and NEVER say dollars. Answer using ONLY the data snapshot below — do not invent numbers. Answer in Hinglish (Roman Hindi mixed with English), short and direct, max 55 words, cite concrete numbers from the data. If the snapshot doesn't contain the answer, say so honestly in one line. Question: "${d.question}". Data snapshot (JSON): ${d.snapshot}`,
 };
 
 // Per-type output cap — keeps OpenAI cost low. Money features are single-member

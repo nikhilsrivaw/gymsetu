@@ -17,7 +17,10 @@ export type AIActionType =
   | 'progress_analysis'
   | 'trainer_workout_plan'
   | 'client_assessment'
-  | 'session_planner';
+  | 'session_planner'
+  | 'winback'
+  | 'renewal_script'
+  | 'ask_gym';
 
 // ── Retry helper ──────────────────────────────────────────────
 async function withRetry<T>(

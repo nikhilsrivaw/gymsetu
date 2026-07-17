@@ -1,11 +1,13 @@
 import { useState, useCallback } from 'react';                                                                                            
-  import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Linking, Alert } from 'react-native';                     import { Stack, useFocusEffect } from 'expo-router';                                                                                      
-  import { Colors } from '@/constants/colors';                                                                                              
+  import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Linking, Alert, Modal, TextInput } from 'react-native';
+  import { Stack, useFocusEffect } from 'expo-router';
+  import { Colors } from '@/constants/colors';
   import { Fonts } from '@/constants/fonts';
   import { supabase } from '@/lib/supabase';
   import { useAuthStore } from '@/store/authStore';
   import FadeInView from '@/components/FadeInView';
 import LottieView from '@/components/AppLottie';
+import { askAI } from '@/lib/ai';
 
 import { toLocalDate } from '@/lib/date';
   type RiskLevel = 'HIGH' | 'MEDIUM' | 'LOW';
@@ -195,6 +197,45 @@ import { toLocalDate } from '@/lib/date';
       Linking.openURL(`https://wa.me/91${phone.replace(/\D/g, '')}?text=${msg}`);
     };
 
+    // ── AI retention assistant (win-back message + renewal call script) ──────
+    const [aiFor,     setAiFor]     = useState<AtRiskMember | null>(null);
+    const [aiMode,    setAiMode]    = useState<'menu' | 'winback' | 'script'>('menu');
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiText,    setAiText]    = useState('');
+    const [aiError,   setAiError]   = useState('');
+
+    const openAI  = (m: AtRiskMember) => { setAiFor(m); setAiMode('menu'); setAiText(''); setAiError(''); };
+    const closeAI = () => { setAiFor(null); setAiText(''); setAiError(''); };
+
+    const genWinback = async () => {
+      if (!aiFor) return;
+      setAiMode('winback'); setAiLoading(true); setAiError('');
+      try {
+        setAiText(await askAI('winback', {
+          memberName: aiFor.name, daysSinceVisit: aiFor.daysSinceVisit, plan: 'gym membership',
+        }));
+      } catch (e: any) { setAiError(e?.message || 'Could not generate.'); }
+      finally { setAiLoading(false); }
+    };
+
+    const genScript = async () => {
+      if (!aiFor) return;
+      setAiMode('script'); setAiLoading(true); setAiError('');
+      try {
+        setAiText(await askAI('renewal_script', {
+          memberName: aiFor.name, plan: 'gym membership',
+          daysLeft: aiFor.daysToExpiry != null ? aiFor.daysToExpiry : 'soon',
+        }));
+      } catch (e: any) { setAiError(e?.message || 'Could not generate.'); }
+      finally { setAiLoading(false); }
+    };
+
+    const sendAiWhatsApp = () => {
+      if (!aiFor?.phone) { Alert.alert('No phone', `${aiFor?.name} has no phone saved.`); return; }
+      Linking.openURL(`https://wa.me/91${aiFor.phone.replace(/\D/g, '')}?text=${encodeURIComponent(aiText)}`);
+      closeAI();
+    };
+
    if (loading) return (
     <>
       <Stack.Screen options={{ title: 'Churn Watch' }} />
@@ -298,6 +339,12 @@ import { toLocalDate } from '@/lib/date';
                       >
                         <Text style={[styles.actionBtnText, { color: '#25D366' }]}>💬 WhatsApp</Text>
                       </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.actionBtn, styles.actionBtnAi]}
+                        onPress={() => openAI(m)}
+                      >
+                        <Text style={[styles.actionBtnText, { color: Colors.accent }]}>🤖 AI</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 </FadeInView>
@@ -307,6 +354,95 @@ import { toLocalDate } from '@/lib/date';
 
           <View style={{ height: 32 }} />
         </ScrollView>
+
+        {/* ── AI retention assistant modal ────────────────────────── */}
+        <Modal visible={!!aiFor} transparent animationType="fade" onRequestClose={closeAI}>
+          <View style={styles.aiOverlay}>
+            <View style={styles.aiCard}>
+              <View style={styles.aiHeader}>
+                <View>
+                  <Text style={styles.aiEyebrow}>AI RETENTION · {aiFor?.name}</Text>
+                  <Text style={styles.aiTitle}>
+                    {aiMode === 'winback' ? 'Win-back message' : aiMode === 'script' ? 'Renewal call script' : 'AI se madad lein'}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={closeAI}><Text style={styles.aiClose}>✕</Text></TouchableOpacity>
+              </View>
+
+              {aiMode === 'menu' && !aiLoading && (
+                <View style={{ gap: 10 }}>
+                  <TouchableOpacity style={styles.aiOption} onPress={genWinback}>
+                    <Text style={styles.aiOptionEmoji}>💬</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.aiOptionTitle}>Win-back WhatsApp message</Text>
+                      <Text style={styles.aiOptionSub}>Personal message draft — edit &amp; send</Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.aiOption} onPress={genScript}>
+                    <Text style={styles.aiOptionEmoji}>📞</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.aiOptionTitle}>Renewal call script</Text>
+                      <Text style={styles.aiOptionSub}>Talking points before you call</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {aiLoading && (
+                <View style={{ paddingVertical: 30, alignItems: 'center', gap: 12 }}>
+                  <ActivityIndicator color={Colors.accent} />
+                  <Text style={styles.aiMuted}>AI likh raha hai…</Text>
+                </View>
+              )}
+
+              {!aiLoading && aiError !== '' && (
+                <View style={{ paddingVertical: 20, gap: 12 }}>
+                  <Text style={[styles.aiMuted, { color: Colors.red, textAlign: 'center' }]}>{aiError}</Text>
+                  <TouchableOpacity style={styles.aiPrimary} onPress={aiMode === 'script' ? genScript : genWinback}>
+                    <Text style={styles.aiPrimaryText}>Try again</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {!aiLoading && aiError === '' && aiMode === 'winback' && aiText !== '' && (
+                <View style={{ gap: 12 }}>
+                  <TextInput
+                    style={styles.aiTextArea}
+                    value={aiText}
+                    onChangeText={setAiText}
+                    multiline
+                    placeholderTextColor={Colors.textMuted}
+                  />
+                  <Text style={styles.aiMuted}>Edit karke bhej sakte ho.</Text>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity style={[styles.aiGhost, { flex: 0 }]} onPress={genWinback}>
+                      <Text style={styles.aiGhostText}>↻</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.aiPrimary, { flex: 1 }]} onPress={sendAiWhatsApp}>
+                      <Text style={styles.aiPrimaryText}>💬 Send on WhatsApp</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {!aiLoading && aiError === '' && aiMode === 'script' && aiText !== '' && (
+                <View style={{ gap: 12 }}>
+                  <ScrollView style={{ maxHeight: 260 }}>
+                    <Text style={styles.aiScript}>{aiText}</Text>
+                  </ScrollView>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity style={[styles.aiGhost, { flex: 0 }]} onPress={genScript}>
+                      <Text style={styles.aiGhostText}>↻</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.aiPrimary, { flex: 1 }]} onPress={() => handleCall(aiFor!.phone, aiFor!.name)}>
+                      <Text style={styles.aiPrimaryText}>📞 Call {aiFor?.name}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        </Modal>
       </>
     );
   }
@@ -352,7 +488,27 @@ import { toLocalDate } from '@/lib/date';
     actionBtn:      { flex: 1, paddingVertical: 9, borderRadius: 10, backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border,
    alignItems: 'center' },
     actionBtnWa:    { borderColor: '#25D36640' },
+    actionBtnAi:    { borderColor: Colors.accent + '55', flex: 0.6 },
     actionBtnText:  { fontFamily: Fonts.bold, fontSize: 12, color: Colors.text },
+
+    // AI retention modal
+    aiOverlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', justifyContent: 'flex-end' },
+    aiCard:         { backgroundColor: Colors.bgCard, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 34, borderWidth: 1, borderColor: Colors.border, gap: 14 },
+    aiHeader:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+    aiEyebrow:      { fontFamily: Fonts.bold, fontSize: 9, color: Colors.accent, letterSpacing: 1.4 },
+    aiTitle:        { fontFamily: Fonts.condensedBold, fontSize: 22, color: Colors.text, marginTop: 3 },
+    aiClose:        { fontFamily: Fonts.bold, fontSize: 18, color: Colors.textMuted, paddingHorizontal: 6 },
+    aiOption:       { flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border, borderRadius: 14, padding: 15 },
+    aiOptionEmoji:  { fontSize: 22 },
+    aiOptionTitle:  { fontFamily: Fonts.bold, fontSize: 14, color: Colors.text },
+    aiOptionSub:    { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted, marginTop: 2 },
+    aiMuted:        { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted },
+    aiTextArea:     { backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border, borderRadius: 14, padding: 14, minHeight: 120, fontFamily: Fonts.regular, fontSize: 15, color: Colors.text, textAlignVertical: 'top' },
+    aiScript:       { fontFamily: Fonts.regular, fontSize: 15, color: Colors.text, lineHeight: 24 },
+    aiPrimary:      { backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+    aiPrimaryText:  { fontFamily: Fonts.bold, fontSize: 14, color: '#fff' },
+    aiGhost:        { borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
+    aiGhostText:    { fontFamily: Fonts.bold, fontSize: 16, color: Colors.textMuted },
 
     allGoodCard: {
       backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1,

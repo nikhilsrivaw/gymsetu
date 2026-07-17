@@ -16,6 +16,7 @@ type MenuItem = {
 
 // Routes that require Pro plan
 const PRO_ONLY = new Set([
+  '/(owner)/more/ask-gym',
   '/(owner)/more/revenue-forecast',
   '/(owner)/more/churn-watch',
   '/(owner)/more/member-ltv',
@@ -34,6 +35,7 @@ const sections: { title: string; icon: IconName; color: string; items: MenuItem[
   {
     title: 'REPORTS', icon: 'chart-bar', color: Colors.accent,
     items: [
+      { label: 'GymSetu se Poochho',    desc: 'AI se apne gym ke baare mein kuch bhi poochho', icon: 'robot-outline',   color: Colors.accent, route: '/(owner)/more/ask-gym'         },
       { label: 'Reports',               desc: 'Revenue, members & attendance',         icon: 'chart-bar',             color: Colors.accent, route: '/(owner)/more/reports'          },
       { label: 'Aaj Ka Summary',        desc: 'End of day snapshot',                   icon: 'view-dashboard-outline', color: '#22c55e',     route: '/(owner)/more/daily-summary'    },
       { label: 'Income Prediction',     desc: 'Predict your next 3 months earnings',   icon: 'trending-up',           color: Colors.accent, route: '/(owner)/more/revenue-forecast' },

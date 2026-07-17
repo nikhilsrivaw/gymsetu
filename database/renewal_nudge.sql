@@ -1,34 +1,27 @@
 -- ============================================================================
--- GYMSETU — Daily WhatsApp reminder cron  (RECONSTRUCTED)
--- Original was a Supabase scheduled trigger @ 09:00 IST that scanned
--- member_plans + attendance and fired send-whatsapp reminder templates.
+-- Renewal nudge — replaces the old attendance-based inactive_nudge. (2026-07-18)
 --
--- This recreates it with pg_cron + pg_net. Run AFTER schema.sql, and AFTER
--- the send-whatsapp edge function is deployed and its templates approved.
+-- NEW RULE (plan-based, per owner's decision): nudge a member whose plan has
+-- EXPIRED and who has NOT renewed / bought a new plan. Driven by plan data,
+-- never attendance — so it can't misfire the way the old nudge did.
 --
--- Self-hosted default URL is https://api.gymsetu.it.com/functions/v1/send-whatsapp
--- (change it below if your domain differs). webhook_secret must equal the
--- WEBHOOK_SECRET env set on the send-whatsapp function (default gymsetu_webhook_2026).
+-- Anti-spam by construction: fires ONCE, on the exact day the plan is 7 days
+-- past expiry, and only if the member still has no active plan. An exact-day
+-- condition (end_date = current_date - 7) can match at most one morning, so
+-- there is no "every day" behaviour — that was the whole failure of the old one.
+--
+-- Reuses the `membership_expired` template (already worded as a renewal/
+-- win-back), so NO new Meta template approval is needed. The member sees:
+--   day 0  → "membership expired on <date>… renew today"  (section 2)
+--   day 7  → same win-back, if still not renewed             (section 3, this)
+--
+-- To change the timing, edit the `- 7` below (e.g. `- 3`). To add a second
+-- nudge, add another loop with a different offset. Keep every trigger an
+-- EXACT-day match, never a range, or it becomes daily spam again.
+--
+-- Idempotent CREATE OR REPLACE — safe to re-run.
 -- ============================================================================
 
-create extension if not exists pg_cron;
-create extension if not exists pg_net;
-
--- ----------------------------------------------------------------------------
--- Config: store the function URL + secret once so the job can read them.
--- ----------------------------------------------------------------------------
-create table if not exists app_config (key text primary key, value text);
-insert into app_config (key, value) values
-  ('whatsapp_fn_url', 'https://api.gymsetu.it.com/functions/v1/send-whatsapp'),
-  ('webhook_secret',  'gymsetu_webhook_2026'),
-  -- anon key is required so the request passes the Kong gateway; set the real
-  -- value when loading (it's the public anon key, safe to store here).
-  ('anon_key',        'REPLACE_WITH_ANON_KEY')
-on conflict (key) do update set value = excluded.value;
-
--- ----------------------------------------------------------------------------
--- The daily job body
--- ----------------------------------------------------------------------------
 create or replace function run_daily_whatsapp_reminders()
 returns void as $$
 declare
@@ -79,16 +72,11 @@ begin
         'data', jsonb_build_object('member_name',r.member_name,'gym_name',r.gym_name,
                                    'expiry_date',r.expiry_date))
     );
-    -- flip status so we don't message again tomorrow
     update member_plans set status = 'expired' where id = r.plan_id;
   end loop;
 
   -- 3) RENEWAL NUDGE — plan expired exactly 7 days ago AND not renewed.
-  --    Replaced the old ATTENDANCE-based inactive_nudge (2026-07-18), which
-  --    spammed everyone daily because "no attendance" == "gym doesn't track
-  --    attendance". This one is PLAN-based (reliable), fires ONCE on the exact
-  --    day, and reuses the membership_expired template (no new Meta approval).
-  --    See database/renewal_nudge.sql for the full rationale.
+  --    Plan-based (reliable), fires once, reuses membership_expired template.
   for r in
     select distinct m.phone, m.full_name as member_name, g.name as gym_name, g.id as gym_id,
            to_char(mp.end_date, 'DD Mon YYYY') as expiry_date
@@ -97,13 +85,19 @@ begin
     join gyms    g on g.id = mp.gym_id
     where mp.end_date = current_date - 7
       and m.phone is not null
+      -- not renewed: no currently-active plan
       and not exists (
         select 1 from member_plans act
         where act.member_id = mp.member_id
-          and act.status = 'active' and act.end_date >= current_date)
+          and act.status = 'active'
+          and act.end_date >= current_date
+      )
+      -- don't nudge a paused (frozen) membership
       and not exists (
         select 1 from member_plans frz
-        where frz.member_id = mp.member_id and frz.status = 'frozen')
+        where frz.member_id = mp.member_id
+          and frz.status = 'frozen'
+      )
   loop
     perform net.http_post(
       url     := fn_url,
@@ -116,12 +110,3 @@ begin
   end loop;
 end;
 $$ language plpgsql security definer;
-
--- ----------------------------------------------------------------------------
--- Schedule: 09:00 IST == 03:30 UTC, every day
--- ----------------------------------------------------------------------------
-select cron.schedule('gymsetu-daily-whatsapp', '30 3 * * *', $$ select run_daily_whatsapp_reminders(); $$);
-
--- To inspect / remove:
---   select * from cron.job;
---   select cron.unschedule('gymsetu-daily-whatsapp');

@@ -16,7 +16,20 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import LottieView from '@/components/AppLottie';
 
-import { toLocalDate, todayLocal } from '@/lib/date';
+import { toLocalDate, todayLocal, localDateOffset } from '@/lib/date';
+
+// Expense date helpers: the DB stores YYYY-MM-DD, the field shows DD/MM/YYYY.
+const isoToDisplay = (iso: string) => { const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
+const displayToIso = (s: string): string | null => {
+  const m = s.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return null;
+  const [, d, mo, y] = m;
+  const iso = `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  const dt = new Date(iso + 'T00:00:00');
+  if (isNaN(dt.getTime()) || dt.getDate() !== +d) return null;   // reject 31/02 etc.
+  if (iso > todayLocal()) return null;                            // no future expenses
+  return iso;
+};
 const CATEGORIES = [
   { label: 'Rent',        emoji: '🏢', color: '#4F6EF7' },
   { label: 'Electricity', emoji: '⚡', color: Colors.orange },
@@ -110,6 +123,7 @@ export default function ExpensesScreen() {
   const [selectedCat, setSelectedCat] = useState('Rent');
   const [amount, setAmount]           = useState('');
   const [description, setDescription] = useState('');
+  const [dateText, setDateText]       = useState(isoToDisplay(todayLocal()));  // DD/MM/YYYY as typed
   const [period, setPeriod]           = useState<'month' | 'year'>('month');
   const [formError, setFormError]     = useState('');
 
@@ -147,6 +161,8 @@ export default function ExpensesScreen() {
     if (!amount.trim()) { setFormError('Amount is required.'); return; }
     const parsed = parseFloat(amount);
     if (isNaN(parsed) || parsed <= 0) { setFormError('Enter a valid amount greater than 0.'); return; }
+    const isoDate = displayToIso(dateText);
+    if (!isoDate) { setFormError('Enter a valid date (DD/MM/YYYY), not in the future.'); return; }
     const gymIds  = getGymIds();
     if (gymIds.length === 0) return;
     const mainGymId = (profile as any)?.gym_id;
@@ -157,17 +173,17 @@ export default function ExpensesScreen() {
       gym_id: gymId, category: selectedCat,
       amount: parsed,
       description: description.trim() || null,
-      expense_date: todayLocal(),
+      expense_date: isoDate,
       created_by: profile?.id,
     });
     setSaving(false);
     if (error) { setFormError(error.message); return; }
     setShow(false);
-    setAmount(''); setDescription(''); setSelectedCat('Rent'); setFormError('');
+    setAmount(''); setDescription(''); setSelectedCat('Rent'); setDateText(isoToDisplay(todayLocal())); setFormError('');
     fetchExpenses();
   };
 
-  const closeModal = () => { setShow(false); setFormError(''); };
+  const closeModal = () => { setShow(false); setDateText(isoToDisplay(todayLocal())); setFormError(''); };
 
   const handleDelete = (id: string) => {
     Alert.alert('Delete Expense', 'Remove this expense entry?', [
@@ -440,7 +456,11 @@ export default function ExpensesScreen() {
                         <Text style={s.previewDesc} numberOfLines={1}>{description}</Text>
                       ) : (
                         <View style={[s.previewChip, { backgroundColor: activeCatObj.color + '18' }]}>
-                          <Text style={[s.previewChipTxt, { color: activeCatObj.color }]}>TODAY</Text>
+                          <Text style={[s.previewChipTxt, { color: activeCatObj.color }]}>
+                            {dateText === isoToDisplay(todayLocal()) ? 'TODAY'
+                              : dateText === isoToDisplay(localDateOffset(-1)) ? 'YESTERDAY'
+                              : dateText}
+                          </Text>
                         </View>
                       )}
                     </View>
@@ -497,6 +517,40 @@ export default function ExpensesScreen() {
                     placeholder="What was this expense for?"
                     accentColor={Colors.red}
                   />
+
+                  {/* ── Date: quick chips + editable DD/MM/YYYY ── */}
+                  <View style={s.dateBlock}>
+                    <View style={s.dateHeader}>
+                      <MaterialCommunityIcons name="calendar-outline" size={15} color={Colors.textMuted} />
+                      <Text style={s.dateLabel}>DATE</Text>
+                    </View>
+                    <View style={s.dateChipsRow}>
+                      {[
+                        { label: 'Today',     iso: todayLocal() },
+                        { label: 'Yesterday', iso: localDateOffset(-1) },
+                      ].map(q => {
+                        const on = dateText === isoToDisplay(q.iso);
+                        return (
+                          <AnimatedPressable
+                            key={q.label}
+                            style={[s.dateChip, on && s.dateChipOn]}
+                            scaleDown={0.95}
+                            onPress={() => { setDateText(isoToDisplay(q.iso)); setFormError(''); }}
+                          >
+                            <Text style={[s.dateChipText, on && s.dateChipTextOn]}>{q.label}</Text>
+                          </AnimatedPressable>
+                        );
+                      })}
+                      <RNTextInput
+                        style={s.dateInput}
+                        value={dateText}
+                        onChangeText={(t) => { setDateText(t); setFormError(''); }}
+                        placeholder="DD/MM/YYYY"
+                        placeholderTextColor={Colors.textMuted}
+                        keyboardType="numbers-and-punctuation"
+                      />
+                    </View>
+                  </View>
                 </View>
 
                 {/* ── Error ── */}
@@ -614,6 +668,17 @@ const s = StyleSheet.create({
   rowAmount: { fontFamily: Fonts.condensedBold, fontSize: 18, color: Colors.red },
 
   // ── Empty ───────────────────────────────────────────────────────
+  // Date field
+  dateBlock:      { gap: 10 },
+  dateHeader:     { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  dateLabel:      { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.4 },
+  dateChipsRow:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dateChip:       { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgElevated },
+  dateChipOn:     { borderColor: Colors.red + '70', backgroundColor: Colors.red + '15' },
+  dateChipText:   { fontFamily: Fonts.bold, fontSize: 12, color: Colors.textMuted },
+  dateChipTextOn: { color: Colors.red },
+  dateInput:      { flex: 1, backgroundColor: Colors.bgElevated, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontFamily: Fonts.regular, fontSize: 14, color: Colors.text },
+
   // Net position card
   netCard:     { backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1, padding: 16, marginBottom: 12 },
   netTop:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

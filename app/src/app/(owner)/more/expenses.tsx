@@ -103,6 +103,7 @@ export default function ExpensesScreen() {
   const { profile, activeGymId, branches } = useAuthStore();
 
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
+  const [revenue, setRevenue]   = useState(0);   // collections for the same period
   const [loading, setLoading]   = useState(true);
   const [show, setShow]         = useState(false);
   const [saving, setSaving]     = useState(false);
@@ -127,12 +128,15 @@ export default function ExpensesScreen() {
     const start = period === 'month'
       ? toLocalDate(new Date(now.getFullYear(), now.getMonth(), 1))
       : toLocalDate(new Date(now.getFullYear(), 0, 1));
-    const { data, error } = await supabase
-      .from('expenses').select('*')
-      .in('gym_id', gymIds)
-      .gte('expense_date', start)
-      .order('expense_date', { ascending: false });
-    if (!error && data) setExpenses(data);
+    const [expRes, payRes] = await Promise.all([
+      supabase.from('expenses').select('*')
+        .in('gym_id', gymIds).gte('expense_date', start)
+        .order('expense_date', { ascending: false }),
+      supabase.from('payments').select('amount')
+        .in('gym_id', gymIds).gte('payment_date', start),
+    ]);
+    if (!expRes.error && expRes.data) setExpenses(expRes.data);
+    setRevenue((payRes.data ?? []).reduce((s: number, p: any) => s + (p.amount || 0), 0));
     setLoading(false);
   }, [getGymIds, period]);
 
@@ -185,6 +189,9 @@ export default function ExpensesScreen() {
 
   const topCat      = catTotals[0];
   const previewAmt  = parseFloat(amount) || 0;
+  const net         = revenue - total;          // profit (or loss) for the period
+  const margin      = revenue > 0 ? Math.round((net / revenue) * 100) : null;
+  const periodWord  = period === 'month' ? 'this month' : 'this year';
   const activeCatObj = CATEGORIES.find(c => c.label === selectedCat) ?? CATEGORIES[CATEGORIES.length - 1];
 
   // ── Loading ───────────────────────────────────────────────────────────────
@@ -255,6 +262,39 @@ export default function ExpensesScreen() {
           </View>
         </FadeInView>
 
+        {/* ── Net position (Revenue − Expenses) — the reason to track expenses ── */}
+        {(revenue > 0 || total > 0) && (
+          <FadeInView delay={40}>
+            <View style={[s.netCard, { borderColor: (net >= 0 ? Colors.green : Colors.red) + '40' }]}>
+              <View style={s.netTop}>
+                <View style={s.netCol}>
+                  <Text style={s.netColLabel}>REVENUE</Text>
+                  <Text style={[s.netColVal, { color: Colors.green }]}>{fmt(revenue)}</Text>
+                </View>
+                <Text style={s.netMinus}>−</Text>
+                <View style={s.netCol}>
+                  <Text style={s.netColLabel}>EXPENSES</Text>
+                  <Text style={[s.netColVal, { color: Colors.red }]}>{fmt(total)}</Text>
+                </View>
+                <Text style={s.netMinus}>=</Text>
+                <View style={s.netCol}>
+                  <Text style={s.netColLabel}>{net >= 0 ? 'PROFIT' : 'LOSS'}</Text>
+                  <Text style={[s.netColVal, { color: net >= 0 ? Colors.green : Colors.red, fontSize: 20 }]}>
+                    {net < 0 ? '-' : ''}{fmt(Math.abs(net))}
+                  </Text>
+                </View>
+              </View>
+              <Text style={s.netNote}>
+                {margin === null
+                  ? `No revenue recorded ${periodWord} yet`
+                  : net >= 0
+                    ? `You kept ${margin}% of what you collected ${periodWord} 👍`
+                    : `Spending more than you collected ${periodWord} — keep an eye on it`}
+              </Text>
+            </View>
+          </FadeInView>
+        )}
+
         {/* ── Top category bar ── */}
         {topCat && total > 0 && (
           <FadeInView delay={60}>
@@ -276,10 +316,31 @@ export default function ExpensesScreen() {
 
         {/* ── List / Empty ── */}
         {expenses.length === 0 ? (
-          <FadeInView delay={100} style={s.empty}>
-            <Text style={s.emptyEmoji}>💰</Text>
-            <Text style={s.emptyTitle}>No expenses recorded</Text>
-            <Text style={s.emptyDesc}>Tap + to log your first expense</Text>
+          <FadeInView delay={100}>
+            <View style={s.emptyCard}>
+              <View style={s.emptyIconBox}>
+                <MaterialCommunityIcons name="chart-line-variant" size={26} color={Colors.accent} />
+              </View>
+              <Text style={s.emptyTitle}>Kharcha track karo, asli profit dekho</Text>
+              <Text style={s.emptyDesc}>
+                Rent, salary, bijli aur baaki kharche record karo — app khud batayega ki revenue ke baad aapke paas kitna bacha.
+              </Text>
+
+              <Text style={s.emptyCatsLabel}>YOU CAN TRACK</Text>
+              <View style={s.emptyCatsWrap}>
+                {CATEGORIES.slice(0, 7).map(c => (
+                  <View key={c.label} style={[s.emptyCatChip, { borderColor: c.color + '55' }]}>
+                    <Text style={s.emptyCatEmoji}>{c.emoji}</Text>
+                    <Text style={s.emptyCatText}>{c.label}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <AnimatedPressable style={s.emptyCta} scaleDown={0.97} onPress={() => setShow(true)}>
+                <MaterialCommunityIcons name="plus" size={18} color="#fff" />
+                <Text style={s.emptyCtaText}>Add your first expense</Text>
+              </AnimatedPressable>
+            </View>
           </FadeInView>
         ) : (
           <FlatList
@@ -553,10 +614,27 @@ const s = StyleSheet.create({
   rowAmount: { fontFamily: Fonts.condensedBold, fontSize: 18, color: Colors.red },
 
   // ── Empty ───────────────────────────────────────────────────────
-  empty:      { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 60 },
-  emptyEmoji: { fontSize: 44, marginBottom: 12 },
-  emptyTitle: { fontFamily: Fonts.bold, fontSize: 16, color: Colors.text },
-  emptyDesc:  { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, marginTop: 6 },
+  // Net position card
+  netCard:     { backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1, padding: 16, marginBottom: 12 },
+  netTop:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  netCol:      { flex: 1, alignItems: 'center' },
+  netColLabel: { fontFamily: Fonts.bold, fontSize: 8, color: Colors.textMuted, letterSpacing: 1, marginBottom: 4 },
+  netColVal:   { fontFamily: Fonts.condensedBold, fontSize: 16, color: Colors.text },
+  netMinus:    { fontFamily: Fonts.condensedBold, fontSize: 16, color: Colors.textMuted, paddingHorizontal: 2 },
+  netNote:     { fontFamily: Fonts.regular, fontSize: 11.5, color: Colors.textMuted, textAlign: 'center', marginTop: 12, lineHeight: 16 },
+
+  // Rich empty state
+  emptyCard:     { backgroundColor: Colors.bgCard, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, padding: 22, marginTop: 6, alignItems: 'center' },
+  emptyIconBox:  { width: 56, height: 56, borderRadius: 16, backgroundColor: Colors.accent + '15', borderWidth: 1, borderColor: Colors.accent + '30', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  emptyTitle:    { fontFamily: Fonts.condensedBold, fontSize: 20, color: Colors.text, textAlign: 'center' },
+  emptyDesc:     { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, marginTop: 8, textAlign: 'center', lineHeight: 20 },
+  emptyCatsLabel:{ fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.4, marginTop: 22, marginBottom: 12 },
+  emptyCatsWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
+  emptyCatChip:  { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
+  emptyCatEmoji: { fontSize: 13 },
+  emptyCatText:  { fontFamily: Fonts.bold, fontSize: 12, color: Colors.text },
+  emptyCta:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 15, paddingHorizontal: 24, marginTop: 24, alignSelf: 'stretch' },
+  emptyCtaText:  { fontFamily: Fonts.bold, fontSize: 14, color: '#fff' },
 
   // ── FAB ─────────────────────────────────────────────────────────
   fab:     { position: 'absolute', right: 20, bottom: 20, borderRadius: 18, elevation: 8, shadowColor: Colors.red, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8 },

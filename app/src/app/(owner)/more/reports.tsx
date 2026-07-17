@@ -10,6 +10,7 @@
   import { askAI } from '@/lib/ai';
   import { supabase } from '@/lib/supabase';
   import { useAuthStore } from '@/store/authStore';
+  import { toLocalDate } from '@/lib/date';
 
   type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -43,26 +44,34 @@
       setMonthlyReport(null);
 
       try {
-        const now        = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        const mainGymId  = profile.gym_id;
-        const gymIds     = activeGymId === 'all' ? branches.map(b => b.id) : [activeGymId ?? mainGymId];
+        const now          = new Date();
+        // DATE columns (payment_date, check_in_date, end_date) → local date string.
+        const monthStartDate = toLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
+        const today          = toLocalDate(now);
+        // created_at is a timestamptz → compare as an absolute instant (UTC ISO).
+        const monthStartTs   = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const mainGymId    = profile.gym_id;
+        const gymIds       = activeGymId === 'all' ? branches.map(b => b.id) : [activeGymId ?? mainGymId];
 
-        const [totalRes, newRes] = await Promise.all([
-          supabase.from('profiles').select('id', { count: 'exact', head: true }).in('gym_id', gymIds).eq('role',       
-  'member'),
-          supabase.from('profiles').select('id', { count: 'exact', head: true }).in('gym_id', gymIds).eq('role',       
-  'member').gte('created_at', monthStart),
+        const [totalRes, newRes, payRes, expiredRes, attRes] = await Promise.all([
+          supabase.from('profiles').select('id', { count: 'exact', head: true }).in('gym_id', gymIds).eq('role', 'member'),
+          supabase.from('profiles').select('id', { count: 'exact', head: true }).in('gym_id', gymIds).eq('role', 'member').gte('created_at', monthStartTs),
+          supabase.from('payments').select('amount').in('gym_id', gymIds).gte('payment_date', monthStartDate),
+          supabase.from('member_plans').select('id', { count: 'exact', head: true }).in('gym_id', gymIds).eq('status', 'expired').gte('end_date', monthStartDate).lte('end_date', today),
+          supabase.from('attendance').select('id', { count: 'exact', head: true }).in('gym_id', gymIds).gte('check_in_date', monthStartDate),
         ]);
+
+        const revenue  = (payRes.data ?? []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+        const payments = (payRes.data ?? []).length;
 
         const text = await askAI('monthly_report', {
           month:          now.toLocaleString('en-IN', { month: 'long' }),
           newMembers:     newRes.count ?? 0,
           totalMembers:   totalRes.count ?? 0,
-          revenue:        'not tracked yet',
-          attendanceDays: 'not tracked yet',
-          renewals:       'not tracked yet',
-          expired:        'not tracked yet',
+          revenue,                                 // real ₹ collected this month
+          attendanceDays: attRes.count ?? 0,       // real check-ins this month
+          renewals:       payments,                // real payment transactions this month
+          expired:        expiredRes.count ?? 0,   // real plans that expired this month
         });
 
         setMonthlyReport(text);

@@ -90,19 +90,9 @@ const prompts: Record<string, (d: any) => string> = {
     ". Include emojis and hashtags. Keep it energetic and motivating. Under 150 words.",
 
   monthly_report: (d) =>
-    "Write a friendly monthly performance report for a gym owner. Month: " +
-    d.month +
-    ". New members: " +
-    d.newMembers +
-    ". Revenue: Rs." +
-    d.revenue +
-    ". Attendance days logged: " +
-    d.attendanceDays +
-    ". Renewals: " +
-    d.renewals +
-    ". Expired: " +
-    d.expired +
-    ". Write 3-4 sentences, highlight positives and areas to improve.",
+    `Write a warm, motivating monthly performance report for an Indian gym owner. All money is in Indian Rupees — write amounts as ₹${d.revenue} style, never dollars. ` +
+    `Data for ${d.month}: total members ${d.totalMembers}, new members this month ${d.newMembers}, revenue collected ₹${d.revenue}, check-ins logged ${d.attendanceDays}, payments received ${d.renewals}, memberships expired ${d.expired}. ` +
+    `Write 4-5 short sentences: open with the headline number (revenue or new members), celebrate what went well, honestly flag one area to watch (e.g. expiries or low check-ins), and end with ONE concrete action for next month. Encouraging and human, not corporate. If a number is 0, acknowledge it plainly rather than inventing.`,
 
   promo_campaign: (d) =>
     "Create a gym promotional campaign for " +

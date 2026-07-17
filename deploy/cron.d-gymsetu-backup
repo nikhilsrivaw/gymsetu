@@ -1,0 +1,16 @@
+# Goes to /etc/cron.d/gymsetu-backup (chmod 644, root-owned).
+#
+# /etc/cron.d rather than `crontab -e` on purpose: it's idempotent (copy the
+# file and you're done), it's visible in the repo, and it can't be silently
+# clobbered by a bad `crontab -l | ... | crontab -` one-liner — which is not
+# hypothetical, that pattern wiped this crontab once already, because grep
+# exits 1 on an empty crontab and `set -e` then skipped the append.
+#
+# GymSetu nightly backup — db + storage volume, verified, 14-day retention.
+# 20:30 UTC = 02:00 IST: gym closed, and clear of the 03:30 UTC WhatsApp job.
+# Uncomment S3_DEST once the bucket + instance role exist; the script then
+# copies offsite automatically and FAILS LOUDLY if the upload doesn't work.
+#S3_DEST=s3://gymsetu-backups/db
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+30 20 * * * root /usr/local/bin/gymsetu-backup >/dev/null 2>&1

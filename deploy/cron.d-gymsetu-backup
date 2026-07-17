@@ -8,9 +8,11 @@
 #
 # GymSetu nightly backup — db + storage volume, verified, 14-day retention.
 # 20:30 UTC = 02:00 IST: gym closed, and clear of the 03:30 UTC WhatsApp job.
-# Uncomment S3_DEST once the bucket + instance role exist; the script then
-# copies offsite automatically and FAILS LOUDLY if the upload doesn't work.
-#S3_DEST=s3://gymsetu-backups/db
+# Offsite: enabled 2026-07-17. Bucket is `gymsetu--backup` (two hyphens — the
+# IAM policy's Resource ARN must match this EXACTLY or every upload 403s).
+# Verified: upload works, and a broken S3_DEST makes the whole backup FAIL
+# loudly rather than silently skipping offsite.
+S3_DEST=s3://gymsetu--backup/db
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 30 20 * * * root /usr/local/bin/gymsetu-backup >/dev/null 2>&1

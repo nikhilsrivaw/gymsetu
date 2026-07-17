@@ -40,14 +40,25 @@ sudo /usr/local/bin/gymsetu-backup                                # run once, do
 Backups land in `/var/backups/gymsetu/<UTC stamp>/` (db + globals + storage), 14-day retention.
 Health: `cat /var/log/gymsetu-backup.status` → `OK <iso8601> size=… kept=…`, or `FAIL …`.
 
-⚠️ **Still LOCAL ONLY.** This protects against a bad migration or a mistaken
-DELETE — it does **not** protect against losing the instance, which is the
-scenario that ends the company. To finish the job:
-1. S3 bucket in `ap-south-1`, block public access, versioning on.
-2. IAM role with `s3:PutObject` on that bucket → attach to instance `i-04c3230836d5cc6cf`
-   (an instance role, so no long-lived keys ever sit on the box).
-3. `sudo apt install awscli`, then uncomment `S3_DEST` in `/etc/cron.d/gymsetu-backup`.
-The script fails loudly if `S3_DEST` is set and the upload doesn't work.
+**Offsite: enabled 2026-07-17.** Copies go to `s3://gymsetu--backup/db/<stamp>/`
+(ap-south-1) using the `gymsetu-ec2-backup` instance role — no access keys on the
+box. Verified end to end: all three files land in the bucket, and a broken
+`S3_DEST` makes the backup FAIL loudly rather than silently skipping offsite.
+
+The role can `s3:PutObject` and `s3:ListBucket` and **nothing else** — no
+GetObject, no DeleteObject. So root on this instance can write backups but cannot
+read or destroy them; with bucket versioning on, they can't be overwritten with
+garbage either. An attacker with root already has the live DB, so read access
+would buy them little, while delete protection is what actually saves you.
+
+⚠️ Consequence: **the box cannot verify its own S3 copies** (HeadObject 403s by
+design). Local dumps are verified before upload and `aws s3 cp` checksums the
+transfer, but round-tripping an S3 object is a manual job — download one from the
+console occasionally and confirm it restores. A backup nobody has restored is a
+hypothesis.
+
+Bucket name is `gymsetu--backup` — **two hyphens**. The IAM policy Resource ARN
+must match exactly; a mismatch 403s every upload (it did, first try).
 
 ⚠️ **`supabase/docker/.env` is deliberately NOT backed up.** Restoring is
 impossible without `JWT_SECRET` — a new one invalidates every session and

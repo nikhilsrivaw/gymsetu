@@ -7,7 +7,21 @@ Instance: `i-04c3230836d5cc6cf` · Elastic IP: `13.234.60.18` · Region: `ap-sou
 
 ---
 
-## 1. S3 offsite backups  ⚠️ highest priority
+## 1. S3 offsite backups  ✅ DONE 2026-07-17
+
+Bucket `gymsetu--backup` (ap-south-1), role `gymsetu-ec2-backup` attached to the
+instance, `S3_DEST` live in `/etc/cron.d/gymsetu-backup`. Verified: real backup
+uploaded, delete correctly denied, broken destination fails loudly.
+
+Two follow-ups that are still yours:
+- Confirm **Bucket Versioning = Enabled** in the console (the role can't read
+  `GetBucketVersioning`, so this can't be checked from the box).
+- Delete the leftover `_probe/s3probe.txt` test object if you want it gone — the
+  box can't delete it, by design.
+- Once, from your laptop: download a backup and confirm it restores. The box
+  structurally cannot verify its own offsite copies.
+
+<details><summary>Original setup steps (kept for rebuilding from scratch)</summary>
 
 Backups run nightly at 02:00 IST and are **verified** — but they sit on the same
 disk as the database. That survives a bad migration or a mistaken DELETE. It does
@@ -38,10 +52,11 @@ Name it `gymsetu-backup-write`.
 **d. Attach it** — EC2 → Instances → select `i-04c3230836d5cc6cf` →
 Actions → Security → **Modify IAM role** → pick `gymsetu-ec2-backup` → Update
 
-**e. Tell Claude.** Remaining steps: uncomment `S3_DEST` in
-`/etc/cron.d/gymsetu-backup`, run a real backup, and confirm the object lands in
-the bucket. (Self-check: `aws sts get-caller-identity` on the box should stop
+**e. Enable it:** set `S3_DEST` in `/etc/cron.d/gymsetu-backup`, run a real
+backup, confirm the object lands. (`aws sts get-caller-identity` on the box stops
 saying NoCredentials the moment the role is attached — no reboot needed.)
+
+</details>
 
 ---
 

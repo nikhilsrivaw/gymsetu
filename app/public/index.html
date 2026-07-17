@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<!--
+  HTML shell for the web build (npx expo export --platform web).
+
+  Expo uses this file because it exists: @expo/cli's getTemplateIndexHtmlAsync()
+  prefers public/index.html and only falls back to its built-in template when
+  this is absent. This is the supported way to customize the head for
+  web.output "single" — a +html.tsx does NOT apply to a single-page export,
+  only to output "static".
+
+  !! Do not name Expo's template tokens in this comment. Expo templates this
+  file with plain first-occurrence string replacement, so a token mentioned up
+  here gets substituted instead of the real one below, and the closing body tag
+  is where the bundle script is injected. Writing either in a comment silently
+  produces a page with an unsubstituted title and a script tag inside a comment.
+
+  Expo injects these itself from app.json — adding them here duplicates them:
+    the title and lang values, theme-color (web.themeColor),
+    description (web.description), and the bundle script.
+
+  The manifest and apple-touch tags below are the ones Expo does NOT generate;
+  without them this is a website in a tab with no install prompt. The app.json
+  fields display/shortName/backgroundColor/orientation are read by nothing in
+  this pipeline — public/manifest.json is what actually drives installability,
+  so the two must be kept in sync by hand.
+-->
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- viewport-fit=cover lets the app paint under iOS notches and the home
+         indicator, which is what stops a standalone launch looking letterboxed. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
+    />
+    <title>%WEB_TITLE%</title>
+
+    <!-- Installability: Chrome/Android need a manifest + an icon >=144px. -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- iOS ignores the manifest entirely and reads these instead. -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="GymSetu" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+      /* Paint the brand background before the bundle parses, otherwise the
+         first frame is a white flash in a dark-themed app. */
+      html,
+      body,
+      #root {
+        background-color: #0a0a0a;
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript> You need to enable JavaScript to run this app. </noscript>
+    <div id="root"></div>
+  </body>
+</html>

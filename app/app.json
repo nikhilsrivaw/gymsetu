@@ -40,6 +40,7 @@
       "output": "single",
       "name": "GymSetu",
       "shortName": "GymSetu",
+      "description": "Run your gym, track members, collect payments and grow your business — all in one app.",
       "themeColor": "#0a0a0a",
       "backgroundColor": "#0a0a0a",
       "display": "standalone",

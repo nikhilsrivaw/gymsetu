@@ -88,7 +88,6 @@ export default function PaywallScreen() {
         {/* Pricing summary */}
         <View style={s.pricingGrid}>
           {[
-            { name: 'BASIC',    price: '₹999',   color: '#555',    members: 'Any size',  trial: false },
             { name: 'PRO',      price: '₹1,699',  color: Colors.accent, members: '≤200',    trial: true  },
             { name: 'PRO PLUS', price: '₹2,199',  color: '#A78BFA', members: '200–500',   trial: false },
             { name: 'PRO MAX',  price: '₹2,999',  color: '#3B82F6', members: '500+',      trial: false },

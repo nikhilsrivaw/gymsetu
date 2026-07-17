@@ -270,7 +270,7 @@ export default function OwnerLoginScreen() {
             style={{ marginTop: 12 }}
           >
             <Text style={styles.pricingLink}>
-              See plans · ₹999/mo onwards →
+              See plans · ₹1,699/mo onwards →
             </Text>
           </TouchableOpacity>
         </View>

@@ -25,7 +25,7 @@ export default function RegisterScreen() {
   const steps = [
     { n: '1', text: `Visit ${WEBSITE_DISPLAY}/signup on your browser` },
     { n: '2', text: 'Enter your gym details and choose a plan' },
-    { n: '3', text: 'Pay securely via PayU (Basic ₹999 · Pro ₹1,699)' },
+    { n: '3', text: 'Pay securely via PayU (Pro ₹1,699 · 7-day free trial)' },
     { n: '4', text: 'Come back here and sign in with your email & password' },
   ];
 
@@ -61,14 +61,14 @@ export default function RegisterScreen() {
 
       {/* Plans reminder */}
       <View style={s.plansRow}>
-        <View style={s.planChip}>
-          <Text style={s.planChipLabel}>BASIC</Text>
-          <Text style={s.planChipPrice}>₹999<Text style={s.planChipPer}>/mo</Text></Text>
-        </View>
         <View style={[s.planChip, s.planChipPro]}>
           <Text style={[s.planChipLabel, { color: Colors.accent }]}>PRO</Text>
           <Text style={s.planChipPrice}>₹1,699<Text style={s.planChipPer}>/mo</Text></Text>
           <Text style={s.trialNote}>7-day free trial</Text>
+        </View>
+        <View style={s.planChip}>
+          <Text style={s.planChipLabel}>PRO PLUS</Text>
+          <Text style={s.planChipPrice}>₹2,199<Text style={s.planChipPer}>/mo</Text></Text>
         </View>
       </View>
 

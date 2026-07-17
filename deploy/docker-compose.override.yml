@@ -13,7 +13,9 @@ services:
   # ── Edge-function secrets ──
   functions:
     environment:
-      # app functions
+      # app functions — ai-assistant uses OpenAI (gpt-4o-mini). GROQ_API_KEY is
+      # legacy/unused, kept so an older function build doesn't break if present.
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       GROQ_API_KEY: ${GROQ_API_KEY}
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
       WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN}

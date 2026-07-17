@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+const AI_MODEL = "gpt-4o-mini";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -159,23 +160,23 @@ serve(async (req) => {
     }
 
     const prompt = promptFn(data);
-    const groqKey = Deno.env.get("GROQ_API_KEY");
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
 
-    if (!groqKey) {
-      return new Response(JSON.stringify({ error: "GROQ_API_KEY not set" }), {
+    if (!openaiKey) {
+      return new Response(JSON.stringify({ error: "OPENAI_API_KEY not set" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const res = await fetch(GROQ_URL, {
+    const res = await fetch(OPENAI_URL, {
       method: "POST",
       headers: {
-        Authorization: "Bearer " + groqKey,
+        Authorization: "Bearer " + openaiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: AI_MODEL,
         messages: [{ role: "user", content: prompt }],
         max_tokens: 500,
         temperature: 0.7,
@@ -187,7 +188,7 @@ serve(async (req) => {
 
     if (!text) {
       return new Response(
-        JSON.stringify({ error: "Empty response from Groq", raw: json }),
+        JSON.stringify({ error: "Empty response from OpenAI", raw: json }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

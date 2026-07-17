@@ -7,17 +7,18 @@ import { toLocalDate } from '@/lib/date';
   import { supabase } from '@/lib/supabase';
   import { useAuthStore } from '@/store/authStore';
   import FadeInView from '@/components/FadeInView';
-  import BarChart from '@/components/reports/BarChart';
-  import HorizontalBar from '@/components/reports/HorizontalBar';
+  import InteractiveBarChart from '@/components/reports/InteractiveBarChart';
   import StatCard from '@/components/reports/StatCard';
   import { askAI } from '@/lib/ai';
 
+  // Categorical palette, fixed per payment method (never cycled). Validated
+  // colorblind-safe on the dark surface via the dataviz palette validator.
   const METHOD_COLORS: Record<string, string> = {
-    cash:          Colors.green,
-    upi:           '#4F6EF7',
-    card:          Colors.orange,
-    bank_transfer: Colors.accent,
-    other:         Colors.textMuted,
+    cash:          '#3987e5',  // blue
+    upi:           '#008300',  // green
+    card:          '#d55181',  // magenta
+    bank_transfer: '#c98500',  // yellow
+    other:         '#199e70',  // aqua
   };
 
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -38,6 +39,8 @@ import { toLocalDate } from '@/lib/date';
     const [loading, setLoading]     = useState(true);
     const [aiSummary, setAiSummary] = useState<string | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
+    const [period, setPeriod]       = useState<6 | 12>(6);  // months shown
+    const [selMonth, setSelMonth]   = useState(-1);          // selected bar (-1 = latest)
 
     const fetchData = useCallback(async () => {
       const mainGymId = (profile as any)?.gym_id;
@@ -51,20 +54,20 @@ import { toLocalDate } from '@/lib/date';
         gymIds = [activeGymId ?? mainGymId];
       }
 
-      const now          = new Date();
-      const sixMonthsAgo = toLocalDate(new Date(now.getFullYear(), now.getMonth() - 5, 1));
+      const now         = new Date();
+      const periodStart = toLocalDate(new Date(now.getFullYear(), now.getMonth() - (period - 1), 1));
 
       const { data: payments } = await supabase
         .from('payments')
         .select('amount, payment_date, payment_method')
         .in('gym_id', gymIds)
-        .gte('payment_date', sixMonthsAgo)
+        .gte('payment_date', periodStart)
         .order('payment_date');
 
       if (!payments) { setLoading(false); return; }
 
       const monthMap: Record<string, number> = {};
-      for (let i = 5; i >= 0; i--) {
+      for (let i = period - 1; i >= 0; i--) {
         const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         monthMap[key] = 0;
@@ -99,8 +102,9 @@ import { toLocalDate } from '@/lib/date';
         txCount: payments.length,
         avgTx:   payments.length > 0 ? Math.round(totalCollected / payments.length) : 0,
       });
+      setSelMonth(-1);   // reset selection to the latest month
       setLoading(false);
-    }, [activeGymId, branches]);
+    }, [activeGymId, branches, period]);
 
     useFocusEffect(useCallback(() => { fetchData(); }, [fetchData]));
 
@@ -140,6 +144,18 @@ import { toLocalDate } from '@/lib/date';
     );
 
     const methodTotal = data?.methodBreakdown.reduce((s, m) => s + m.value, 0) || 1;
+
+    // ── Derived values for the interactive chart + month-over-month card ──────
+    const bars     = data?.monthlyBars ?? [];
+    const selIdx   = selMonth < 0 ? bars.length - 1 : Math.min(selMonth, bars.length - 1);
+    const selBar   = bars[selIdx];
+    const selPrev  = bars[selIdx - 1];
+    const selPct   = selBar && selPrev && selPrev.value > 0
+      ? Math.round(((selBar.value - selPrev.value) / selPrev.value) * 100) : null;
+    const curVal   = bars[bars.length - 1]?.value ?? 0;
+    const prevVal  = bars[bars.length - 2]?.value ?? 0;
+    const momPct   = prevVal > 0 ? Math.round(((curVal - prevVal) / prevVal) * 100) : null;
+    const bestBar  = bars.length ? bars.reduce((a, b) => (b.value > a.value ? b : a), bars[0]) : null;
 
     return (
       <>
@@ -191,17 +207,74 @@ import { toLocalDate } from '@/lib/date';
             </View>
           </FadeInView>
 
-          <FadeInView delay={100}>
+          {/* Month-over-month headline */}
+          <FadeInView delay={90}>
+            <View style={styles.momCard}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.momLabel}>THIS MONTH</Text>
+                <Text style={styles.momValue}>{fmt(curVal)}</Text>
+              </View>
+              <View style={styles.momDivider} />
+              <View style={styles.momRight}>
+                <Text style={styles.momLabel}>VS LAST MONTH</Text>
+                {momPct === null ? (
+                  <Text style={styles.momNeutral}>—</Text>
+                ) : (
+                  <Text style={[styles.momPct, { color: momPct >= 0 ? Colors.green : Colors.red }]}>
+                    {momPct >= 0 ? '▲' : '▼'} {Math.abs(momPct)}%
+                  </Text>
+                )}
+              </View>
+            </View>
+          </FadeInView>
+
+          {/* Interactive monthly revenue chart */}
+          <FadeInView delay={130}>
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>MONTHLY REVENUE</Text>
-              <Text style={styles.cardSub}>Last 6 months</Text>
-              {data?.monthlyBars && (
-                <BarChart
-                  data={data.monthlyBars.map(b => ({ ...b, color: Colors.green }))}
-                  maxHeight={110}
-                  barColor={Colors.green}
+              <View style={styles.cardHeadRow}>
+                <View>
+                  <Text style={styles.cardTitle}>MONTHLY REVENUE</Text>
+                  <Text style={styles.cardSub}>Tap a bar to see the month</Text>
+                </View>
+                <View style={styles.periodToggle}>
+                  {([6, 12] as const).map(p => (
+                    <TouchableOpacity
+                      key={p}
+                      style={[styles.periodChip, period === p && styles.periodChipOn]}
+                      onPress={() => setPeriod(p)}
+                    >
+                      <Text style={[styles.periodChipText, period === p && styles.periodChipTextOn]}>{p}M</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Selected-month detail strip */}
+              {selBar && (
+                <View style={styles.detailStrip}>
+                  <Text style={styles.detailMonth}>{selBar.label}</Text>
+                  <Text style={styles.detailValue}>{fmt(selBar.value)}</Text>
+                  {selPct !== null && (
+                    <Text style={[styles.detailPct, { color: selPct >= 0 ? Colors.green : Colors.red }]}>
+                      {selPct >= 0 ? '▲' : '▼'} {Math.abs(selPct)}% MoM
+                    </Text>
+                  )}
+                </View>
+              )}
+
+              {bars.length > 0 && (
+                <InteractiveBarChart
+                  data={bars}
+                  color={Colors.green}
+                  height={130}
+                  selected={selIdx}
+                  onSelect={setSelMonth}
                   formatValue={v => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : `${v}`}
                 />
+              )}
+
+              {bestBar && bestBar.value > 0 && (
+                <Text style={styles.bestNote}>🏆 Best month: {bestBar.label} · {fmt(bestBar.value)}</Text>
               )}
             </View>
           </FadeInView>
@@ -209,17 +282,26 @@ import { toLocalDate } from '@/lib/date';
           <FadeInView delay={200}>
             <View style={styles.card}>
               <Text style={styles.cardTitle}>PAYMENT METHODS</Text>
-              <Text style={styles.cardSub}>By collection amount</Text>
-              <View style={styles.barsGap}>
+              <Text style={styles.cardSub}>Share of collections ({period}M)</Text>
+
+              {/* Stacked proportion bar — 2px surface gaps between segments */}
+              {data && data.methodBreakdown.length > 0 && (
+                <View style={styles.stackBar}>
+                  {data.methodBreakdown.map(m => (
+                    <View key={m.label} style={{ flex: m.value, backgroundColor: m.color }} />
+                  ))}
+                </View>
+              )}
+
+              {/* Legend — colour dot + method + % + ₹ (identity never colour-alone) */}
+              <View style={styles.legend}>
                 {data?.methodBreakdown.map(m => (
-                  <HorizontalBar
-                    key={m.label}
-                    label={m.label}
-                    value={m.value}
-                    total={methodTotal}
-                    color={m.color}
-                    formatValue={fmt}
-                  />
+                  <View key={m.label} style={styles.legendRow}>
+                    <View style={[styles.legendDot, { backgroundColor: m.color }]} />
+                    <Text style={styles.legendLabel}>{m.label}</Text>
+                    <Text style={styles.legendPct}>{Math.round((m.value / methodTotal) * 100)}%</Text>
+                    <Text style={styles.legendVal}>{fmt(m.value)}</Text>
+                  </View>
                 ))}
               </View>
             </View>
@@ -257,5 +339,37 @@ import { toLocalDate } from '@/lib/date';
     cardTitle: { fontFamily: Fonts.bold, fontSize: 10, color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 2  
   },
     cardSub:   { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, marginBottom: 14 },
-    barsGap:   { gap: 12 },
+
+    // Month-over-month headline card
+    momCard:    { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1, borderColor: Colors.border, padding: 18, marginBottom: 14 },
+    momLabel:   { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.4, marginBottom: 5 },
+    momValue:   { fontFamily: Fonts.condensedBold, fontSize: 28, color: Colors.text },
+    momDivider: { width: 1, alignSelf: 'stretch', backgroundColor: Colors.border, marginHorizontal: 16 },
+    momRight:   { alignItems: 'flex-end' },
+    momPct:     { fontFamily: Fonts.condensedBold, fontSize: 24 },
+    momNeutral: { fontFamily: Fonts.condensedBold, fontSize: 24, color: Colors.textMuted },
+
+    // Period toggle
+    cardHeadRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+    periodToggle:     { flexDirection: 'row', backgroundColor: Colors.bg, borderRadius: 10, padding: 3, gap: 2 },
+    periodChip:       { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+    periodChipOn:     { backgroundColor: Colors.green + '22' },
+    periodChipText:   { fontFamily: Fonts.bold, fontSize: 11, color: Colors.textMuted },
+    periodChipTextOn: { color: Colors.green },
+
+    // Selected-month detail strip
+    detailStrip:  { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 14, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
+    detailMonth:  { fontFamily: Fonts.bold, fontSize: 12, color: Colors.textMuted, letterSpacing: 1 },
+    detailValue:  { fontFamily: Fonts.condensedBold, fontSize: 22, color: Colors.text },
+    detailPct:    { fontFamily: Fonts.bold, fontSize: 12 },
+    bestNote:     { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted, marginTop: 14 },
+
+    // Payment-method stacked bar + legend
+    stackBar:    { flexDirection: 'row', height: 24, borderRadius: 7, overflow: 'hidden', gap: 2, marginBottom: 16, backgroundColor: Colors.bg },
+    legend:      { gap: 10 },
+    legendRow:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    legendDot:   { width: 11, height: 11, borderRadius: 3 },
+    legendLabel: { flex: 1, fontFamily: Fonts.regular, fontSize: 13, color: Colors.text },
+    legendPct:   { fontFamily: Fonts.bold, fontSize: 13, color: Colors.textMuted, width: 44, textAlign: 'right' },
+    legendVal:   { fontFamily: Fonts.bold, fontSize: 13, color: Colors.text, width: 74, textAlign: 'right' },
   });

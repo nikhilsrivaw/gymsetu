@@ -226,9 +226,8 @@ export default function TrainerProfileScreen() {
                   { val: stats.memberCount,       label: 'MEMBERS',      icon: 'account-group-outline' as IconName, color: '#3B82F6'    },
                   { val: stats.sessionsThisMonth, label: 'THIS MONTH',   icon: 'calendar-check-outline' as IconName, color: Colors.green },
                   { val: stats.totalSessions,     label: 'SESSIONS',     icon: 'dumbbell' as IconName,              color: Colors.accent },
-                  { val: '4.9',                   label: 'RATING',       icon: 'star-outline' as IconName,          color: '#F59E0B'     },
-                ].map((st, i) => (
-                  <View key={st.label} style={[s.statBox, i < 3 && s.statBorder]}>
+                ].map((st, i, arr) => (
+                  <View key={st.label} style={[s.statBox, i < arr.length - 1 && s.statBorder]}>
                     <View style={[s.statIconBox, { backgroundColor: st.color + '15', borderColor: st.color + '25' }]}>
                       <MaterialCommunityIcons name={st.icon} size={13} color={st.color} />
                     </View>

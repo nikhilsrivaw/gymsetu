@@ -185,18 +185,6 @@
             <Text style={s.splashDesc}>
               Run your gym, track members, collect payments{'\n'}and grow your business — all in one app.
             </Text>
-            <View style={s.statsRow}>
-              {[
-                { v: '500+', l: 'GYMS'    },
-                { v: '50K+', l: 'MEMBERS' },
-                { v: '4.9★', l: 'RATING'  },
-              ].map((st, i) => (
-                <View key={st.l} style={[s.statBox, i > 0 && s.statBorder]}>
-                  <Text style={s.statVal}>{st.v}</Text>
-                  <Text style={s.statLbl}>{st.l}</Text>
-                </View>
-              ))}
-            </View>
           </Animated.View>
         </View>
 
@@ -410,13 +398,6 @@
 
     splashBody: { alignSelf: 'stretch', gap: 16 },
     splashDesc: { fontFamily: Fonts.regular, fontSize: 15, color: '#666', textAlign: 'center', lineHeight: 24 },       
-
-    statsRow:   { flexDirection: 'row', backgroundColor: '#141414', borderRadius: 18, borderWidth: 1, borderColor:     
-  '#1e1e1e', paddingVertical: 16 },
-    statBox:    { flex: 1, alignItems: 'center', gap: 4 },
-    statBorder: { borderLeftWidth: 1, borderLeftColor: '#1e1e1e' },
-    statVal:    { fontFamily: Fonts.condensedBold, fontSize: 24, color: Colors.accent },
-    statLbl:    { fontFamily: Fonts.bold, fontSize: 8, color: '#444', letterSpacing: 1.2 },
 
     splashBottom: { paddingHorizontal: 24, paddingBottom: 12, gap: 14 },
     madeIn:       { fontFamily: Fonts.regular, fontSize: 13, color: '#444', textAlign: 'center' },

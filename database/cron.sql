@@ -83,29 +83,21 @@ begin
     update member_plans set status = 'expired' where id = r.plan_id;
   end loop;
 
-  -- 3) INACTIVE NUDGE — active member, no attendance in the last 7 days.
-  --    NOTE: attendance.member_id can be members.id OR profiles.id depending on
-  --    how the check-in was recorded, so we match on either.
-  for r in
-    select m.phone, m.full_name as member_name, g.name as gym_name, g.id as gym_id
-    from members m
-    join gyms g on g.id = m.gym_id
-    where m.status = 'active' and m.phone is not null
-      and not exists (
-        select 1 from attendance a
-        where a.check_in_date >= current_date - 7
-          and (a.member_id = m.id or a.member_id = m.user_id)
-      )
-  loop
-    perform net.http_post(
-      url     := fn_url,
-      headers := jsonb_build_object('Content-Type','application/json','x-webhook-secret',secret,'Authorization','Bearer '||anon,'apikey',anon),
-      body    := jsonb_build_object(
-        'type','inactive_nudge','phone',r.phone,'gym_id',r.gym_id,
-        'data', jsonb_build_object('member_name',r.member_name,'gym_name',r.gym_name,
-                                   'days_inactive', 7))
-    );
-  end loop;
+  -- 3) INACTIVE NUDGE — REMOVED 2026-07-17. Do not re-add as it was.
+  --
+  -- It messaged every active member with no attendance row in the last 7 days.
+  -- But "no attendance rows" is indistinguishable from "this gym doesn't track
+  -- attendance", so with attendance broken (and later, simply unused) it told
+  -- all 4 real members "we haven't seen you in 7 days" every single morning,
+  -- whether or not they'd actually come in.
+  --
+  -- If you want it back, gate it on members who have EVER checked in:
+  --   and exists (select 1 from attendance a
+  --               where a.member_id in (m.id, m.user_id))
+  -- so a gym that never uses check-ins never nudges anybody.
+  --
+  -- See database/disable_inactive_nudge.sql (the migration that removed it
+  -- from the live DB).
 end;
 $$ language plpgsql security definer;
 

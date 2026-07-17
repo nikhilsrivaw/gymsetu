@@ -345,6 +345,24 @@ export default function DashboardScreen() {
           </View>
         </FadeInView>
 
+        {/* ── Ask Me (GymSetu se Poochho) ── */}
+        <FadeInView delay={15}>
+          <AnimatedPressable
+            style={s.askMeCard}
+            scaleDown={0.98}
+            onPress={() => router.push('/(owner)/more/ask-gym' as any)}
+          >
+            <View style={s.askMeIcon}>
+              <MaterialCommunityIcons name="robot-happy-outline" size={22} color={Colors.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.askMeTitle}>Ask Me</Text>
+              <Text style={s.askMeSub}>Apne gym ke baare mein kuch bhi poochho</Text>
+            </View>
+            <MaterialCommunityIcons name="arrow-right" size={20} color={Colors.accent} />
+          </AnimatedPressable>
+        </FadeInView>
+
         {/* ── Branch Switcher ── */}
         {branches.length > 0 && (
           <FadeInView delay={30}>
@@ -784,6 +802,10 @@ const s = StyleSheet.create({
   greeting:  { fontFamily: Fonts.medium, fontSize: 9, color: Colors.accent, letterSpacing: 1.6 },
   ownerName: { fontFamily: Fonts.condensedBold, fontSize: 30, color: Colors.text, letterSpacing: 0.5, marginTop: 2 },
   avatarBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.bgCard, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.accent + '30' },
+  askMeCard:  { flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: Colors.accentMuted, borderWidth: 1, borderColor: Colors.accent + '40', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16, marginBottom: 18 },
+  askMeIcon:  { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.accent + '1A', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.accent + '30' },
+  askMeTitle: { fontFamily: Fonts.condensedBold, fontSize: 18, color: Colors.text, letterSpacing: 0.4 },
+  askMeSub:   { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted, marginTop: 1 },
 
   // ── Hero glass card ───────────────────────────────────────────
   heroCard: {

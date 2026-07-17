@@ -1,6 +1,6 @@
  import { useState } from 'react';                                                                                    
   import {                                                                                                                 View, Text, StyleSheet, ScrollView, TextInput,                                                                     
-    ActivityIndicator, Modal, Keyboard,                                                                                
+    ActivityIndicator, Modal, Keyboard, Linking,                                                                                
   } from 'react-native';
   import { Stack, useRouter } from 'expo-router';
   import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -197,6 +197,30 @@
                 </Text>
               </View>
 
+              {/* Share on WhatsApp — sends credentials + the install link from
+                  the owner's own WhatsApp, same flow as adding a member. */}
+              <AnimatedPressable
+                style={styles.shareBtn}
+                scaleDown={0.97}
+                onPress={() => {
+                  const msg =
+                    `Hi ${fullName || 'there'}! You've been added as a trainer on GymSetu. 🎉\n\n` +
+                    `Your login details:\n` +
+                    `Trainer ID: ${trainerCode}\n` +
+                    `Password: ${trainerPassword}\n\n` +
+                    `Install the app here:\n` +
+                    `https://app.gymsetu.it.com/install?role=trainer\n\n` +
+                    `Open it, choose "Trainer", and log in with the details above.`;
+                  const digits = phone.replace(/\D/g, '');
+                  const to = digits.length === 10 ? `91${digits}` : digits;
+                  const base = to ? `https://wa.me/${to}` : `https://wa.me/`;
+                  Linking.openURL(`${base}?text=${encodeURIComponent(msg)}`).catch(() => {});
+                }}
+              >
+                <MaterialCommunityIcons name="whatsapp" size={18} color="#fff" />
+                <Text style={styles.shareBtnText}>SHARE ON WHATSAPP</Text>
+              </AnimatedPressable>
+
               <AnimatedPressable
                 style={styles.doneBtn}
                 scaleDown={0.97}
@@ -289,7 +313,8 @@
     },
     warningText: { flex: 1, fontFamily: Fonts.regular, fontSize: 11, color: Colors.orange, lineHeight: 16 },
 
-    doneBtn:     { backgroundColor: Colors.green, borderRadius: 12, paddingVertical: 14, alignItems: 'center', width:  
-  '100%' },
-    doneBtnText: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.bg, letterSpacing: 1.5 },
+    shareBtn:    { backgroundColor: Colors.green, borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 9, width: '100%', marginBottom: 10 },
+    shareBtnText:{ fontFamily: Fonts.bold, fontSize: 13, color: '#fff', letterSpacing: 1.5 },
+    doneBtn:     { backgroundColor: 'transparent', borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingVertical: 14, alignItems: 'center', width: '100%' },
+    doneBtnText: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.textMuted, letterSpacing: 1.5 },
   });

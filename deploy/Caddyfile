@@ -67,8 +67,10 @@ api.gymsetu.it.com {
         header /index.html Cache-Control "no-cache, must-revalidate"
 
         # expo-router owns routing; unknown paths must render the SPA, not 404,
-        # or a hard refresh on a deep link like /members/123 breaks.
-        try_files {path} /index.html
+        # or a hard refresh on a deep link like /members/123 breaks. The
+        # {path}.html step lets standalone static pages (install.html) be served
+        # at a clean URL (/install) while everything else still falls to the SPA.
+        try_files {path} {path}.html /index.html
         file_server
     }
 }

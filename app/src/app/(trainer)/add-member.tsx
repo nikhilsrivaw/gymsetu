@@ -466,7 +466,9 @@ export default function TrainerAddMemberScreen() {
                   `Here are your GymSetu app login details:\n` +
                   `Member ID: ${credentials.code}\n` +
                   `Password: ${credentials.password}\n\n` +
-                  `Download GymSetu, choose "Member", and log in with these. See you at the gym! 💪`;
+                  `Install the app here:\n` +
+                  `https://app.gymsetu.it.com/install?role=member\n\n` +
+                  `Open it, choose "Member", and log in with the details above. See you at the gym! 💪`;
                 const digits = credentials.phone.replace(/\D/g, '');
                 const to = digits.length === 10 ? `91${digits}` : digits;
                 Linking.openURL(`https://wa.me/${to}?text=${encodeURIComponent(msg)}`).catch(() => {});

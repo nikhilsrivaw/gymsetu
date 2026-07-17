@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<!--
+  Guided PWA install page. Served at app.gymsetu.it.com/install — deliberately
+  SAME ORIGIN as the app, because Chrome's beforeinstallprompt only fires for the
+  origin being installed. A copy on the marketing site (gymsetu.it.com) could
+  give instructions but could NOT offer the real one-tap Android install.
+
+  This is a standalone static file, NOT part of the SPA bundle, so it paints
+  instantly instead of waiting on ~6 MB of JS. Expo copies public/* into dist
+  verbatim; Caddy serves /install -> install.html (try_files {path} {path}.html).
+
+  It is both (a) the owner's own install page and (b) the link the owner shares
+  to members/trainers over WhatsApp, so it must survive being opened INSIDE
+  WhatsApp's in-app browser — where install is impossible and the only useful
+  thing to say is "open this in Chrome/Safari first". That case is handled first.
+
+  Detection is best-effort (in-app-browser sniffing is inherently unreliable), so
+  every path also exposes the manual steps — detection only decides what to
+  show FIRST, never the only thing shown.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Install GymSetu</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#080808" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <style>
+    :root { --bg:#080808; --card:#111; --line:#222; --text:#fff; --muted:#8a8a8a;
+            --accent:#FF4D00; --accentSoft:rgba(255,77,0,.12); --green:#22C55E; }
+    * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+    html,body { background:var(--bg); color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      min-height:100%; }
+    body { display:flex; flex-direction:column; align-items:center; padding:32px 20px 48px;
+      max-width:520px; margin:0 auto; }
+    .logo { font-weight:800; font-size:15px; letter-spacing:.18em; text-transform:uppercase; margin-bottom:36px; }
+    .logo b { color:var(--accent); }
+    .icon { width:88px; height:88px; border-radius:22px; margin-bottom:22px; box-shadow:0 8px 40px rgba(255,77,0,.25); }
+    h1 { font-size:26px; line-height:1.15; text-align:center; margin-bottom:10px; font-weight:750; }
+    .sub { color:var(--muted); text-align:center; font-size:15px; line-height:1.5; margin-bottom:28px; max-width:380px; }
+    .card { width:100%; background:var(--card); border:1px solid var(--line); border-radius:18px;
+      padding:22px; margin-bottom:14px; }
+    .card.warn { border-color:rgba(255,77,0,.4); background:var(--accentSoft); }
+    .card h2 { font-size:16px; margin-bottom:14px; display:flex; align-items:center; gap:9px; }
+    .step { display:flex; gap:13px; align-items:flex-start; padding:9px 0; }
+    .step .n { flex:none; width:24px; height:24px; border-radius:50%; background:var(--accentSoft);
+      color:var(--accent); font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+    .step p { font-size:15px; line-height:1.45; color:#ddd; padding-top:1px; }
+    .step p b { color:#fff; }
+    .btn { display:flex; align-items:center; justify-content:center; gap:10px; width:100%;
+      padding:16px; border-radius:13px; border:none; font-size:16px; font-weight:700; cursor:pointer;
+      text-decoration:none; margin-top:6px; }
+    .btn-primary { background:var(--accent); color:#000; }
+    .btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--line); }
+    .btn:active { transform:scale(.985); }
+    .hide { display:none !important; }
+    .foot { color:var(--muted); font-size:12.5px; text-align:center; margin-top:22px; line-height:1.5; }
+    .foot a { color:var(--muted); }
+    .kbd { display:inline-block; padding:1px 7px; border:1px solid var(--line); border-radius:6px;
+      font-size:13px; color:#fff; background:#000; }
+  </style>
+</head>
+<body>
+  <div class="logo">GYM<b>SETU</b></div>
+  <img class="icon" src="/icons/icon-192.png" alt="GymSetu" />
+  <h1 id="title">Get the GymSetu app</h1>
+  <p class="sub" id="subtitle">Install it on your phone — it opens like a normal app, with no Play Store or App Store needed.</p>
+
+  <!-- 1. In-app browser (WhatsApp/Instagram): install is impossible here -->
+  <div class="card warn hide" id="c-inapp">
+    <h2>⚠️ Open in your browser first</h2>
+    <div id="inapp-android" class="hide">
+      <div class="step"><div class="n">1</div><p>Tap the <b>⋮ menu</b> at the top-right of this screen.</p></div>
+      <div class="step"><div class="n">2</div><p>Choose <b>“Open in Chrome”</b> (or your browser).</p></div>
+      <div class="step"><div class="n">3</div><p>Then come back here — the <b>Install</b> button will work.</p></div>
+    </div>
+    <div id="inapp-ios" class="hide">
+      <div class="step"><div class="n">1</div><p>Tap the <b>compass / Safari icon</b>, usually at the bottom-right.</p></div>
+      <div class="step"><div class="n">2</div><p>This reopens the page in <b>Safari</b>.</p></div>
+      <div class="step"><div class="n">3</div><p>Then follow the “Add to Home Screen” steps.</p></div>
+    </div>
+  </div>
+
+  <!-- 2. Android + Chrome: the real one-tap install -->
+  <div class="card hide" id="c-android">
+    <h2>📲 One tap to install</h2>
+    <p class="step" style="padding-top:0"><span style="color:#ddd;font-size:15px;line-height:1.45">Tap the button and confirm <b style="color:#fff">Install</b>. GymSetu will be added to your home screen.</span></p>
+    <button class="btn btn-primary" id="btn-install">Install GymSetu</button>
+    <div id="android-manual" class="hide" style="margin-top:8px">
+      <div class="step"><div class="n">1</div><p>Tap the <b>⋮ menu</b> (top-right).</p></div>
+      <div class="step"><div class="n">2</div><p>Tap <b>“Install app”</b> or <b>“Add to Home screen”</b>.</p></div>
+    </div>
+  </div>
+
+  <!-- 3. iOS + Safari: manual Add to Home Screen -->
+  <div class="card hide" id="c-ios">
+    <h2>📲 Add to your Home Screen</h2>
+    <div class="step"><div class="n">1</div><p>Tap the <b>Share</b> button <span class="kbd">↑</span> at the bottom of Safari.</p></div>
+    <div class="step"><div class="n">2</div><p>Scroll down and tap <b>“Add to Home Screen”</b>.</p></div>
+    <div class="step"><div class="n">3</div><p>Tap <b>Add</b> — GymSetu appears on your home screen like any app.</p></div>
+  </div>
+
+  <!-- 4. Already installed -->
+  <div class="card hide" id="c-installed">
+    <h2>✅ You’re all set</h2>
+    <p class="step" style="padding-top:0;color:#ddd;font-size:15px">GymSetu is installed. Open it and log in.</p>
+  </div>
+
+  <!-- Everyone can just use it in the browser without installing -->
+  <a class="btn btn-ghost" id="btn-open" href="/">Open GymSetu now →</a>
+
+  <p class="foot" id="rolehint"></p>
+  <p class="foot">Trouble installing? Message the gym that invited you, or visit <a href="https://gymsetu.it.com">gymsetu.it.com</a>.</p>
+
+  <script>
+    (function () {
+      var ua = navigator.userAgent || '';
+      var isIOS = /iphone|ipad|ipod/i.test(ua) ||
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      var isAndroid = /android/i.test(ua);
+      var isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                         window.navigator.standalone === true;
+
+      // In-app browser sniff. Some tag themselves; Android WebView carries "; wv".
+      // On iOS, a real Safari UA contains "Safari" AND lacks CriOS/FxiOS — anything
+      // else on iOS is an in-app webview or another browser that can't install.
+      var taggedInApp = /FBAN|FBAV|Instagram|Line\/|WhatsApp|; ?wv\)/i.test(ua);
+      var iosNotSafari = isIOS && (!/safari/i.test(ua) || /(CriOS|FxiOS|EdgiOS)/i.test(ua));
+      var inApp = taggedInApp || iosNotSafari;
+
+      function show(id) { document.getElementById(id).classList.remove('hide'); }
+
+      if (isStandalone) {
+        show('c-installed');
+        document.getElementById('title').textContent = 'GymSetu is installed';
+        document.getElementById('subtitle').textContent = 'Open the app and log in with the details your gym sent you.';
+      } else if (inApp) {
+        show('c-inapp');
+        show(isIOS ? 'inapp-ios' : 'inapp-android');
+        document.getElementById('title').textContent = 'Almost there';
+        document.getElementById('subtitle').textContent = 'You opened this inside another app. Reopen it in your browser to install GymSetu.';
+      } else if (isIOS) {
+        show('c-ios');
+      } else if (isAndroid) {
+        show('c-android');
+      } else {
+        // Desktop / unknown: nothing to install, just use it.
+        document.getElementById('subtitle').textContent = 'Open GymSetu below. To install it as an app, open this page on your phone.';
+      }
+
+      // Android one-tap: capture the browser's install prompt and drive it from
+      // our button. If it never fires (already installable via menu, or an odd
+      // build), reveal the manual ⋮ steps so the user is never stuck.
+      var deferred = null;
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferred = e;
+      });
+      var installBtn = document.getElementById('btn-install');
+      if (installBtn) {
+        installBtn.addEventListener('click', function () {
+          if (deferred) {
+            deferred.prompt();
+            deferred.userChoice.finally(function () { deferred = null; });
+          } else {
+            document.getElementById('android-manual').classList.remove('hide');
+          }
+        });
+      }
+      window.addEventListener('appinstalled', function () {
+        document.getElementById('c-android').classList.add('hide');
+        show('c-installed');
+      });
+
+      // Role hint from the share link (?role=member|trainer|owner), so the
+      // person knows which option to pick at login. Harmless if absent.
+      var role = new URLSearchParams(location.search).get('role');
+      var hints = {
+        member:  'After installing, open GymSetu, choose “Member”, and log in with the ID and password your gym sent you.',
+        trainer: 'After installing, open GymSetu, choose “Trainer”, and log in with the ID and password your gym sent you.',
+        owner:   'After installing, open GymSetu and log in with your email and password.'
+      };
+      if (role && hints[role]) document.getElementById('rolehint').textContent = hints[role];
+
+      // Carry the role through to the app so login can preselect it.
+      var open = document.getElementById('btn-open');
+      if (role) open.setAttribute('href', '/?role=' + encodeURIComponent(role));
+    })();
+  </script>
+</body>
+</html>

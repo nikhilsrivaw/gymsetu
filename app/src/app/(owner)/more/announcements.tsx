@@ -101,37 +101,14 @@ import { useState, useCallback } from 'react';
 
     const resetForm = () => { setTitle(''); setBody(''); setSelectedCat('General'); };
 
+    // Announcements are IN-APP ONLY — they appear in every member's app
+    // (member home + gym-info). We deliberately do NOT send them over WhatsApp:
+    // a WhatsApp broadcast is a paid MARKETING message per member, which gets
+    // expensive fast. Saving to the announcements table costs nothing.
     const handleSend = async () => {
       const mainGymId = (profile as any)?.gym_id;
       const gymId = activeGymId === 'all' ? mainGymId : (activeGymId ?? mainGymId);
       if (!title.trim() || !body.trim() || !gymId) return;
-
-      // ── Count members with phone numbers for token check ──
-      const { data: membersWithPhone, error: countErr } = await supabase
-        .from('profiles')
-        .select('id', { count: 'exact', head: false })
-        .eq('gym_id', gymId)
-        .eq('role', 'member')
-        .not('phone', 'is', null);
-
-      const memberCount = membersWithPhone?.length ?? 0;
-
-      if (memberCount > 0) {
-        const tokenBalance = useAuthStore.getState().tokenBalance;
-        const remaining = tokenBalance?.remaining ?? 0;
-
-        if (remaining < memberCount) {
-          Alert.alert(
-            'Tokens Kam Hai',
-            `WhatsApp broadcast ke liye ${memberCount} tokens chahiye (1 per member).\n\nAapke paas sirf ${remaining} tokens bache hain.\n\nAnnouncement save hoga but WhatsApp nahi jayega.`,
-            [
-              { text: 'Sirf Save Karo', onPress: () => saveAnnouncementOnly(gymId) },
-              { text: 'Cancel', style: 'cancel' },
-            ]
-          );
-          return;
-        }
-      }
 
       setSaving(true);
       const emoji = categories.find(c => c.label === selectedCat)?.emoji ?? '📢';
@@ -142,54 +119,13 @@ import { useState, useCallback } from 'react';
         category: selectedCat,
         emoji,
       });
-      if (error) { setSaving(false); Alert.alert('Error', error.message); return; }
-
-      // ── Broadcast to all members via WhatsApp ──
-      if (memberCount > 0) {
-        try {
-          const { data: waRes } = await supabase.functions.invoke('send-whatsapp', {
-            body: {
-              type:   'announcement',
-              gym_id: gymId,
-              data: {
-                gym_name: gymName,
-                message:  `${emoji} ${title.trim()}\n\n${body.trim()}`,
-              },
-            },
-          });
-
-          // Deduct tokens for successfully sent messages
-          const sent = waRes?.sent ?? 0;
-          if (sent > 0) {
-            await useAuthStore.getState().spendTokens(sent, 'whatsapp_broadcast');
-          }
-        } catch (e) {
-          console.warn('WhatsApp broadcast failed:', e);
-        }
-      }
-
       setSaving(false);
+      if (error) { Alert.alert('Error', error.message); return; }
+
       setShow(false);
       resetForm();
       fetchAnnouncements();
     };
-
-    const saveAnnouncementOnly = async (gymId: string) => {
-      setSaving(true);
-      const emoji = categories.find(c => c.label === selectedCat)?.emoji ?? '📢';
-      await supabase.from('announcements').insert({
-        gym_id: gymId,
-        title: title.trim(),
-        body: body.trim(),
-        category: selectedCat,
-        emoji,
-      });
-      setSaving(false);
-      setShow(false);
-      resetForm();
-      fetchAnnouncements();
-    };
-
 
     const handleDelete = (id: string) => {
       Alert.alert('Delete', 'Remove this announcement?', [
@@ -246,8 +182,8 @@ import { useState, useCallback } from 'react';
               <View style={styles.heroGlow} />
               <View style={styles.heroLeft}>
                 <Text style={styles.heroMicro}>ANNOUNCEMENTS</Text>
-                <Text style={styles.heroTitle}>BROADCAST</Text>
-                <Text style={styles.heroSub}>Notices sent to all members</Text>
+                <Text style={styles.heroTitle}>ANNOUNCEMENTS</Text>
+                <Text style={styles.heroSub}>Sabhi members ke app mein dikhega</Text>
               </View>
               <View style={styles.heroStats}>
                 <View style={styles.heroStat}>
@@ -270,7 +206,7 @@ import { useState, useCallback } from 'react';
                 <View style={styles.empty}>
                   <Text style={styles.emptyEmoji}>📢</Text>
                   <Text style={styles.emptyTitle}>No announcements yet</Text>
-                  <Text style={styles.emptyDesc}>Tap + to send your first notice to members</Text>
+                  <Text style={styles.emptyDesc}>Tap + to post your first notice — sabhi members ke app mein dikhega</Text>
                 </View>
               }
               renderItem={({ item, index }) => {
@@ -382,7 +318,7 @@ import { useState, useCallback } from 'react';
               >
                 {saving
                   ? <ActivityIndicator color="#FFF" size="small" />
-                  : <Text style={styles.sendBtnText}>📤  SEND TO ALL MEMBERS</Text>
+                  : <Text style={styles.sendBtnText}>📢  POST ANNOUNCEMENT</Text>
                 }
               </AnimatedPressable>
             </Modal>

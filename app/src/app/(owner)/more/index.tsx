@@ -20,7 +20,6 @@ const PRO_ONLY = new Set([
   '/(owner)/more/revenue-forecast',
   '/(owner)/more/churn-watch',
   '/(owner)/more/member-ltv',
-  '/(owner)/more/dead-hours',
   '/(owner)/more/announcements',
 ]);
 
@@ -41,7 +40,6 @@ const sections: { title: string; icon: IconName; color: string; items: MenuItem[
       { label: 'Income Prediction',     desc: 'Predict your next 3 months earnings',   icon: 'trending-up',           color: Colors.accent, route: '/(owner)/more/revenue-forecast' },
       { label: 'Members Leaving Soon',  desc: 'Who might stop coming — act fast',      icon: 'alert-circle-outline',  color: '#ef4444',     route: '/(owner)/more/churn-watch'      },
       { label: 'Best Members',          desc: 'Members who pay the most over time',    icon: 'star-circle-outline',   color: '#f97316',     route: '/(owner)/more/member-ltv'       },
-      { label: 'Slow Time Slots',       desc: 'Find empty hours & fill them up',       icon: 'clock-alert-outline',   color: '#8B5CF6',     route: '/(owner)/more/dead-hours'       },
     ],
   },
   {

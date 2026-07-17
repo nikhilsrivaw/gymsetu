@@ -1,0 +1,5 @@
+# Goes to /etc/cron.d/gymsetu-health (chmod 644, root-owned).
+# Refreshes /healthz every 5 minutes. Root because it needs docker + df.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+*/5 * * * * root /usr/local/bin/gymsetu-health >/dev/null 2>&1

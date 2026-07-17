@@ -37,21 +37,40 @@ api.gymsetu.it.com {
 #            sudo chown -R caddy:caddy /var/www/gymsetu-app'
 # No Caddy reload needed for a redeploy — it serves from disk.
 (gymsetu_app) {
-    root * /var/www/gymsetu-app
-    encode gzip zstd
+    # Health probe for external uptime monitoring. MUST come before the SPA
+    # fallback below, or try_files swallows /healthz and serves index.html —
+    # which returns 200 with the app's HTML and would make a status-code-only
+    # monitor report green while the database is on fire.
+    # Written every 5 min by /usr/local/bin/gymsetu-health. Always 200; the
+    # monitor must alert on the body not containing "OK", not on the status.
+    handle /healthz {
+        root * /var/www/health
+        rewrite * /status.txt
+        header Content-Type "text/plain"
+        header Cache-Control "no-store"
+        file_server
+    }
 
-    # Filenames are content-hashed, so they can never go stale.
-    @immutable path /_expo/* /assets/*
-    header @immutable Cache-Control "public, max-age=31536000, immutable"
+    # Everything else is the app. Both branches are `handle` blocks so they're
+    # mutually exclusive and evaluated in written order — mixing a handle with
+    # bare directives in one site makes Caddy's routing order subtle.
+    handle {
+        root * /var/www/gymsetu-app
+        encode gzip zstd
 
-    # index.html is the ONE file that must not be cached: it names the current
-    # bundle hash, so a cached copy pins clients to a deleted bundle.
-    header /index.html Cache-Control "no-cache, must-revalidate"
+        # Filenames are content-hashed, so they can never go stale.
+        @immutable path /_expo/* /assets/*
+        header @immutable Cache-Control "public, max-age=31536000, immutable"
 
-    # expo-router owns routing; unknown paths must render the SPA, not 404,
-    # or a hard refresh on a deep link like /members/123 breaks.
-    try_files {path} /index.html
-    file_server
+        # index.html is the ONE file that must not be cached: it names the
+        # current bundle hash, so a cached copy pins clients to a dead bundle.
+        header /index.html Cache-Control "no-cache, must-revalidate"
+
+        # expo-router owns routing; unknown paths must render the SPA, not 404,
+        # or a hard refresh on a deep link like /members/123 breaks.
+        try_files {path} /index.html
+        file_server
+    }
 }
 
 app.13.234.60.18.nip.io {

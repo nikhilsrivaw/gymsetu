@@ -114,6 +114,11 @@
   <p class="foot">Trouble installing? Read the <a href="https://gymsetu.it.com/how-to-install">full step-by-step guide</a>, or message the gym that invited you.</p>
 
   <script>
+    // Register the service worker (scope "/") so Chrome treats the app as
+    // reliably installable and the one-tap prompt below fires.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    }
     (function () {
       var ua = navigator.userAgent || '';
       var isIOS = /iphone|ipad|ipod/i.test(ua) ||

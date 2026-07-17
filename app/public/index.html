@@ -75,5 +75,15 @@
   <body>
     <noscript> You need to enable JavaScript to run this app. </noscript>
     <div id="root"></div>
+    <!-- Register the service worker so Android offers a reliable one-tap
+         install and the shell works offline. Registered after load so it never
+         competes with the app booting. See public/sw.js for the safe caching. -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function () {});
+        });
+      }
+    </script>
   </body>
 </html>

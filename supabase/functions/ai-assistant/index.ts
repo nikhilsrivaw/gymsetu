@@ -139,7 +139,37 @@ const prompts: Record<string, (d: any) => string> = {
 
   session_planner: (d) =>
     `You are a gym trainer. Plan an optimal training session schedule for today. Clients: ${d.clients}. For each client give: focus area, recommended exercises (3-4), and session duration. Keep it practical and time-efficient.`,
+
+  // ── Owner "money" features (single member — tiny, cheap prompts) ──────────
+  winback: (d) =>
+    `Write a short, warm WhatsApp message in Hinglish (Roman Hindi mixed with English) from a gym owner to win back a member who stopped coming. Member: ${d.memberName}. Not seen for ${d.daysSinceVisit} days. Plan: ${d.plan}.` +
+    (d.goal ? ` Their goal was: ${d.goal}.` : "") +
+    (d.offer ? ` Include this offer: ${d.offer}.` : " You may suggest one small comeback offer.") +
+    ` Under 55 words, friendly, first person, 1-2 emojis. Output ONLY the message text.`,
+
+  renewal_script: (d) =>
+    `Help a gym owner make a warm renewal phone call. Give 3-4 short talking points as a bullet list, in Hinglish (Roman Hindi mixed with English). Member: ${d.memberName}. Plan: ${d.plan}. Expiring in ${d.daysLeft} days. Member for ${d.monthsActive} months.` +
+    (d.goal ? ` Goal: ${d.goal}.` : "") +
+    (d.progress ? ` Progress so far: ${d.progress}.` : "") +
+    ` Reference their journey, keep it personal, end with a confident renewal ask. Each point one line. Output ONLY the bullet points.`,
+
+  // ── "GymSetu se poochho" — conversational BI over a BOUNDED snapshot. ──────
+  // The app pre-computes a small snapshot; we never send raw member lists, so
+  // input tokens stay small regardless of gym size.
+  ask_gym: (d) =>
+    `You are the gym owner's business assistant. Answer using ONLY the data snapshot below — do not invent numbers. Answer in Hinglish (Roman Hindi mixed with English), short and direct, max 55 words, cite concrete numbers from the data. If the snapshot doesn't contain the answer, say so honestly in one line. Question: "${d.question}". Data snapshot (JSON): ${d.snapshot}`,
 };
+
+// Per-type output cap — keeps OpenAI cost low. Money features are single-member
+// so they need very little; ask_gym a bit more; everything else the old default.
+const MAX_TOKENS: Record<string, number> = {
+  winback: 170,
+  renewal_script: 240,
+  ask_gym: 320,
+  risk_alert: 60,
+  risk_scan: 260,
+};
+const DEFAULT_MAX_TOKENS = 500;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -178,7 +208,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: AI_MODEL,
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 500,
+        max_tokens: MAX_TOKENS[type] ?? DEFAULT_MAX_TOKENS,
         temperature: 0.7,
       }),
     });

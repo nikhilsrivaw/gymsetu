@@ -25,7 +25,6 @@ const PRO_ONLY = new Set([
 
 // Routes not yet built — show "coming soon" instead of navigating to 404
 const COMING_SOON = new Set([
-  '/(owner)/more/lockers',
   '/(owner)/more/incidents',
   '/(owner)/more/suppliers',
 ]);

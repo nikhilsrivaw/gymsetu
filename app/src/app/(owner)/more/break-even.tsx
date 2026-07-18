@@ -1,9 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TextInput as RNTextInput, Pressable,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Stack, useFocusEffect } from 'expo-router';
@@ -12,90 +11,126 @@ import { Fonts } from '@/constants/fonts';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import FadeInView from '@/components/FadeInView';
-import AnimatedPressable from '@/components/AnimatedPressable';
 import LottieView from '@/components/AppLottie';
-
 import { toLocalDate } from '@/lib/date';
-interface BreakEvenData {
-  totalExpenses:       number;
-  totalRevenue:        number;
-  activeMembers:       number;
-  avgRevenuePerMember: number;
-  breakEvenCount:      number;
-  netProfit:           number;
-  progressPct:         number;
-}
+
+/*
+ * Profit / break-even calculator.
+ *
+ * WHY THE OLD LOGIC WAS WRONG: it computed "revenue per member" as
+ * (this month's collected payments ÷ active members). But members pay
+ * quarterly/yearly, so only a fraction pay in any given month — that
+ * understated each member's real monthly value and inflated the break-even
+ * count, and it made "net profit" swing with payment timing rather than the
+ * actual business.
+ *
+ * WHAT IT DOES NOW: models STEADY-STATE monthly economics.
+ *   - avgFee = each active member's plan price ÷ its duration in months,
+ *     averaged. That's the true recurring monthly value per member.
+ *   - Monthly revenue (MRR) = activeMembers × avgFee.
+ *   - Break-even members = fixedCosts ÷ avgFee.
+ *   - Monthly profit = MRR − fixedCosts.
+ *
+ * And it's a real CALCULATOR: fixed cost and avg fee are editable levers that
+ * recompute live (in JS, no DB round-trip), so an owner can model "what if I
+ * charge ₹200 more?" or "what if I cut rent?".
+ */
 
 const fmt = (n: number) =>
-  n >= 100000 ? `₹${(n / 100000).toFixed(1)}L`
-  : n >= 1000  ? `₹${(n / 1000).toFixed(1)}K`
-  : `₹${Math.abs(n).toLocaleString('en-IN')}`;
+  n >= 100000 ? `₹${(Math.abs(n) / 100000).toFixed(1)}L`
+  : n >= 1000  ? `₹${(Math.abs(n) / 1000).toFixed(1)}K`
+  : `₹${Math.round(Math.abs(n)).toLocaleString('en-IN')}`;
+
+const MONTH_MS = 30;
+
+interface Base {
+  activeMembers:   number;
+  autoAvgFee:      number;   // computed from plans
+  autoFixedCost:   number;   // this month's expenses
+  hasPlanData:     boolean;
+}
 
 export default function BreakEvenScreen() {
   const { profile, activeGymId, branches } = useAuthStore();
 
-  const [data,       setData]       = useState<BreakEvenData | null>(null);
-  const [loading,    setLoading]    = useState(true);
-  const [manualCost, setManualCost] = useState('');
-  const [overriding, setOverriding] = useState(false);
-  const [inputFocus, setInputFocus] = useState(false);
+  const [base,    setBase]    = useState<Base | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Editable levers (empty string = use the auto value)
+  const [feeInput,  setFeeInput]  = useState('');
+  const [costInput, setCostInput] = useState('');
+  const [focus,     setFocus]     = useState<'fee' | 'cost' | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!profile?.gym_id) return;
     setLoading(true);
 
     const mainGymId = profile.gym_id;
-    const gymIds = activeGymId === 'all'
-      ? branches.map(b => b.id)
-      : [activeGymId ?? mainGymId];
+    const gymIds = activeGymId === 'all' ? branches.map(b => b.id) : [activeGymId ?? mainGymId];
 
     const now        = new Date();
     const monthStart = toLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
     const monthEnd   = toLocalDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
-    const [expRes, payRes, planRes] = await Promise.all([
-      supabase.from('expenses').select('amount').in('gym_id', gymIds).gte('expense_date', monthStart).lte('expense_date', monthEnd),
-      supabase.from('payments').select('amount').in('gym_id', gymIds).gte('payment_date', monthStart).lte('payment_date', monthEnd),
-      supabase.from('member_plans').select('member_id').in('gym_id', gymIds).eq('status', 'active'),
+    const [expRes, planRes] = await Promise.all([
+      supabase.from('expenses').select('amount').in('gym_id', gymIds)
+        .gte('expense_date', monthStart).lte('expense_date', monthEnd),
+      // Active members' plans + the plan catalogue (price + duration) to derive
+      // each member's true monthly fee. No FK embed — join in JS.
+      supabase.from('member_plans').select('plan_id, membership_plans(price, duration_days)')
+        .in('gym_id', gymIds).eq('status', 'active'),
     ]);
 
-    const totalExpenses = (expRes.data ?? []).reduce((s, e) => s + (e.amount ?? 0), 0);
-    const totalRevenue  = (payRes.data ?? []).reduce((s, p) => s + (p.amount ?? 0), 0);
-    const activeMembers = (planRes.data ?? []).length;
+    const autoFixedCost = (expRes.data ?? []).reduce((s, e) => s + (e.amount ?? 0), 0);
 
-    const avgRevenuePerMember = activeMembers > 0 ? Math.round(totalRevenue / activeMembers) : 0;
+    const plans = planRes.data ?? [];
+    const monthlyFees: number[] = [];
+    for (const mp of plans as any[]) {
+      const cat = Array.isArray(mp.membership_plans) ? mp.membership_plans[0] : mp.membership_plans;
+      const price = cat?.price ?? 0;
+      const days  = cat?.duration_days ?? 30;
+      if (price > 0 && days > 0) monthlyFees.push(price / (days / MONTH_MS));
+    }
+    const activeMembers = plans.length;
+    const autoAvgFee = monthlyFees.length > 0
+      ? Math.round(monthlyFees.reduce((s, f) => s + f, 0) / monthlyFees.length)
+      : 0;
 
-    const fixedCosts = overriding && manualCost
-      ? parseFloat(manualCost) || totalExpenses
-      : totalExpenses;
-
-    const breakEvenCount = avgRevenuePerMember > 0 ? Math.ceil(fixedCosts / avgRevenuePerMember) : 0;
-    const netProfit      = totalRevenue - fixedCosts;
-    const progressPct    = breakEvenCount > 0
-      ? Math.min(Math.round((activeMembers / breakEvenCount) * 100), 100) : 0;
-
-    setData({ totalExpenses, totalRevenue, activeMembers, avgRevenuePerMember, breakEvenCount, netProfit, progressPct });
+    setBase({ activeMembers, autoAvgFee, autoFixedCost, hasPlanData: monthlyFees.length > 0 });
     setLoading(false);
-  }, [profile?.gym_id, activeGymId, branches, overriding, manualCost]);
+  }, [profile?.gym_id, activeGymId, branches]);
 
   useFocusEffect(useCallback(() => { fetchData(); }, [fetchData]));
 
-  const isProfitable  = (data?.netProfit ?? 0) >= 0;
-  const membersNeeded = Math.max(0, (data?.breakEvenCount ?? 0) - (data?.activeMembers ?? 0));
-  const statusColor   = isProfitable ? Colors.green : Colors.red;
-  const monthLabel    = new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  // ── Live-derived model (recomputes as levers change; no DB round-trip) ──────
+  const m = useMemo(() => {
+    const members   = base?.activeMembers ?? 0;
+    const fee       = feeInput.trim()  !== '' ? Math.max(0, parseFloat(feeInput)  || 0) : (base?.autoAvgFee ?? 0);
+    const fixedCost = costInput.trim() !== '' ? Math.max(0, parseFloat(costInput) || 0) : (base?.autoFixedCost ?? 0);
+    const mrr        = members * fee;
+    const profit     = mrr - fixedCost;
+    const breakEven  = fee > 0 ? Math.ceil(fixedCost / fee) : 0;
+    const needed     = Math.max(0, breakEven - members);
+    const profitable = profit >= 0;
+    const pct        = breakEven > 0 ? Math.min(Math.round((members / breakEven) * 100), 100) : (members > 0 ? 100 : 0);
+    const feeEdited  = feeInput.trim()  !== '' && Math.round(fee) !== (base?.autoAvgFee ?? 0);
+    const costEdited = costInput.trim() !== '' && Math.round(fixedCost) !== (base?.autoFixedCost ?? 0);
+    return { members, fee, fixedCost, mrr, profit, breakEven, needed, profitable, pct, feeEdited, costEdited };
+  }, [base, feeInput, costInput]);
 
-  // ── Loading ──────────────────────────────────────────────────────────────
+  const statusColor = m.profitable ? Colors.green : Colors.red;
+  const monthLabel  = new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  const noData      = !base || (base.activeMembers === 0 && !base.hasPlanData);
+  const resetLevers = () => { setFeeInput(''); setCostInput(''); setFocus(null); };
+  const edited      = m.feeEdited || m.costEdited;
+
   if (loading) return (
     <>
       <Stack.Screen options={{ title: 'Profit Calculator' }} />
       <View style={s.loadingContainer}>
-        <LottieView
-          source={require('@/assets/animations/Turkey Power Walk.json')}
-          autoPlay loop style={s.loadingLottie}
-        />
+        <LottieView source={require('@/assets/animations/Turkey Power Walk.json')} autoPlay loop style={s.loadingLottie} />
         <Text style={s.loadingTitle}>CRUNCHING NUMBERS</Text>
-        <Text style={s.loadingSubtitle}>Calculating your break-even...</Text>
+        <Text style={s.loadingSubtitle}>Calculating your break-even…</Text>
       </View>
     </>
   );
@@ -103,222 +138,162 @@ export default function BreakEvenScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Profit Calculator' }} />
-      <ScrollView
-        style={s.container}
-        contentContainerStyle={s.scroll}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={s.container} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
 
-        {/* ── Status hero card ── */}
+        {/* ── Hero: the one number that matters ── */}
         <FadeInView delay={0}>
-          <View style={[s.heroCard, { borderColor: statusColor + '35' }]}>
-            <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-            <LinearGradient
-              colors={[statusColor + '18', 'transparent']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill} pointerEvents="none"
-            />
+          <View style={[s.hero, { borderColor: statusColor + '40' }]}>
+            <LinearGradient colors={[statusColor + '1A', 'transparent']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
             <View style={[s.heroAccent, { backgroundColor: statusColor }]} />
-
-            <View style={s.heroTop}>
-              <View style={s.heroLeft}>
-                <View style={[s.heroIconBox, { backgroundColor: statusColor + '18', borderColor: statusColor + '35' }]}>
-                  <MaterialCommunityIcons
-                    name={isProfitable ? 'trending-up' : 'trending-down'}
-                    size={22} color={statusColor}
-                  />
-                </View>
-                <View>
-                  <Text style={[s.heroStatus, { color: statusColor }]}>
-                    {isProfitable ? 'PROFITABLE' : 'BELOW BREAK-EVEN'}
-                  </Text>
-                  <Text style={s.heroMonth}>{monthLabel.toUpperCase()}</Text>
-                </View>
-              </View>
-              <View style={s.heroNetBlock}>
-                <Text style={s.heroNetLabel}>NET</Text>
-                <Text style={[s.heroNet, { color: statusColor }]}>
-                  {(data?.netProfit ?? 0) >= 0 ? '+' : '-'}{fmt(data?.netProfit ?? 0)}
-                </Text>
-              </View>
-            </View>
-
-            <Text style={s.heroDesc}>
-              {isProfitable
-                ? `You're covering all costs. Every new member adds ~${fmt(data?.avgRevenuePerMember ?? 0)} straight to profit.`
-                : `Need ${membersNeeded} more paying member${membersNeeded !== 1 ? 's' : ''} to cover this month's costs.`}
-            </Text>
-          </View>
-        </FadeInView>
-
-        {/* ── Break-even progress ── */}
-        <FadeInView delay={70}>
-          <View style={s.card}>
-            <View style={s.cardHeader}>
-              <View style={s.cardTitleRow}>
-                <MaterialCommunityIcons name="chart-timeline-variant" size={14} color={Colors.accent} />
-                <Text style={s.cardTitle}>BREAK-EVEN PROGRESS</Text>
-              </View>
-              <Text style={[s.progressPct, { color: isProfitable ? Colors.green : Colors.accent }]}>
-                {data?.progressPct ?? 0}%
-              </Text>
-            </View>
-
-            {/* Segmented bar */}
-            <View style={s.barTrack}>
-              <LinearGradient
-                colors={isProfitable
-                  ? [Colors.green, Colors.green + 'BB']
-                  : [Colors.accent, Colors.orange]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={[s.barFill, { width: `${data?.progressPct ?? 0}%` as any }]}
-              />
-              {/* Break-even marker */}
-              {!isProfitable && (data?.progressPct ?? 0) < 98 && (
-                <View style={s.markerLine}>
-                  <View style={s.markerDot} />
-                </View>
-              )}
-            </View>
-
-            <View style={s.barLegend}>
-              <View style={s.legendItem}>
-                <View style={[s.legendDot, { backgroundColor: isProfitable ? Colors.green : Colors.accent }]} />
-                <Text style={s.legendText}>{data?.activeMembers ?? 0} active members</Text>
-              </View>
-              <View style={s.legendItem}>
-                <View style={[s.legendDot, { backgroundColor: Colors.border }]} />
-                <Text style={s.legendText}>{data?.breakEvenCount ?? 0} needed</Text>
-              </View>
-            </View>
-          </View>
-        </FadeInView>
-
-        {/* ── Key numbers 2×2 ── */}
-        <FadeInView delay={130}>
-          <View style={s.grid}>
-            {[
-              { label: 'EXPENSES',        value: fmt(data?.totalExpenses ?? 0),       color: Colors.red,    icon: 'trending-down'           as const },
-              { label: 'REVENUE',         value: fmt(data?.totalRevenue ?? 0),         color: Colors.green,  icon: 'trending-up'             as const },
-              { label: 'ACTIVE MEMBERS',  value: String(data?.activeMembers ?? 0),    color: Colors.accent, icon: 'account-group-outline'   as const },
-              { label: 'AVG / MEMBER',    value: fmt(data?.avgRevenuePerMember ?? 0), color: Colors.orange, icon: 'account-cash-outline'    as const },
-            ].map((item, i) => (
-              <View key={i} style={[s.statBox, { borderColor: item.color + '25' }]}>
-                <LinearGradient
-                  colors={[item.color + '12', 'transparent']}
-                  start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-                  style={StyleSheet.absoluteFill} pointerEvents="none"
-                />
-                <View style={[s.statTopLine, { backgroundColor: item.color }]} />
-                <View style={[s.statIconBox, { backgroundColor: item.color + '18' }]}>
-                  <MaterialCommunityIcons name={item.icon} size={16} color={item.color} />
-                </View>
-                <Text style={[s.statVal, { color: item.color }]}>{item.value}</Text>
-                <Text style={s.statLbl}>{item.label}</Text>
-              </View>
-            ))}
-          </View>
-        </FadeInView>
-
-        {/* ── Fixed cost override ── */}
-        <FadeInView delay={190}>
-          <View style={s.card}>
-            <View style={s.cardHeader}>
-              <View style={s.cardTitleRow}>
-                <MaterialCommunityIcons name="tune-variant" size={14} color={Colors.accent} />
-                <Text style={s.cardTitle}>FIXED COST OVERRIDE</Text>
-              </View>
-              {overriding && (
-                <Pressable
-                  onPress={() => { setManualCost(''); setOverriding(false); fetchData(); }}
-                  style={s.resetPill}
-                >
-                  <MaterialCommunityIcons name="refresh" size={11} color={Colors.red} />
-                  <Text style={s.resetPillText}>RESET</Text>
-                </Pressable>
-              )}
-            </View>
-
-            <Text style={s.cardSub}>
-              Auto-pulled from Expenses ({fmt(data?.totalExpenses ?? 0)}).
-              Override if you have unlogged costs.
+            <Text style={[s.heroKicker, { color: statusColor }]}>
+              {noData ? 'GET STARTED' : m.profitable ? 'PROFITABLE' : 'BELOW BREAK-EVEN'} · {monthLabel.toUpperCase()}
             </Text>
 
-            <View style={[s.inputRow, inputFocus && s.inputRowFocused]}>
-              <MaterialCommunityIcons
-                name="currency-inr" size={17}
-                color={inputFocus ? Colors.accent : Colors.textMuted}
-              />
-              <RNTextInput
-                style={s.input}
-                placeholder="Enter fixed monthly cost"
-                placeholderTextColor={Colors.textMuted}
-                keyboardType="numeric"
-                value={manualCost}
-                onChangeText={v => { setManualCost(v); setOverriding(true); }}
-                onFocus={() => setInputFocus(true)}
-                onBlur={() => setInputFocus(false)}
-              />
-            </View>
+            {noData ? (
+              <Text style={s.heroBig}>—</Text>
+            ) : m.profitable ? (
+              <>
+                <Text style={[s.heroBig, { color: statusColor }]}>+{fmt(m.profit)}</Text>
+                <Text style={s.heroSub}>profit per month at {m.members} members</Text>
+              </>
+            ) : (
+              <>
+                <Text style={[s.heroBig, { color: statusColor }]}>{m.needed} more</Text>
+                <Text style={s.heroSub}>member{m.needed !== 1 ? 's' : ''} to break even ({fmt(Math.abs(m.profit))}/mo short)</Text>
+              </>
+            )}
 
-            {overriding && manualCost ? (
-              <AnimatedPressable scaleDown={0.97} onPress={fetchData} style={s.recalcBtn}>
-                <LinearGradient
-                  colors={[Colors.accent, '#C55A00']}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                  style={s.recalcGrad}
-                >
-                  <MaterialCommunityIcons name="calculator-variant-outline" size={16} color="#fff" />
-                  <Text style={s.recalcText}>RECALCULATE</Text>
-                </LinearGradient>
-              </AnimatedPressable>
-            ) : null}
-          </View>
-        </FadeInView>
-
-        {/* ── Insight card ── */}
-        <FadeInView delay={250}>
-          <View style={s.insightCard}>
-            <LinearGradient
-              colors={[Colors.accent + '10', 'transparent']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill} pointerEvents="none"
-            />
-            <View style={s.insightHeader}>
-              <MaterialCommunityIcons name="lightbulb-on-outline" size={15} color={Colors.accent} />
-              <Text style={s.insightTitle}>INSIGHT</Text>
-            </View>
-            <Text style={s.insightText}>
-              {data?.breakEvenCount === 0
-                ? 'Add membership plans and record payments to start seeing break-even calculations.'
-                : isProfitable
-                  ? `You're covering all costs with ${data?.activeMembers} active members. Every new member adds ~${fmt(data?.avgRevenuePerMember ?? 0)} straight to profit.`
-                  : `You need ${membersNeeded} more paying member${membersNeeded !== 1 ? 's' : ''} to cover this month's costs. Consider running a referral drive or a limited-time offer to close the gap.`}
-            </Text>
-
-            {/* Revenue vs expense comparison strip */}
-            {(data?.totalRevenue ?? 0) > 0 && (
-              <View style={s.compareRow}>
-                <View style={s.compareItem}>
-                  <Text style={s.compareLabel}>REVENUE</Text>
-                  <Text style={[s.compareVal, { color: Colors.green }]}>{fmt(data?.totalRevenue ?? 0)}</Text>
-                </View>
-                <View style={s.compareDivider} />
-                <View style={s.compareItem}>
-                  <Text style={s.compareLabel}>COSTS</Text>
-                  <Text style={[s.compareVal, { color: Colors.red }]}>{fmt(data?.totalExpenses ?? 0)}</Text>
-                </View>
-                <View style={s.compareDivider} />
-                <View style={s.compareItem}>
-                  <Text style={s.compareLabel}>NET</Text>
-                  <Text style={[s.compareVal, { color: statusColor }]}>
-                    {(data?.netProfit ?? 0) >= 0 ? '+' : '-'}{fmt(data?.netProfit ?? 0)}
-                  </Text>
-                </View>
+            {edited && (
+              <View style={s.whatIfPill}>
+                <MaterialCommunityIcons name="flask-outline" size={11} color={Colors.accent} />
+                <Text style={s.whatIfText}>WHAT-IF · not your live numbers</Text>
               </View>
             )}
           </View>
         </FadeInView>
+
+        {noData ? (
+          <FadeInView delay={80}>
+            <View style={s.emptyCard}>
+              <View style={s.emptyIcon}><MaterialCommunityIcons name="scale-balance" size={26} color={Colors.accent} /></View>
+              <Text style={s.emptyTitle}>Break-even nikaalne ke liye setup chahiye</Text>
+              <Text style={s.emptyDesc}>
+                Membership plans banao (price ke saath) aur members ko active plan pe rakho — phir app khud
+                bata dega kitne members pe aap profit mein aa jaoge.
+              </Text>
+            </View>
+          </FadeInView>
+        ) : (
+          <>
+            {/* ── Break-even progress ── */}
+            <FadeInView delay={70}>
+              <View style={s.card}>
+                <View style={s.rowBetween}>
+                  <Text style={s.cardTitle}>BREAK-EVEN PROGRESS</Text>
+                  <Text style={[s.pct, { color: m.profitable ? Colors.green : Colors.accent }]}>{m.pct}%</Text>
+                </View>
+                <View style={s.track}>
+                  <LinearGradient
+                    colors={m.profitable ? [Colors.green, Colors.green + 'BB'] : [Colors.accent, Colors.orange]}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={[s.fill, { width: `${m.pct}%` as any }]} />
+                </View>
+                <View style={s.rowBetween}>
+                  <Text style={s.trackLabel}>
+                    <Text style={{ color: m.profitable ? Colors.green : Colors.accent, fontFamily: Fonts.bold }}>{m.members}</Text> active
+                  </Text>
+                  <Text style={s.trackLabel}>
+                    break-even at <Text style={{ color: Colors.text, fontFamily: Fonts.bold }}>{m.breakEven}</Text>
+                  </Text>
+                </View>
+              </View>
+            </FadeInView>
+
+            {/* ── Monthly economics ── */}
+            <FadeInView delay={120}>
+              <View style={s.econRow}>
+                <View style={[s.econBox, { borderColor: Colors.green + '30' }]}>
+                  <Text style={s.econLabel}>REVENUE / MO</Text>
+                  <Text style={[s.econVal, { color: Colors.green }]}>{fmt(m.mrr)}</Text>
+                  <Text style={s.econFoot}>{m.members} × {fmt(m.fee)}</Text>
+                </View>
+                <View style={[s.econBox, { borderColor: Colors.red + '30' }]}>
+                  <Text style={s.econLabel}>COSTS / MO</Text>
+                  <Text style={[s.econVal, { color: Colors.red }]}>{fmt(m.fixedCost)}</Text>
+                  <Text style={s.econFoot}>{m.costEdited ? 'custom' : 'from expenses'}</Text>
+                </View>
+                <View style={[s.econBox, { borderColor: statusColor + '30' }]}>
+                  <Text style={s.econLabel}>PROFIT / MO</Text>
+                  <Text style={[s.econVal, { color: statusColor }]}>{m.profit >= 0 ? '+' : '-'}{fmt(m.profit)}</Text>
+                  <Text style={s.econFoot}>{m.profitable ? 'in the green' : 'in the red'}</Text>
+                </View>
+              </View>
+            </FadeInView>
+
+            {/* ── The calculator: two live levers ── */}
+            <FadeInView delay={170}>
+              <View style={s.card}>
+                <View style={s.rowBetween}>
+                  <View style={s.rowTitle}>
+                    <MaterialCommunityIcons name="tune-variant" size={14} color={Colors.accent} />
+                    <Text style={s.cardTitle}>TRY DIFFERENT NUMBERS</Text>
+                  </View>
+                  {edited && (
+                    <Pressable onPress={resetLevers} style={s.resetPill}>
+                      <MaterialCommunityIcons name="refresh" size={11} color={Colors.accent} />
+                      <Text style={s.resetText}>RESET</Text>
+                    </Pressable>
+                  )}
+                </View>
+                <Text style={s.cardSub}>Change these to model a scenario — profit updates instantly.</Text>
+
+                <Lever
+                  icon="account-cash-outline"
+                  label="AVG FEE / MEMBER (MONTHLY)"
+                  auto={base?.autoAvgFee ?? 0}
+                  value={feeInput}
+                  onChange={setFeeInput}
+                  focused={focus === 'fee'}
+                  onFocus={() => setFocus('fee')}
+                  onBlur={() => setFocus(null)}
+                  edited={m.feeEdited}
+                />
+                <Lever
+                  icon="home-city-outline"
+                  label="FIXED COSTS / MONTH"
+                  auto={base?.autoFixedCost ?? 0}
+                  value={costInput}
+                  onChange={setCostInput}
+                  focused={focus === 'cost'}
+                  onFocus={() => setFocus('cost')}
+                  onBlur={() => setFocus(null)}
+                  edited={m.costEdited}
+                />
+              </View>
+            </FadeInView>
+
+            {/* ── Insight ── */}
+            <FadeInView delay={220}>
+              <View style={s.insight}>
+                <LinearGradient colors={[Colors.accent + '10', 'transparent']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                <View style={s.rowTitle}>
+                  <MaterialCommunityIcons name="lightbulb-on-outline" size={15} color={Colors.accent} />
+                  <Text style={s.insightTitle}>WHAT THIS MEANS</Text>
+                </View>
+                <Text style={s.insightText}>
+                  {m.fee <= 0
+                    ? 'Set an average fee (or add plan prices) to see your break-even point.'
+                    : m.profitable
+                      ? `At ${m.members} members paying ~${fmt(m.fee)}/mo, you clear costs by ${fmt(m.profit)} every month. Each new member adds ${fmt(m.fee)} straight to profit.`
+                      : `You're ${fmt(Math.abs(m.profit))}/mo short. ${m.needed} more member${m.needed !== 1 ? 's' : ''} at ${fmt(m.fee)} closes the gap — or raise the fee / trim costs above to see the effect.`}
+                </Text>
+              </View>
+            </FadeInView>
+          </>
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -326,108 +301,94 @@ export default function BreakEvenScreen() {
   );
 }
 
+// ── A single editable lever ─────────────────────────────────────────────────
+function Lever({ icon, label, auto, value, onChange, focused, onFocus, onBlur, edited }: {
+  icon: any; label: string; auto: number; value: string;
+  onChange: (v: string) => void; focused: boolean; onFocus: () => void; onBlur: () => void; edited: boolean;
+}) {
+  return (
+    <View style={s.leverWrap}>
+      <View style={s.leverHead}>
+        <Text style={s.leverLabel}>{label}</Text>
+        {edited && <Text style={s.leverAuto}>auto: ₹{Math.round(auto).toLocaleString('en-IN')}</Text>}
+      </View>
+      <View style={[s.leverInput, focused && s.leverInputFocus, edited && s.leverInputEdited]}>
+        <MaterialCommunityIcons name={icon} size={17} color={edited ? Colors.accent : Colors.textMuted} />
+        <Text style={s.leverRs}>₹</Text>
+        <RNTextInput
+          style={s.leverField}
+          value={value}
+          onChangeText={onChange}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          keyboardType="numeric"
+          placeholder={Math.round(auto).toLocaleString('en-IN')}
+          placeholderTextColor={Colors.textMuted}
+        />
+      </View>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
-  // ── Loading ─────────────────────────────────────────────────────
-  loadingContainer: { flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
-  loadingLottie:    { width: 200, height: 200 },
-  loadingTitle:     { fontFamily: Fonts.condensedBold, fontSize: 16, color: Colors.text, letterSpacing: 3, marginTop: 8 },
-  loadingSubtitle:  { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted, marginTop: 4 },
-
   container: { flex: 1, backgroundColor: Colors.bg },
-  scroll:    { padding: 16, gap: 12 },
+  scroll:    { padding: 16, paddingTop: 16 },
 
-  // ── Hero card ───────────────────────────────────────────────────
-  heroCard: {
-    borderRadius: 22, borderWidth: 1,
-    overflow: 'hidden', padding: 20,
-    backgroundColor: 'rgba(14,10,7,0.90)',
-    gap: 12,
-  },
-  heroAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, borderTopLeftRadius: 22, borderBottomLeftRadius: 22 },
-  heroTop:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  heroLeft:   { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  heroIconBox:{
-    width: 46, height: 46, borderRadius: 14,
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1,
-  },
-  heroStatus:    { fontFamily: Fonts.condensedBold, fontSize: 16, letterSpacing: 1 },
-  heroMonth:     { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textMuted, marginTop: 2 },
-  heroNetBlock:  { alignItems: 'flex-end' },
-  heroNetLabel:  { fontFamily: Fonts.bold, fontSize: 8, color: Colors.textMuted, letterSpacing: 1.5 },
-  heroNet:       { fontFamily: Fonts.condensedBold, fontSize: 30, letterSpacing: 0.5 },
-  heroDesc:      { fontFamily: Fonts.regular, fontSize: 13, color: 'rgba(255,255,255,0.50)', lineHeight: 20 },
+  loadingContainer: { flex: 1, backgroundColor: Colors.bg, justifyContent: 'center', alignItems: 'center' },
+  loadingLottie:    { width: 140, height: 140 },
+  loadingTitle:     { fontFamily: Fonts.condensedBold, fontSize: 18, color: Colors.text, letterSpacing: 1, marginTop: 8 },
+  loadingSubtitle:  { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, marginTop: 4 },
 
-  // ── Progress card ───────────────────────────────────────────────
-  card: {
-    backgroundColor: Colors.bgCard, borderRadius: 18,
-    borderWidth: 1, borderColor: Colors.border, padding: 18, gap: 12,
-  },
-  cardHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardTitleRow:{ flexDirection: 'row', alignItems: 'center', gap: 6 },
-  cardTitle:   { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.8 },
-  cardSub:     { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, lineHeight: 17, marginTop: -4 },
+  // Hero
+  hero:       { backgroundColor: Colors.bgCard, borderRadius: 20, borderWidth: 1, padding: 20, marginBottom: 14, overflow: 'hidden' },
+  heroAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
+  heroKicker: { fontFamily: Fonts.bold, fontSize: 9, letterSpacing: 1.3 },
+  heroBig:    { fontFamily: Fonts.condensedBold, fontSize: 44, color: Colors.text, marginTop: 8, lineHeight: 46 },
+  heroSub:    { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, marginTop: 2 },
+  whatIfPill: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', marginTop: 12, backgroundColor: Colors.accentMuted, borderWidth: 1, borderColor: Colors.accent + '40', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  whatIfText: { fontFamily: Fonts.bold, fontSize: 8.5, color: Colors.accent, letterSpacing: 0.8 },
 
-  progressPct: { fontFamily: Fonts.condensedBold, fontSize: 24 },
-  barTrack:    { height: 10, backgroundColor: Colors.bgElevated, borderRadius: 5, overflow: 'visible' },
-  barFill:     { height: '100%', borderRadius: 5 },
-  markerLine:  { position: 'absolute', right: 0, top: -4, bottom: -4, width: 2, backgroundColor: Colors.text + '40', alignItems: 'center' },
-  markerDot:   { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.text + '60', marginTop: -2 },
-  barLegend:   { flexDirection: 'row', justifyContent: 'space-between' },
-  legendItem:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot:   { width: 7, height: 7, borderRadius: 3.5 },
-  legendText:  { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted },
+  // Cards
+  card:      { backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1, borderColor: Colors.border, padding: 16, marginBottom: 14 },
+  cardTitle: { fontFamily: Fonts.bold, fontSize: 10, color: Colors.textMuted, letterSpacing: 1.4 },
+  cardSub:   { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted, marginTop: 6, marginBottom: 14 },
+  rowBetween:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  rowTitle:  { flexDirection: 'row', alignItems: 'center', gap: 7 },
 
-  // ── 2×2 stat grid ───────────────────────────────────────────────
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  statBox: {
-    width: '47.5%', backgroundColor: Colors.bgCard,
-    borderRadius: 18, borderWidth: 1,
-    padding: 16, gap: 6, overflow: 'hidden',
-  },
-  statTopLine: { position: 'absolute', top: 0, left: 0, right: 0, height: 2.5 },
-  statIconBox: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  statVal:     { fontFamily: Fonts.condensedBold, fontSize: 22, marginTop: 4 },
-  statLbl:     { fontFamily: Fonts.bold, fontSize: 8, color: Colors.textMuted, letterSpacing: 1.2 },
+  // Progress
+  pct:        { fontFamily: Fonts.condensedBold, fontSize: 18 },
+  track:      { height: 12, borderRadius: 6, backgroundColor: Colors.bg, overflow: 'hidden', marginTop: 12, marginBottom: 10 },
+  fill:       { height: '100%', borderRadius: 6 },
+  trackLabel: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted },
 
-  // ── Override field ───────────────────────────────────────────────
-  resetPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: Colors.red + '14', borderRadius: 20,
-    paddingHorizontal: 8, paddingVertical: 4,
-    borderWidth: 1, borderColor: Colors.red + '30',
-  },
-  resetPillText: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.red, letterSpacing: 0.5 },
-  inputRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: Colors.bgElevated,
-    borderRadius: 14, borderWidth: 1, borderColor: Colors.border,
-    paddingHorizontal: 14, paddingVertical: 13,
-  },
-  inputRowFocused: { borderColor: Colors.accent + '70' },
-  input: { flex: 1, fontFamily: Fonts.regular, fontSize: 14, color: Colors.text, padding: 0 },
-  recalcBtn:  {},
-  recalcGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 12, paddingVertical: 13 },
-  recalcText: { fontFamily: Fonts.bold, fontSize: 13, color: '#fff', letterSpacing: 1.5 },
+  // Economics row
+  econRow:  { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  econBox:  { flex: 1, backgroundColor: Colors.bgCard, borderRadius: 14, borderWidth: 1, padding: 12 },
+  econLabel:{ fontFamily: Fonts.bold, fontSize: 8, color: Colors.textMuted, letterSpacing: 0.8 },
+  econVal:  { fontFamily: Fonts.condensedBold, fontSize: 19, marginTop: 6 },
+  econFoot: { fontFamily: Fonts.regular, fontSize: 9.5, color: Colors.textMuted, marginTop: 3 },
 
-  // ── Insight card ─────────────────────────────────────────────────
-  insightCard: {
-    backgroundColor: Colors.bgCard, borderRadius: 18,
-    borderWidth: 1, borderColor: Colors.accent + '30',
-    padding: 18, gap: 10, overflow: 'hidden',
-  },
-  insightHeader: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  insightTitle:  { fontFamily: Fonts.bold, fontSize: 9, color: Colors.accent, letterSpacing: 1.8 },
-  insightText:   { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, lineHeight: 20 },
+  // Levers
+  resetPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accentMuted, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 },
+  resetText: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.accent, letterSpacing: 0.6 },
+  leverWrap:  { marginBottom: 14 },
+  leverHead:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 },
+  leverLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1 },
+  leverAuto:  { fontFamily: Fonts.regular, fontSize: 10, color: Colors.accent },
+  leverInput:      { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.bgElevated, borderWidth: 1, borderColor: Colors.border, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12 },
+  leverInputFocus: { borderColor: Colors.accent + '80' },
+  leverInputEdited:{ borderColor: Colors.accent + '55', backgroundColor: Colors.accentMuted },
+  leverRs:    { fontFamily: Fonts.bold, fontSize: 15, color: Colors.textMuted },
+  leverField: { flex: 1, fontFamily: Fonts.condensedBold, fontSize: 18, color: Colors.text, padding: 0 },
 
-  compareRow: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.bgElevated, borderRadius: 12,
-    borderWidth: 1, borderColor: Colors.border,
-    paddingVertical: 12,
-  },
-  compareItem:    { flex: 1, alignItems: 'center', gap: 3 },
-  compareLabel:   { fontFamily: Fonts.bold, fontSize: 8, color: Colors.textMuted, letterSpacing: 1.2 },
-  compareVal:     { fontFamily: Fonts.condensedBold, fontSize: 16 },
-  compareDivider: { width: 1, height: 32, backgroundColor: Colors.border },
+  // Insight
+  insight:      { backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1, borderColor: Colors.accent + '30', padding: 16, overflow: 'hidden' },
+  insightTitle: { fontFamily: Fonts.bold, fontSize: 10, color: Colors.accent, letterSpacing: 1.4 },
+  insightText:  { fontFamily: Fonts.regular, fontSize: 13.5, color: Colors.text, lineHeight: 21, marginTop: 10 },
+
+  // Empty
+  emptyCard:  { backgroundColor: Colors.bgCard, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, padding: 22, alignItems: 'center' },
+  emptyIcon:  { width: 56, height: 56, borderRadius: 16, backgroundColor: Colors.accentMuted, borderWidth: 1, borderColor: Colors.accent + '30', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  emptyTitle: { fontFamily: Fonts.condensedBold, fontSize: 19, color: Colors.text, textAlign: 'center' },
+  emptyDesc:  { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, marginTop: 8, textAlign: 'center', lineHeight: 20 },
 });

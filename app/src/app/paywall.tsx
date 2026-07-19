@@ -21,7 +21,15 @@ const PLAN_HIGHLIGHTS = [
 
 export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
-  const { fetchSubscription, signOut } = useAuthStore();
+  const { fetchSubscription, signOut, subscription, tokenBalance } = useAuthStore();
+
+  // When an owner opens this deliberately from "My Plan & Billing", show what
+  // they're on instead of the activation wall.
+  const hasPlan = !!subscription &&
+    (subscription.status === 'active' || subscription.status === 'trial');
+  const periodEnd = subscription?.current_period_end
+    ? new Date(subscription.current_period_end).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    : null;
   const [checking, setChecking] = useState(false);
 
   async function handleOpenWebsite() {
@@ -58,10 +66,25 @@ export default function PaywallScreen() {
       <View style={s.card}>
         <View style={s.cardTop}>
           <MaterialCommunityIcons name="crown-outline" size={32} color={Colors.accent} />
-          <Text style={s.cardTitle}>Activate Your Gym</Text>
-          <Text style={s.cardSub}>
-            Choose a plan on our website to unlock GymSetu for your gym.
-          </Text>
+          {hasPlan ? (
+            <>
+              <Text style={s.cardTitle}>
+                {(subscription?.plan ?? 'pro').toUpperCase().replace('_', ' ')} PLAN
+              </Text>
+              <Text style={s.cardSub}>
+                {subscription?.status === 'trial' ? 'Free trial active' : 'Active'}
+                {periodEnd ? ` · renews ${periodEnd}` : ''}
+                {tokenBalance ? `\n${tokenBalance.remaining} of ${tokenBalance.total} AI/WhatsApp tokens left` : ''}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={s.cardTitle}>Activate Your Gym</Text>
+              <Text style={s.cardSub}>
+                Choose a plan on our website to unlock GymSetu for your gym.
+              </Text>
+            </>
+          )}
         </View>
 
         {/* Plan highlights */}

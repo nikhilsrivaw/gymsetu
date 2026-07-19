@@ -25,7 +25,6 @@ const PRO_ONLY = new Set([
 
 // Routes not yet built — show "coming soon" instead of navigating to 404
 const COMING_SOON = new Set([
-  '/(owner)/more/incidents',
   '/(owner)/more/suppliers',
 ]);
 
@@ -61,7 +60,7 @@ const sections: { title: string; icon: IconName; color: string; items: MenuItem[
     items: [
       { label: 'Lockers',             desc: 'Member locker assign karo',            icon: 'locker',                 color: '#F59E0B', route: '/(owner)/more/lockers'    },
       { label: 'Equipment',           desc: 'Machines ka record aur service date',  icon: 'dumbbell',               color: '#A78BFA', route: '/(owner)/more/equipment'  },
-      { label: 'Complaints & Injuries', desc: 'Injury ya complaint ka record',      icon: 'alert-octagon-outline',  color: '#ef4444', route: '/(owner)/more/incidents'  },
+      { label: 'Complaints',            desc: 'Members ki complaints dekho & solve karo', icon: 'message-alert-outline', color: '#ef4444', route: '/(owner)/more/incidents'  },
       { label: 'Supplier Contacts',   desc: 'Vendors aur suppliers ki list',        icon: 'truck-delivery-outline', color: '#14B8A6', route: '/(owner)/more/suppliers'  },
     ],
   },

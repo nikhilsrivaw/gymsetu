@@ -48,6 +48,13 @@ const menuItems: MenuItem[] = [
     route: '/(member)/gym-info',
   },
   {
+    label: 'Complaints',
+    desc: 'Koi problem hai? Gym ko bataiye',
+    icon: 'message-alert-outline',
+    color: '#ef4444',
+    route: '/(member)/complaints',
+  },
+  {
     label: 'Give Feedback',
     desc: 'Rate your gym experience',
     icon: 'star-outline',

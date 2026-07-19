@@ -31,20 +31,27 @@ import { useState, useCallback } from 'react';                                  
     const [activePlan, setActivePlan] = useState<ActivePlanInfo | null>(null);       
     const [allPlans, setAllPlans]     = useState<PlanOption[]>([]);
     const [loading, setLoading]       = useState(true);
+    const [loadError, setLoadError]   = useState('');
+    const [reloadKey, setReloadKey]   = useState(0);
 
     useFocusEffect(useCallback(() => {
       let active = true;
       async function load() {
         if (!session?.user?.id) { setLoading(false); return; }
         setLoading(true);
+        setLoadError('');
 
-        const { data: m } = await supabase
+        // maybeSingle, not single: a member with no `members` row must show the
+        // empty state, not throw. (.single() errors when there's no row.)
+        const { data: m, error: mErr } = await supabase
           .from('members')
           .select('id, gym_id')
           .eq('user_id', session.user.id)
-          .single();
+          .maybeSingle();
 
-        if (!m || !active) { setLoading(false); return; }
+        if (!active) return;                    // cleanup already ran; state is stale
+        if (mErr)  { setLoadError('Plan load nahi ho paya. Dobara try karein.'); setLoading(false); return; }
+        if (!m)    { setLoading(false); return; }
 
         const [planRes, plansRes] = await Promise.all([
           supabase
@@ -64,6 +71,12 @@ import { useState, useCallback } from 'react';                                  
         ]);
 
         if (!active) return;
+
+        if (planRes.error || plansRes.error) {
+          setLoadError('Plan load nahi ho paya. Dobara try karein.');
+          setLoading(false);
+          return;
+        }
 
         if (planRes.data) {
           const mp = planRes.data.membership_plans as any;
@@ -88,9 +101,15 @@ import { useState, useCallback } from 'react';                                  
         setAllPlans(plansRes.data ?? []);
         setLoading(false);
       }
-      load();
+      // Any unexpected throw must still clear the spinner, or the screen hangs
+      // on "loading" forever — which is exactly what used to happen.
+      load().catch(() => {
+        if (!active) return;
+        setLoadError('Plan load nahi ho paya. Dobara try karein.');
+        setLoading(false);
+      });
       return () => { active = false; };
-    }, [session?.user?.id]));
+    }, [session?.user?.id, reloadKey]));
 
     if (loading) {
       return (
@@ -98,6 +117,24 @@ import { useState, useCallback } from 'react';                                  
    alignItems: 'center' }}>
           <LottieView source={require('@/assets/animations/runningCat.json')} autoPlay loop style={{ width: 180, height: 180 }} />
           <Text style={{ fontFamily: 'BarlowCondensed_700Bold', fontSize: 13, color: 'rgba(255,255,255,0.28)', letterSpacing: 2, marginTop: 8 }}>LOADING...</Text>
+        </View>
+      );
+    }
+
+    if (loadError) {
+      return (
+        <View style={{ flex: 1, backgroundColor: Colors.bg, justifyContent: 'center', alignItems: 'center', padding: 30 }}>
+          <Text style={{ fontSize: 34 }}>😕</Text>
+          <Text style={{ fontFamily: Fonts.bold, fontSize: 16, color: Colors.text, marginTop: 12, textAlign: 'center' }}>
+            {loadError}
+          </Text>
+          <AnimatedPressable
+            style={{ backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 13, paddingHorizontal: 28, marginTop: 20 }}
+            scaleDown={0.97}
+            onPress={() => { setLoadError(''); setLoading(true); setReloadKey(k => k + 1); }}
+          >
+            <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: '#fff' }}>Retry</Text>
+          </AnimatedPressable>
         </View>
       );
     }

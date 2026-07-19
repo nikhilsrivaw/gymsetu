@@ -110,7 +110,7 @@ export default function ShiftsScreen() {
           .order('day_of_week')
           .order('start_time');
 
-        if (!active) return;
+        if (!active) { setLoading(false); return; }
 
         const staffList: StaffMember[] = (staffData ?? []).map((s: any) => ({
           id: s.id, full_name: s.full_name,

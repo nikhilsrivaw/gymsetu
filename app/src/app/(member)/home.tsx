@@ -348,7 +348,7 @@ export default function MemberHome() {
             .limit(3),
         ]);
 
-        if (!active) return;
+        if (!active) { setLoading(false); return; }
 
         // ── Parse plan ───────────────────────────────────────────────
         if (planRes.data) {

@@ -109,7 +109,7 @@ export default function GymProfileScreen() {
             .eq('status', 'active'),
         ]);
 
-        if (!active) return;
+        if (!active) { setLoading(false); return; }
         if (gymRes.error) throw gymRes.error;
 
         if (gymRes.data) {

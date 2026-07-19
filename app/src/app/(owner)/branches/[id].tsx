@@ -54,7 +54,7 @@ import { toLocalDate, todayLocal } from '@/lib/date';
           supabase.from('payments').select('amount').eq('gym_id', id).gte('payment_date', monthStart),
         ]);
 
-        if (!active) return;
+        if (!active) { setLoading(false); return; }
 
         if (gymRes.data) setBranch(gymRes.data as BranchDetail);
 

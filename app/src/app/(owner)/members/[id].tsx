@@ -123,7 +123,7 @@ export default function MemberProfileScreen() {
             .select('id', { count: 'exact', head: true })
             .eq('member_id', id).gte('check_in_date', monthStart),
         ]);
-        if (!active) return;
+        if (!active) { setLoading(false); return; }
         if (memberRes.data) {
           const m = memberRes.data as MemberProfile;
           setMember(m);

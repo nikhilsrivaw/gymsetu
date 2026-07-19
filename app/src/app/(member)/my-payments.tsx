@@ -43,7 +43,7 @@
           .from('members')
           .select('id')
           .eq('user_id', session.user.id)
-          .single();
+          .maybeSingle();
 
         if (!m || !active) { setLoading(false); return; }
 
@@ -78,7 +78,7 @@
             .maybeSingle(),
         ]);
 
-        if (!active) return;
+        if (!active) { setLoading(false); return; }
 
         const rows: PaymentRow[] = (payRes.data ?? []).map((p: any) => ({
           id:       p.id,

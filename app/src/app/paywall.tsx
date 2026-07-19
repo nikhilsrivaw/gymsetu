@@ -4,6 +4,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
+import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';
 import { Links, WEBSITE_DISPLAY } from '@/constants/links';
@@ -31,6 +32,7 @@ export default function PaywallScreen() {
     ? new Date(subscription.current_period_end).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
     : null;
   const [checking, setChecking] = useState(false);
+  const router = useRouter();
 
   async function handleOpenWebsite() {
     const supported = await Linking.canOpenURL(Links.pricing);
@@ -45,8 +47,15 @@ export default function PaywallScreen() {
     setChecking(true);
     await fetchSubscription();
     setChecking(false);
-    // RouteGuard in root layout will automatically redirect to dashboard
-    // if subscription is now found — no manual navigation needed
+    // Navigate explicitly. This used to rely on RouteGuard bouncing subscribed
+    // owners off /paywall — but that same bounce made "My Plan & Billing"
+    // impossible to open, so the guard no longer does it.
+    const sub = useAuthStore.getState().subscription;
+    if (sub && (sub.status === 'active' || sub.status === 'trial')) {
+      router.replace('/(owner)/dashboard');
+    } else {
+      Alert.alert('Abhi tak subscription nahi mila', 'Payment ho gaya hai toh thodi der baad dobara check karein.');
+    }
   }
 
   return (

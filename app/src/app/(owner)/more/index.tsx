@@ -65,7 +65,7 @@ const sections: { title: string; icon: IconName; color: string; items: MenuItem[
   {
     title: 'SETTINGS', icon: 'cog-outline', color: '#666',
     items: [
-      { label: 'My Plan & Billing',  desc: 'Basic / Pro plan aur token balance',  icon: 'crown-outline',       color: Colors.accent, route: '/paywall?view=1'                   },
+      { label: 'My Plan & Billing',  desc: 'Basic / Pro plan aur token balance',  icon: 'crown-outline',       color: Colors.accent, route: '/(owner)/more/billing'             },
       { label: 'Edit Gym Details',   desc: 'Naam, address aur contact update karo', icon: 'pencil-outline',    color: '#3B82F6',     route: '/(owner)/more/gym-profile?edit=1'  },
       { label: 'Branches',           desc: 'Multiple gym locations manage karo',   icon: 'source-branch',       color: Colors.accent, route: '/(owner)/branches'                 },
       { label: 'Gym Profile',        desc: 'Timings, amenities aur public info',   icon: 'domain',              color: Colors.accent, route: '/(owner)/more/gym-profile'         },

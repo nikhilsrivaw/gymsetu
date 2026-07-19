@@ -1,5 +1,5 @@
 import '@/lib/webAlert'; // patch Alert.alert to work on web (PWA) — must run before any Alert use
-import { Slot, useSegments, useRouter, useGlobalSearchParams } from 'expo-router';
+import { Slot, useSegments, useRouter } from 'expo-router';
 import { LogBox, Platform, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { PaperProvider } from 'react-native-paper';
@@ -29,8 +29,6 @@ function RouteGuard() {
   const { isLoading, isInitialized, session, profile, subscription } = useAuthStore();
   const segments  = useSegments();
   const router    = useRouter();
-  // ?view=1 marks a deliberate visit to the paywall (from "My Plan & Billing")
-  const { view: viewingPlan } = useGlobalSearchParams<{ view?: string }>();
 
   // Use only the top-level segment to minimise effect re-fires
   const topSegment = segments[0] as string | undefined;
@@ -56,18 +54,18 @@ function RouteGuard() {
 
       if (noSub && !inPaywall) {
         router.replace('/paywall');
-      } else if (!noSub && inPaywall && viewingPlan !== '1') {
-        // A subscribed owner is bounced off the paywall — that's what makes the
-        // post-payment redirect work. But "My Plan & Billing" links here with
-        // ?view=1 so they can deliberately view/upgrade their plan; without this
-        // exception that menu item could never open for a paying customer.
-        router.replace('/(owner)/dashboard');
       } else if (!inOwner && !inPaywall) {
+        // NOTE: a subscribed owner is deliberately NOT bounced off /paywall.
+        // That bounce used to exist so the post-payment flow landed on the
+        // dashboard, but it also made "My Plan & Billing" impossible to open —
+        // the screen opened and was instantly redirected away, looking like it
+        // was stuck loading. The paywall now doubles as the billing screen and
+        // navigates to the dashboard itself after a successful subscribe check.
         router.replace('/(owner)/dashboard');
       }
     }
   // Stringify segments so the array reference doesn't cause spurious fires
-  }, [isInitialized, isLoading, session?.user?.id, profile?.role, subscription?.status, topSegment, viewingPlan]);
+  }, [isInitialized, isLoading, session?.user?.id, profile?.role, subscription?.status, topSegment]);
 
   return null;
 }

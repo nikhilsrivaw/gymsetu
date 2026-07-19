@@ -1,5 +1,8 @@
 import { useState, useCallback } from 'react';                                                                       
-  import { View, Text, StyleSheet, FlatList } from 'react-native';                                                       import { Searchbar, FAB } from 'react-native-paper';                                                                 
+  import { View, Text, StyleSheet, FlatList, Linking, Alert, Pressable } from 'react-native';
+  import { MaterialCommunityIcons } from '@expo/vector-icons';
+  import { Searchbar, FAB } from 'react-native-paper';
+
   import { useRouter, Stack, useFocusEffect } from 'expo-router';                                                      
   import LottieView from '@/components/AppLottie';
   import { Colors } from '@/constants/colors';
@@ -15,14 +18,26 @@ import { useState, useCallback } from 'react';
     phone: string | null;
     specialization: string | null;
     status: string;
+    memberCount: number;      // members assigned to this trainer
   }
 
   export default function TrainersListScreen() {
     const { profile, activeGymId, branches } = useAuthStore();
     const router = useRouter();
     const [search, setSearch]     = useState('');
-    const [trainers, setTrainers] = useState<TrainerRow[]>([]);
-    const [loading, setLoading]   = useState(true);
+    const [trainers, setTrainers]     = useState<TrainerRow[]>([]);
+    const [unassigned, setUnassigned] = useState(0);   // members with no trainer
+    const [loading, setLoading]       = useState(true);
+
+    const callTrainer = (phone: string | null, name: string) => {
+      if (!phone) { Alert.alert('No phone', `${name} has no phone number saved.`); return; }
+      Linking.openURL(`tel:${phone}`);
+    };
+    const waTrainer = (phone: string | null, name: string) => {
+      if (!phone) { Alert.alert('No phone', `${name} has no phone number saved.`); return; }
+      const digits = phone.replace(/\D/g, '');
+      Linking.openURL(`https://wa.me/${digits.length === 10 ? '91' + digits : digits}`);
+    };
 
     const fetchTrainers = useCallback(async () => {
       const mainGymId = (profile as any)?.gym_id;
@@ -36,20 +51,34 @@ import { useState, useCallback } from 'react';
         gymIds = [activeGymId ?? mainGymId];
       }
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, phone, specialization, status')
-        .in('gym_id', gymIds)
-        .eq('role', 'trainer')
-        .order('full_name', { ascending: true });
+      // Trainers + every member's trainer_id, so we can show each trainer's
+      // real workload (and how many members have nobody assigned).
+      const [trainerRes, memberRes] = await Promise.all([
+        supabase.from('profiles')
+          .select('id, full_name, phone, specialization, status')
+          .in('gym_id', gymIds).eq('role', 'trainer')
+          .order('full_name', { ascending: true }),
+        supabase.from('profiles')
+          .select('id, trainer_id')
+          .in('gym_id', gymIds).eq('role', 'member'),
+      ]);
 
-      if (!error && data) {
-        setTrainers(data.map((t: any) => ({
+      const counts: Record<string, number> = {};
+      let noTrainer = 0;
+      for (const m of (memberRes.data ?? []) as any[]) {
+        if (m.trainer_id) counts[m.trainer_id] = (counts[m.trainer_id] ?? 0) + 1;
+        else noTrainer++;
+      }
+      setUnassigned(noTrainer);
+
+      if (!trainerRes.error && trainerRes.data) {
+        setTrainers(trainerRes.data.map((t: any) => ({
           id:             t.id,
           full_name:      t.full_name,
           phone:          t.phone ?? null,
           specialization: t.specialization ?? null,
           status:         t.status ?? 'active',
+          memberCount:    counts[t.id] ?? 0,
         })));
       }
       setLoading(false);
@@ -119,6 +148,24 @@ import { useState, useCallback } from 'react';
             />
           </FadeInView>
 
+          {/* ── Unassigned members — the one thing worth acting on ── */}
+          {trainers.length > 0 && unassigned > 0 && (
+            <FadeInView delay={150}>
+              <Pressable style={s.alertCard} onPress={() => router.push('/(owner)/members' as any)}>
+                <View style={s.alertIcon}>
+                  <MaterialCommunityIcons name="account-question-outline" size={18} color={Colors.orange} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.alertTitle}>
+                    {unassigned} member{unassigned !== 1 ? 's' : ''} ka koi trainer nahi
+                  </Text>
+                  <Text style={s.alertSub}>Assign karo taaki unhe personal guidance mile</Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color={Colors.textMuted} />
+              </Pressable>
+            </FadeInView>
+          )}
+
           {/* ── Count ── */}
           <Text style={s.countLabel}>
             {filtered.length} TRAINER{filtered.length !== 1 ? 'S' : ''}
@@ -162,19 +209,41 @@ import { useState, useCallback } from 'react';
 
                       {/* Info */}
                       <View style={s.rowInfo}>
-                        <Text style={s.rowName}>{item.full_name}</Text>
-                        <Text style={s.rowSpec}>
-                          {item.specialization ?? 'General Trainer'}
-                        </Text>
-                        {item.phone && (
-                          <Text style={s.rowPhone}>{item.phone}</Text>
-                        )}
-                      </View>
+                        <View style={s.nameRow}>
+                          <Text style={s.rowName} numberOfLines={1}>{item.full_name}</Text>
+                          <View style={[s.statusChip, { backgroundColor: color + '12', borderColor: color + '35' }]}>
+                            <View style={[s.chipDot, { backgroundColor: color }]} />
+                            <Text style={[s.chipText, { color }]}>{item.status.toUpperCase()}</Text>
+                          </View>
+                        </View>
+                        <Text style={s.rowSpec}>{item.specialization ?? 'General Trainer'}</Text>
 
-                      {/* Status */}
-                      <View style={[s.statusChip, { backgroundColor: color + '12', borderColor: color + '35' }]}>      
-                        <View style={[s.chipDot, { backgroundColor: color }]} />
-                        <Text style={[s.chipText, { color }]}>{item.status.toUpperCase()}</Text>
+                        {/* Workload + quick contact */}
+                        <View style={s.metaRow}>
+                          <View style={s.loadPill}>
+                            <MaterialCommunityIcons name="account-group-outline" size={12} color={Colors.accent} />
+                            <Text style={s.loadText}>
+                              {item.memberCount} member{item.memberCount !== 1 ? 's' : ''}
+                            </Text>
+                          </View>
+
+                          <View style={s.contactRow}>
+                            <Pressable
+                              style={s.iconBtn}
+                              hitSlop={8}
+                              onPress={(e) => { e.stopPropagation?.(); callTrainer(item.phone, item.full_name); }}
+                            >
+                              <MaterialCommunityIcons name="phone-outline" size={15} color={Colors.textMuted} />
+                            </Pressable>
+                            <Pressable
+                              style={s.iconBtn}
+                              hitSlop={8}
+                              onPress={(e) => { e.stopPropagation?.(); waTrainer(item.phone, item.full_name); }}
+                            >
+                              <MaterialCommunityIcons name="whatsapp" size={15} color="#25D366" />
+                            </Pressable>
+                          </View>
+                        </View>
                       </View>
                     </AnimatedPressable>
                   </FadeInView>
@@ -244,9 +313,23 @@ import { useState, useCallback } from 'react';
    1.5, marginRight: 14 },
     avatarText: { fontFamily: Fonts.condensedBold, fontSize: 18 },
     rowInfo:    { flex: 1, gap: 3 },
-    rowName:    { fontFamily: Fonts.bold, fontSize: 17, color: '#fff' },
+    nameRow:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    rowName:    { flex: 1, fontFamily: Fonts.bold, fontSize: 17, color: '#fff' },
     rowSpec:    { fontFamily: Fonts.medium, fontSize: 13, color: '#666' },
     rowPhone:   { fontFamily: Fonts.regular, fontSize: 12, color: '#444' },
+
+    // Workload + quick contact
+    metaRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 9 },
+    loadPill:   { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.accent + '15', borderWidth: 1, borderColor: Colors.accent + '30', borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4 },
+    loadText:   { fontFamily: Fonts.bold, fontSize: 11, color: Colors.accent },
+    contactRow: { flexDirection: 'row', gap: 6 },
+    iconBtn:    { width: 30, height: 30, borderRadius: 9, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
+
+    // Unassigned-members alert
+    alertCard:  { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.orange + '12', borderWidth: 1, borderColor: Colors.orange + '35', borderRadius: 14, padding: 13, marginBottom: 14 },
+    alertIcon:  { width: 36, height: 36, borderRadius: 11, backgroundColor: Colors.orange + '18', alignItems: 'center', justifyContent: 'center' },
+    alertTitle: { fontFamily: Fonts.bold, fontSize: 13.5, color: Colors.text },
+    alertSub:   { fontFamily: Fonts.regular, fontSize: 11.5, color: Colors.textMuted, marginTop: 2 },
 
     statusChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 
   10, borderWidth: 1, gap: 5 },

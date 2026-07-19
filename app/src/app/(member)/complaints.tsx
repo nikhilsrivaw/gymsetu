@@ -121,9 +121,11 @@ export default function MemberComplaintsScreen() {
             const cObj = CATEGORIES.find(x => x.id === c.category) ?? CATEGORIES[CATEGORIES.length - 1];
             return (
               <FadeInView key={c.id} delay={i * 40}>
-                <View style={s.card}>
+                <View style={[s.card, { borderLeftColor: st.color }]}>
                   <View style={s.cardTop}>
-                    <Text style={s.cardEmoji}>{cObj.emoji}</Text>
+                    <View style={s.catBubble}>
+                      <Text style={s.cardEmoji}>{cObj.emoji}</Text>
+                    </View>
                     <View style={{ flex: 1 }}>
                       <Text style={s.cardSubject}>{c.subject}</Text>
                       <Text style={s.cardMeta}>
@@ -137,12 +139,20 @@ export default function MemberComplaintsScreen() {
 
                   {!!c.description && <Text style={s.cardDesc}>{c.description}</Text>}
 
-                  {!!c.response && (
+                  {c.response ? (
                     <View style={s.replyBox}>
-                      <Text style={s.replyLabel}>GYM KA JAWAB</Text>
+                      <View style={s.replyHead}>
+                        <MaterialCommunityIcons name="reply" size={13} color={Colors.green} />
+                        <Text style={s.replyLabel}>GYM KA JAWAB</Text>
+                      </View>
                       <Text style={s.replyText}>{c.response}</Text>
                     </View>
-                  )}
+                  ) : c.status !== 'resolved' ? (
+                    <View style={s.waitingRow}>
+                      <MaterialCommunityIcons name="clock-outline" size={12} color={Colors.textMuted} />
+                      <Text style={s.waitingText}>Gym ke jawab ka intezaar</Text>
+                    </View>
+                  ) : null}
                 </View>
               </FadeInView>
             );
@@ -226,18 +236,22 @@ const s = StyleSheet.create({
 
   listLabel: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 1.4, marginTop: 26, marginBottom: 12 },
 
-  card:       { backgroundColor: Colors.bgCard, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, padding: 15, marginBottom: 10 },
-  cardTop:    { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  cardEmoji:  { fontSize: 20 },
-  cardSubject:{ fontFamily: Fonts.bold, fontSize: 14.5, color: Colors.text },
+  card:       { backgroundColor: Colors.bgCard, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, borderLeftWidth: 3, padding: 15, marginBottom: 11 },
+  cardTop:    { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  catBubble:  { width: 38, height: 38, borderRadius: 12, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
+  cardEmoji:  { fontSize: 19 },
+  cardSubject:{ fontFamily: Fonts.bold, fontSize: 15, color: Colors.text, lineHeight: 20 },
   cardMeta:   { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, marginTop: 2 },
-  badge:      { borderWidth: 1, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
+  badge:      { borderWidth: 1, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4 },
   badgeText:  { fontFamily: Fonts.bold, fontSize: 8, letterSpacing: 0.7 },
-  cardDesc:   { fontFamily: Fonts.regular, fontSize: 13, color: Colors.text, marginTop: 10, lineHeight: 19 },
+  cardDesc:   { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, marginTop: 11, lineHeight: 19 },
 
-  replyBox:   { backgroundColor: Colors.green + '10', borderLeftWidth: 3, borderLeftColor: Colors.green, borderRadius: 10, padding: 12, marginTop: 12 },
-  replyLabel: { fontFamily: Fonts.bold, fontSize: 8, color: Colors.green, letterSpacing: 1.2 },
-  replyText:  { fontFamily: Fonts.regular, fontSize: 13, color: Colors.text, marginTop: 5, lineHeight: 19 },
+  replyBox:   { backgroundColor: Colors.green + '12', borderRadius: 12, padding: 13, marginTop: 13 },
+  replyHead:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  replyLabel: { fontFamily: Fonts.bold, fontSize: 8.5, color: Colors.green, letterSpacing: 1.2 },
+  replyText:  { fontFamily: Fonts.regular, fontSize: 13.5, color: Colors.text, marginTop: 7, lineHeight: 20 },
+  waitingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 13, paddingTop: 11, borderTopWidth: 1, borderTopColor: Colors.border },
+  waitingText:{ fontFamily: Fonts.regular, fontSize: 11.5, color: Colors.textMuted },
 
   emptyCard:  { backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1, borderColor: Colors.border, padding: 26, alignItems: 'center', marginTop: 26 },
   emptyEmoji: { fontSize: 34 },

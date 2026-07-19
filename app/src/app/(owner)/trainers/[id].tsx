@@ -1,6 +1,8 @@
   
   import { useState, useCallback } from 'react';                                                                       
-  import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';                            import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';                                
+  import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, Modal, Pressable, TextInput, ActivityIndicator } from 'react-native';
+  import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+
   import { MaterialCommunityIcons } from '@expo/vector-icons';                                                         
   import LottieView from '@/components/AppLottie';
   import { Colors } from '@/constants/colors';
@@ -48,6 +50,13 @@
     const [loading, setLoading]     = useState(true);
     const [showCreds, setShowCreds] = useState(false);
 
+    // ── Assign members to this trainer (PT allocation) ────────────────────
+    const [assignOpen, setAssignOpen]   = useState(false);
+    const [allMembers, setAllMembers]   = useState<{ id: string; full_name: string; trainer_id: string | null }[]>([]);
+    const [picked, setPicked]           = useState<Set<string>>(new Set());
+    const [memberSearch, setMemberSearch] = useState('');
+    const [savingAssign, setSavingAssign] = useState(false);
+
     const fetchData = useCallback(async () => {
       if (!id) return;
       setLoading(true);
@@ -69,6 +78,17 @@
       const assignedMembers = (membersRes.data ?? []) as AssignedMember[];
       setMembers(assignedMembers);
 
+      // Every member in this trainer's gym, so the owner can pick who to assign.
+      if (trainerRes.data?.gym_id) {
+        const { data: roster } = await supabase
+          .from('profiles')
+          .select('id, full_name, trainer_id')
+          .eq('gym_id', trainerRes.data.gym_id)
+          .eq('role', 'member')
+          .order('full_name');
+        setAllMembers((roster ?? []) as any);
+      }
+
       setStats({
         totalMembers:  assignedMembers.length,
         activeMembers: assignedMembers.filter(m => m.status === 'active').length,
@@ -81,6 +101,52 @@
     }, [id]);
 
     useFocusEffect(useCallback(() => { fetchData(); }, [fetchData]));
+
+    // Open the picker pre-ticked with whoever is already assigned here.
+    const openAssign = () => {
+      setPicked(new Set(members.map(m => m.id)));
+      setMemberSearch('');
+      setAssignOpen(true);
+    };
+
+    const togglePick = (memberId: string) => {
+      setPicked(prev => {
+        const next = new Set(prev);
+        next.has(memberId) ? next.delete(memberId) : next.add(memberId);
+        return next;
+      });
+    };
+
+    const saveAssignments = async () => {
+      if (!trainer) return;
+      setSavingAssign(true);
+
+      const before = new Set(members.map(m => m.id));
+      const toAdd    = [...picked].filter(x => !before.has(x));
+      const toRemove = [...before].filter(x => !picked.has(x));
+
+      try {
+        // Assign: point these members at this trainer.
+        if (toAdd.length > 0) {
+          const { error } = await supabase.from('profiles')
+            .update({ trainer_id: trainer.id }).in('id', toAdd);
+          if (error) throw error;
+        }
+        // Unassign: only clear rows still pointing at THIS trainer, so we never
+        // wipe an assignment someone else made while this sheet was open.
+        if (toRemove.length > 0) {
+          const { error } = await supabase.from('profiles')
+            .update({ trainer_id: null }).in('id', toRemove).eq('trainer_id', trainer.id);
+          if (error) throw error;
+        }
+        setAssignOpen(false);
+        await fetchData();
+      } catch (e: any) {
+        Alert.alert('Could not save', e?.message ?? 'Please try again.');
+      } finally {
+        setSavingAssign(false);
+      }
+    };
 
     const handleToggleStatus = () => {
       if (!trainer) return;
@@ -247,12 +313,19 @@
 
           {/* ── Assigned Members ── */}
           <FadeInView delay={180}>
-            <Text style={s.sectionLabel}>ASSIGNED MEMBERS  ·  {members.length}</Text>
+            <View style={s.sectionHeadRow}>
+              <Text style={s.sectionLabel}>ASSIGNED MEMBERS  ·  {members.length}</Text>
+              <AnimatedPressable style={s.assignBtn} scaleDown={0.95} onPress={openAssign}>
+                <MaterialCommunityIcons name="account-plus-outline" size={14} color={Colors.accent} />
+                <Text style={s.assignBtnText}>ASSIGN</Text>
+              </AnimatedPressable>
+            </View>
             {members.length === 0 ? (
-              <View style={s.emptyCard}>
+              <AnimatedPressable style={s.emptyCard} scaleDown={0.98} onPress={openAssign}>
                 <View style={s.emptyLine} />
                 <Text style={s.emptyText}>No members assigned yet</Text>
-              </View>
+                <Text style={s.emptyHint}>Tap to allot members for personal training</Text>
+              </AnimatedPressable>
             ) : (
               <View style={s.card}>
                 {members.map((m, i) => {
@@ -313,6 +386,74 @@
 
           <View style={{ height: 40 }} />
         </ScrollView>
+
+        {/* ── Assign members sheet ── */}
+        <Modal visible={assignOpen} transparent animationType="slide" onRequestClose={() => setAssignOpen(false)}>
+          <View style={s.modalWrap}>
+            <Pressable style={s.backdrop} onPress={() => setAssignOpen(false)} />
+            <View style={s.sheet}>
+              <View style={s.sheetHead}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.sheetEyebrow}>PERSONAL TRAINING</Text>
+                  <Text style={s.sheetTitle}>Assign members to {trainer?.full_name}</Text>
+                </View>
+                <Pressable onPress={() => setAssignOpen(false)}><Text style={s.closeX}>✕</Text></Pressable>
+              </View>
+
+              <View style={s.searchBar}>
+                <MaterialCommunityIcons name="magnify" size={17} color={Colors.textMuted} />
+                <TextInput
+                  style={s.searchInput}
+                  value={memberSearch}
+                  onChangeText={setMemberSearch}
+                  placeholder="Search members…"
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              <Text style={s.pickedNote}>
+                {picked.size} selected · tap to add or remove
+              </Text>
+
+              <ScrollView style={{ maxHeight: 380 }} keyboardShouldPersistTaps="handled">
+                {allMembers
+                  .filter(m => m.full_name.toLowerCase().includes(memberSearch.trim().toLowerCase()))
+                  .map(m => {
+                    const on         = picked.has(m.id);
+                    // Assigned to a DIFFERENT trainer — warn before poaching.
+                    const otherTrainer = !!m.trainer_id && m.trainer_id !== trainer?.id;
+                    return (
+                      <Pressable key={m.id} style={[s.pickRow, on && s.pickRowOn]} onPress={() => togglePick(m.id)}>
+                        <View style={[s.checkbox, on && s.checkboxOn]}>
+                          {on && <MaterialCommunityIcons name="check" size={13} color="#fff" />}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.pickName}>{m.full_name}</Text>
+                          {otherTrainer && !on && (
+                            <Text style={s.pickWarn}>Already with another trainer</Text>
+                          )}
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                {allMembers.length === 0 && (
+                  <Text style={s.pickEmpty}>No members in this gym yet.</Text>
+                )}
+              </ScrollView>
+
+              <AnimatedPressable
+                style={[s.saveBtn, savingAssign && { opacity: 0.5 }]}
+                scaleDown={0.97}
+                onPress={saveAssignments}
+                disabled={savingAssign}
+              >
+                {savingAssign
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={s.saveBtnText}>SAVE ASSIGNMENTS</Text>}
+              </AnimatedPressable>
+            </View>
+          </View>
+        </Modal>
       </>
     );
   }
@@ -392,6 +533,35 @@
    36, alignItems: 'center', marginBottom: 24, gap: 12 },
     emptyLine: { width: 36, height: 3, borderRadius: 2, backgroundColor: '#222' },
     emptyText: { fontFamily: Fonts.regular, fontSize: 14, color: '#444' },
+    emptyHint: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.accent, marginTop: 6 },
+
+    // Assign members
+    sectionHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    assignBtn:      { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.accent + '15', borderWidth: 1, borderColor: Colors.accent + '40', borderRadius: 9, paddingHorizontal: 11, paddingVertical: 6, marginBottom: 10, marginTop: 8 },
+    assignBtnText:  { fontFamily: Fonts.bold, fontSize: 10, color: Colors.accent, letterSpacing: 0.8 },
+
+    modalWrap:  { flex: 1, justifyContent: 'flex-end' },
+    backdrop:   { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.72)' },
+    sheet:      { backgroundColor: Colors.bgCard, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 30, borderWidth: 1, borderColor: Colors.border },
+    sheetHead:  { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 },
+    sheetEyebrow:{ fontFamily: Fonts.bold, fontSize: 9, color: Colors.accent, letterSpacing: 1.3 },
+    sheetTitle: { fontFamily: Fonts.condensedBold, fontSize: 19, color: Colors.text, marginTop: 3 },
+    closeX:     { fontFamily: Fonts.bold, fontSize: 18, color: Colors.textMuted, paddingHorizontal: 6 },
+
+    searchBar:  { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.bgElevated, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+    searchInput:{ flex: 1, fontFamily: Fonts.regular, fontSize: 15, color: Colors.text, padding: 0 },
+    pickedNote: { fontFamily: Fonts.bold, fontSize: 10, color: Colors.textMuted, letterSpacing: 1, marginTop: 14, marginBottom: 8 },
+
+    pickRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 12, marginBottom: 4 },
+    pickRowOn:  { backgroundColor: Colors.accent + '12' },
+    checkbox:   { width: 22, height: 22, borderRadius: 7, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+    checkboxOn: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+    pickName:   { fontFamily: Fonts.bold, fontSize: 14.5, color: Colors.text },
+    pickWarn:   { fontFamily: Fonts.regular, fontSize: 11, color: Colors.orange, marginTop: 2 },
+    pickEmpty:  { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, textAlign: 'center', paddingVertical: 26 },
+
+    saveBtn:     { backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 14 },
+    saveBtnText: { fontFamily: Fonts.bold, fontSize: 14, color: '#fff', letterSpacing: 1 },
 
     // Actions
     actionsRow:    { flexDirection: 'row', gap: 10, marginBottom: 24 },

@@ -64,7 +64,16 @@ api.gymsetu.it.com {
 
         # index.html is the ONE file that must not be cached: it names the
         # current bundle hash, so a cached copy pins clients to a dead bundle.
-        header /index.html Cache-Control "no-cache, must-revalidate"
+        #
+        # Match by NEGATION, not by path. `header /index.html …` only fires for
+        # the literal /index.html URL — but browsers request "/" (and SPA deep
+        # links like /paywall), which try_files serves index.html for while the
+        # request path stays "/". Those responses went out with NO Cache-Control
+        # at all, so browsers cached the page naming the bundle and kept loading
+        # a stale build after every deploy. Anything that isn't a hashed asset
+        # is a navigation and must revalidate.
+        @notasset not path /_expo/* /assets/* /icons/*
+        header @notasset Cache-Control "no-cache, must-revalidate"
 
         # expo-router owns routing; unknown paths must render the SPA, not 404,
         # or a hard refresh on a deep link like /members/123 breaks. The

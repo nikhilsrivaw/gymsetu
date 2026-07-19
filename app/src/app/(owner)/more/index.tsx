@@ -23,10 +23,9 @@ const PRO_ONLY = new Set([
   '/(owner)/more/announcements',
 ]);
 
-// Routes not yet built — show "coming soon" instead of navigating to 404
-const COMING_SOON = new Set([
-  '/(owner)/more/suppliers',
-]);
+// Routes not yet built — show "coming soon" instead of navigating to 404.
+// Empty: every item in the menu is now a real, working screen.
+const COMING_SOON = new Set<string>([]);
 
 const sections: { title: string; icon: IconName; color: string; items: MenuItem[] }[] = [
   {
@@ -61,7 +60,6 @@ const sections: { title: string; icon: IconName; color: string; items: MenuItem[
       { label: 'Lockers',             desc: 'Member locker assign karo',            icon: 'locker',                 color: '#F59E0B', route: '/(owner)/more/lockers'    },
       { label: 'Equipment',           desc: 'Machines ka record aur service date',  icon: 'dumbbell',               color: '#A78BFA', route: '/(owner)/more/equipment'  },
       { label: 'Complaints',            desc: 'Members ki complaints dekho & solve karo', icon: 'message-alert-outline', color: '#ef4444', route: '/(owner)/more/incidents'  },
-      { label: 'Supplier Contacts',   desc: 'Vendors aur suppliers ki list',        icon: 'truck-delivery-outline', color: '#14B8A6', route: '/(owner)/more/suppliers'  },
     ],
   },
   {

@@ -90,6 +90,13 @@ export default function WorkoutTrackerScreen() {
   const [aiPlanLoading, setAiPlanLoading] = useState(false);
   const [aiError, setAiError]             = useState<string | null>(null);
 
+  // Trainer-assigned plan (personal training). If the member has a trainer AND
+  // that trainer assigned a workout plan, show it — the trainer's plan takes
+  // priority over AI. No trainer / no plan → the AI generator below is the path.
+  const [trainerPlan, setTrainerPlan] = useState<{ name: string; goal: string | null; level: string | null; exercises: any[] } | null>(null);
+  const [hasTrainer,  setHasTrainer]  = useState<boolean>(false);
+  const [ptExpanded,  setPtExpanded]  = useState(true);
+
   const fetchPastSessions = useCallback(async () => {
     if (!profile?.id) return;
     try {
@@ -106,7 +113,43 @@ export default function WorkoutTrackerScreen() {
     }
   }, [profile?.id]);
 
-  useFocusEffect(useCallback(() => { fetchPastSessions(); }, [fetchPastSessions]));
+  // Load this member's trainer + assigned workout plan.
+  const fetchTrainerPlan = useCallback(async () => {
+    if (!profile?.id) return;
+    try {
+      setHasTrainer(!!(profile as any)?.trainer_id);
+
+      // plan_assignments.member_id is members.id, so resolve it first.
+      const { data: memberRow } = await supabase
+        .from('members').select('id').eq('user_id', profile.id).maybeSingle();
+      const membersId = memberRow?.id;
+      if (!membersId) { setTrainerPlan(null); return; }
+
+      const { data } = await supabase
+        .from('plan_assignments')
+        .select('assigned_at, workout_plans(name, goal, level, exercises)')
+        .eq('member_id', membersId)
+        .order('assigned_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const wp: any = data ? (Array.isArray(data.workout_plans) ? data.workout_plans[0] : data.workout_plans) : null;
+      if (wp) {
+        setTrainerPlan({
+          name: wp.name ?? 'Workout Plan',
+          goal: wp.goal ?? null,
+          level: wp.level ?? null,
+          exercises: Array.isArray(wp.exercises) ? wp.exercises : [],
+        });
+      } else {
+        setTrainerPlan(null);
+      }
+    } catch {
+      setTrainerPlan(null);
+    }
+  }, [profile?.id, (profile as any)?.trainer_id]);
+
+  useFocusEffect(useCallback(() => { fetchPastSessions(); fetchTrainerPlan(); }, [fetchPastSessions, fetchTrainerPlan]));
 
   const toggleSet = (exIdx: number, setIdx: number) => {
     setExercises(prev => prev.map((ex, ei) =>
@@ -219,6 +262,60 @@ export default function WorkoutTrackerScreen() {
             </View>
           </View>
         </FadeInView>
+
+        {/* ── YOUR TRAINER'S PLAN (personal training) ── */}
+        {trainerPlan ? (
+          <FadeInView delay={20}>
+            <View style={styles.ptCard}>
+              <Pressable style={styles.ptHead} onPress={() => setPtExpanded(v => !v)}>
+                <View style={styles.ptBadge}>
+                  <MaterialCommunityIcons name="account-star" size={16} color={Colors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ptEyebrow}>FROM YOUR TRAINER</Text>
+                  <Text style={styles.ptTitle}>{trainerPlan.name}</Text>
+                  {(trainerPlan.goal || trainerPlan.level) && (
+                    <Text style={styles.ptMeta}>
+                      {[trainerPlan.goal, trainerPlan.level].filter(Boolean).join(' · ')}
+                    </Text>
+                  )}
+                </View>
+                <MaterialCommunityIcons name={ptExpanded ? 'chevron-up' : 'chevron-down'} size={22} color={Colors.textMuted} />
+              </Pressable>
+
+              {ptExpanded && (
+                <View style={styles.ptBody}>
+                  {trainerPlan.exercises.length === 0 ? (
+                    <Text style={styles.ptEmpty}>Your trainer will add exercises soon.</Text>
+                  ) : (
+                    trainerPlan.exercises.map((ex: any, i: number) => (
+                      <View key={i} style={styles.ptExRow}>
+                        <View style={styles.ptExNum}><Text style={styles.ptExNumText}>{i + 1}</Text></View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.ptExName}>{ex.name ?? ex.exercise ?? 'Exercise'}</Text>
+                          {(ex.sets || ex.reps || ex.rest) && (
+                            <Text style={styles.ptExDetail}>
+                              {[ex.sets ? `${ex.sets} sets` : null, ex.reps ? `${ex.reps} reps` : null, ex.rest ? `rest ${ex.rest}` : null]
+                                .filter(Boolean).join(' · ')}
+                            </Text>
+                          )}
+                          {ex.note && <Text style={styles.ptExNote}>{ex.note}</Text>}
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </View>
+              )}
+            </View>
+          </FadeInView>
+        ) : hasTrainer ? (
+          <FadeInView delay={20}>
+            <View style={styles.ptWaiting}>
+              <MaterialCommunityIcons name="clock-outline" size={16} color={Colors.textMuted} />
+              <Text style={styles.ptWaitingText}>Aapke trainer ne abhi workout plan nahi banaya. Tab tak neeche apna workout log karo ya AI se plan banao.</Text>
+            </View>
+          </FadeInView>
+        ) : null}
 
         {/* ── SAVE SUCCESS BANNER ── */}
         {justSaved && (
@@ -371,7 +468,7 @@ export default function WorkoutTrackerScreen() {
                 </View>
                 <View>
                   <Text style={styles.aiLabel}>AI WORKOUT PLAN</Text>
-                  <Text style={styles.aiSub}>Personalized for your goals</Text>
+                  <Text style={styles.aiSub}>{trainerPlan ? 'Extra plan, on top of your trainer\'s' : 'No trainer? Generate one instantly'}</Text>
                 </View>
               </View>
               <MaterialCommunityIcons
@@ -935,6 +1032,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  // Trainer plan (personal training)
+  ptCard:      { backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1, borderColor: Colors.accent + '40', marginBottom: 16, overflow: 'hidden' },
+  ptHead:      { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 },
+  ptBadge:     { width: 38, height: 38, borderRadius: 12, backgroundColor: Colors.accent + '18', borderWidth: 1, borderColor: Colors.accent + '30', alignItems: 'center', justifyContent: 'center' },
+  ptEyebrow:   { fontFamily: Fonts.bold, fontSize: 9, color: Colors.accent, letterSpacing: 1.3 },
+  ptTitle:     { fontFamily: Fonts.condensedBold, fontSize: 19, color: Colors.text, marginTop: 2 },
+  ptMeta:      { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textMuted, marginTop: 2, textTransform: 'capitalize' },
+  ptBody:      { paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
+  ptEmpty:     { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textMuted, paddingVertical: 6 },
+  ptExRow:     { flexDirection: 'row', gap: 12, alignItems: 'flex-start', borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 11 },
+  ptExNum:     { width: 24, height: 24, borderRadius: 8, backgroundColor: Colors.accent + '15', alignItems: 'center', justifyContent: 'center' },
+  ptExNumText: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.accent },
+  ptExName:    { fontFamily: Fonts.bold, fontSize: 14.5, color: Colors.text },
+  ptExDetail:  { fontFamily: Fonts.regular, fontSize: 12.5, color: Colors.textMuted, marginTop: 2 },
+  ptExNote:    { fontFamily: Fonts.regular, fontSize: 12, color: Colors.accent, marginTop: 3 },
+  ptWaiting:   { flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: 14, padding: 14, marginBottom: 16 },
+  ptWaitingText:{ flex: 1, fontFamily: Fonts.regular, fontSize: 12.5, color: Colors.textMuted, lineHeight: 18 },
+
   aiLabel: {
     fontSize: 11,
     fontFamily: Fonts.bold,

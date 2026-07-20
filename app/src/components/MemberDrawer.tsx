@@ -21,6 +21,7 @@ const menuItems: {
   { name: 'my-payments', label: 'My Payments',  icon: 'credit-card-outline', tint: '#22C55E' },
   { name: 'my-plan',     label: 'My Plan',      icon: 'clipboard-text',      tint: '#F59E0B' },
   { name: 'gym-info',    label: 'Gym Info',     icon: 'information-outline', tint: '#06B6D4' },
+  { name: 'complaints',  label: 'Complaints',   icon: 'message-alert-outline', tint: '#ef4444' },
   { name: 'feedback',    label: 'Feedback',     icon: 'message-star-outline',tint: '#EC4899' },
   { name: 'profile',     label: 'Profile',      icon: 'account-circle',      tint: '#8B5CF6' },
 ];

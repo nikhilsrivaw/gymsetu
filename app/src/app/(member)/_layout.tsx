@@ -106,6 +106,7 @@
           {/* ── screens using the gym-branded drawer header ── */}
           <Drawer.Screen name="my-payments"      options={{ title: 'My Payments' }} />
           <Drawer.Screen name="my-plan"          options={{ title: 'My Plan' }} />
+          <Drawer.Screen name="complaints"       options={{ title: 'Complaints' }} />
           <Drawer.Screen name="feedback"         options={{ title: 'Feedback' }} />
           <Drawer.Screen name="profile"          options={{ title: 'Profile' }} />
 

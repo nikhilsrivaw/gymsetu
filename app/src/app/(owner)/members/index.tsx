@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList,
   TouchableOpacity, TextInput as RNTextInput,
-  Animated,
+  Animated, Pressable, Linking,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,7 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { askAI } from '@/lib/ai';
 
-type FilterType   = 'all' | 'active' | 'expired' | 'frozen';
+type FilterType   = 'all' | 'active' | 'expired' | 'frozen' | 'dues';
 type MemberStatus = 'active' | 'expired' | 'suspended' | 'inactive' | 'frozen';
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -26,6 +26,7 @@ const filters: { label: string; value: FilterType; color: string; icon: IconName
   { label: 'Active',    value: 'active',    color: Colors.green, icon: 'check-circle-outline'  },
   { label: 'Expired',   value: 'expired',   color: Colors.red,   icon: 'clock-alert-outline'   },
   { label: 'Frozen',    value: 'frozen',    color: '#3B82F6',   icon: 'pause-circle-outline'  },
+  { label: 'Dues',      value: 'dues',      color: Colors.red,   icon: 'currency-inr'          },
 ];
 
 const statusColors: Record<MemberStatus, string> = {
@@ -52,6 +53,7 @@ interface MemberRow {
   plan_name:     string;
   expiry_date:   string;
   rawExpiryDate: string;
+  due:           number;   // plan price − payments made against it
 }
 
 const getRisk = (m: MemberRow): 'high' | 'medium' | null => {
@@ -138,18 +140,37 @@ export default function MembersListScreen() {
 
       const { data: planData } = await supabase
         .from('member_plans')
-        .select('member_id, end_date, status, plan_id')
+        .select('id, member_id, end_date, status, plan_id')
         .in('member_id', planLookupIds);
 
       const planIds = [...new Set((planData ?? []).map((p: any) => p.plan_id).filter(Boolean))];
-      const planNames: Record<string, string> = {};
+      const planNames:  Record<string, string> = {};
+      const planPrices: Record<string, number> = {};
 
       if (planIds.length > 0) {
         const { data: mpData } = await supabase
           .from('membership_plans')
-          .select('id, name')
+          .select('id, name, price')
           .in('id', planIds);
-        if (mpData) mpData.forEach((p: any) => { planNames[p.id] = p.name; });
+        if (mpData) mpData.forEach((p: any) => {
+          planNames[p.id]  = p.name;
+          planPrices[p.id] = p.price ?? 0;
+        });
+      }
+
+      // Dues = plan price − what's actually been paid against that plan.
+      // Payments link to member_plans via member_plan_id (NOT plan_id).
+      const memberPlanIds = (planData ?? []).map((p: any) => p.id).filter(Boolean);
+      const paidByPlan: Record<string, number> = {};
+      if (memberPlanIds.length > 0) {
+        const { data: payData } = await supabase
+          .from('payments')
+          .select('member_plan_id, amount')
+          .in('member_plan_id', memberPlanIds);
+        (payData ?? []).forEach((p: any) => {
+          if (!p.member_plan_id) return;
+          paidByPlan[p.member_plan_id] = (paidByPlan[p.member_plan_id] ?? 0) + (p.amount ?? 0);
+        });
       }
 
       const rows: MemberRow[] = profileData.map((m: any) => {
@@ -159,11 +180,15 @@ export default function MembersListScreen() {
         const activePlan = plans.find((p: any) => p.status === 'active' || p.status === 'frozen');
         const plan       = activePlan ?? plans[0];
         const status     = deriveStatus(plans);
+        const price      = plan?.plan_id ? (planPrices[plan.plan_id] ?? 0) : 0;
+        const paid       = plan?.id ? (paidByPlan[plan.id] ?? 0) : 0;
+        const due        = Math.max(0, price - paid);
         return {
           id:            m.id,
           full_name:     m.full_name,
           phone:         m.phone,
           status,
+          due,
           plan_name:     plan ? (planNames[plan.plan_id] ?? 'No plan') : 'No plan',
           expiry_date:   plan?.end_date
             ? new Date(plan.end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -214,7 +239,10 @@ export default function MembersListScreen() {
   const filtered = members.filter(m => {
     const matchSearch = m.full_name.toLowerCase().includes(search.toLowerCase()) ||
                         (m.phone ?? '').includes(search);
-    const matchFilter = filter === 'all' || m.status === filter;
+    const matchFilter =
+      filter === 'all'  ? true
+      : filter === 'dues' ? m.due > 0        // everyone who still owes money
+      : m.status === filter;
     return matchSearch && matchFilter;
   });
 
@@ -311,6 +339,7 @@ export default function MembersListScreen() {
               const active = filter === f.value;
               const count =
                 f.value === 'all'       ? members.length :
+                f.value === 'dues'      ? members.filter(m => m.due > 0).length :
                 f.value === 'active'    ? members.filter(m => m.status === 'active').length :
                 f.value === 'expired'   ? members.filter(m => m.status === 'expired').length :
                 members.filter(m => m.status === 'frozen').length;
@@ -491,12 +520,43 @@ export default function MembersListScreen() {
                         <Text style={s.cardExpiry}>Expires {item.expiry_date}</Text>
                       </View>
 
-                      {item.phone && (
-                        <View style={s.metaRow}>
-                          <MaterialCommunityIcons name="phone-outline" size={11} color={Colors.textMuted} />
-                          <Text style={s.cardPhone}>{item.phone}</Text>
-                        </View>
-                      )}
+                      {/* Dues + quick contact — money first, then reach them */}
+                      <View style={s.actionRow}>
+                        {item.due > 0 ? (
+                          <View style={s.duePill}>
+                            <MaterialCommunityIcons name="currency-inr" size={11} color={Colors.red} />
+                            <Text style={s.dueText}>{item.due.toLocaleString('en-IN')} due</Text>
+                          </View>
+                        ) : (
+                          <View style={s.paidPill}>
+                            <MaterialCommunityIcons name="check" size={10} color={Colors.green} />
+                            <Text style={s.paidText}>Paid</Text>
+                          </View>
+                        )}
+
+                        {item.phone && (
+                          <View style={s.contactBtns}>
+                            <Pressable
+                              style={s.iconBtn}
+                              hitSlop={8}
+                              onPress={(e) => { e.stopPropagation?.(); Linking.openURL(`tel:${item.phone}`); }}
+                            >
+                              <MaterialCommunityIcons name="phone-outline" size={14} color={Colors.textMuted} />
+                            </Pressable>
+                            <Pressable
+                              style={s.iconBtn}
+                              hitSlop={8}
+                              onPress={(e) => {
+                                e.stopPropagation?.();
+                                const d = (item.phone ?? '').replace(/\D/g, '');
+                                Linking.openURL(`https://wa.me/${d.length === 10 ? '91' + d : d}`);
+                              }}
+                            >
+                              <MaterialCommunityIcons name="whatsapp" size={14} color="#25D366" />
+                            </Pressable>
+                          </View>
+                        )}
+                      </View>
                     </View>
 
                     {/* Right: status pill + chevron */}
@@ -683,6 +743,15 @@ const s = StyleSheet.create({
   cardPlan:  { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted, flex: 1 },
   cardExpiry:{ fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted },
   cardPhone: { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textMuted },
+
+  // Dues badge + quick contact on each member card
+  actionRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  duePill:     { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Colors.red + '15', borderWidth: 1, borderColor: Colors.red + '35', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4 },
+  dueText:     { fontFamily: Fonts.bold, fontSize: 11, color: Colors.red },
+  paidPill:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.green + '12', borderWidth: 1, borderColor: Colors.green + '30', borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4 },
+  paidText:    { fontFamily: Fonts.bold, fontSize: 10.5, color: Colors.green },
+  contactBtns: { flexDirection: 'row', gap: 6 },
+  iconBtn:     { width: 28, height: 28, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
 
   cardRight: { alignItems: 'flex-end', gap: 2, marginLeft: 8 },
   statusPill: {
